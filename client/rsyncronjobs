@@ -1,0 +1,48 @@
+#!/usr/bin/sh
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' $fm/Archive $to/
+echo creditaccess
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' /home/pannet1/Programs/php/creditaccess /home/pannet1/Archive/hosting/home/
+echo kkk
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt'  /home/pannet1/Programs/php/kkk /home/pannet1/Archive/hosting/home/
+echo srestates
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt'  /home/pannet1/Programs/php/srestates /home/pannet1/Archive/hosting/home/
+echo swethaag
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock'  /home/pannet1/Programs/php/swethaag /home/pannet1/Archive/hosting/home/
+echo ecomsense
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/ecomsense /home/pannet1/Archive/hosting/home/
+echo ecomsense
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/ecomsense /home/pannet1/Archive/hosting/home/
+echo phpmyadmin
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/phpmyadmin /home/pannet1/Archive/hosting/home/
+echo creditaccess
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/creditaccess /home/pannet1/Archive/hosting/home/
+echo test2trade
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/test2trade /home/pannet1/Archive/hosting/home/
+echo httrack
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/httrack /home/pannet1/Archive/hosting/home/
+echo httrack
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/httrack /home/pannet1/Archive/hosting/home/
+echo divine
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/divine /home/pannet1/Archive/hosting/home/
+echo profitcalls
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/profitcalls /home/pannet1/Archive/hosting/home/
+echo ticketpro
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/ticketpro /home/pannet1/Archive/hosting/home/
+echo automat
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/automat /home/pannet1/Archive/hosting/home/
+echo ticketpro
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/ticketpro /home/pannet1/Archive/hosting/home/
+echo divine2
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/divine2 /home/pannet1/Archive/hosting/home/
+echo probu.local
+rsync --update --delete --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' --exclude='node_modules' /var/www/html/probu.local /home/pannet1/Archive/hosting/home/
+echo kanboard
+rsync --update --delete --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' --exclude='node_modules' /var/www/html/kanboard /home/pannet1/Archive/hosting/home/
+echo srestates
+rsync --update --delete --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' --exclude='node_modules' /var/www/html/srestates /home/pannet1/Archive/hosting/home/
+echo billing.local
+rsync --update --delete --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' --exclude='node_modules' /var/www/html/billing.local /home/pannet1/Archive/hosting/home/
+echo ecomsense
+rsync --update --delete --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' --exclude='node_modules' /var/www/html/ecomsense /home/pannet1/Archive/hosting/home/
+echo billing.local
+rsync --update --delete --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' --exclude='node_modules' /var/www/html/billing.local /home/pannet1/Archive/hosting/home/

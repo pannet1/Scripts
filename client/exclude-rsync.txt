@@ -1,0 +1,15 @@
+*.lock
+*.so
+*.o
+__pycache__/
+bin/
+cache2/
+Cache/
+etc/
+lib/
+lib64/
+node_modules/
+site-packages/
+share/
+tmp/
+vendor/

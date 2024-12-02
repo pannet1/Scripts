@@ -1,0 +1,19 @@
+<VirtualHost *:80>
+	ServerAdmin root@localhost
+  ServerName "default"	
+	DocumentRoot "/home/pannet1/Programs/php/default/web"
+	ErrorLog /home/pannet1/Programs/php/default/log/error.log
+	CustomLog /home/pannet1/Programs/php/default/log/access.log combined
+	LogLevel warn
+	ServerSignature On
+ 	<Directory />
+		Options FollowSymLinks
+		AllowOverride All
+	</Directory>
+  <Directory /home/pannet1/Programs/php/default/web>
+    AllowOverride All
+    Options MultiViews Indexes Includes FollowSymLinks
+    Require all granted
+  </Directory>
+</VirtualHost>
+	
