@@ -1,0 +1,24 @@
+  695  6/23/2021 09:24  ai install arecord
+  696  6/23/2021 09:24  ai arecord
+  697  6/23/2021 09:24  arecord
+  698  6/23/2021 09:25  sudo arecord -L
+  762  6/24/2021 03:17  arecord -vv -fdat foo.wav
+  765  6/24/2021 03:19  arecord -vv -fdat foo.wav
+  769  6/24/2021 03:22  arecord -vv -fdat foo.wav
+  771  6/24/2021 03:33  arecord -vv -fdat foo.wav
+  773  6/24/2021 03:36  arecord -D hw:0,0 -f cd -d 10 > ~/test.wav\n
+  774  6/24/2021 03:36  arecord -D hw:0,0 -f; cd -d 10 > ~/test.wav\n
+  775  6/24/2021 03:37  arecord -D hw:0,0 -f && cd -d 10 > ~/test.wav\n
+  776  6/24/2021 03:37  arecord -D hw:0,0 -f cd -d 10 > ~/test.wav\n
+  777  6/24/2021 03:37  arecord -D hw:0,0 -f cd -d 10
+  778  6/24/2021 03:37  arecord -D hw:0,0 -f
+  779  6/24/2021 03:38  arecord -D hw:0,0 
+  780  6/24/2021 03:39  arecord\n
+  781  6/24/2021 03:40  arecord -D hw:0,0 -f cd -d 10 > ~/test.wav\n
+  782  6/24/2021 03:40  arecord -D hw:0,0 -f cd -d 10 > test.wav\n
+  783  6/24/2021 03:40  arecord -D hw:0,1 -f cd -d 10 > test.wav\n
+  784  6/24/2021 03:40  arecord -D hw:1,0 -f cd -d 10 > test.wav\n
+  787  6/24/2021 03:47  arecord -D hw:2,0 -f cd -d 10 > test.wav\n
+  788  6/24/2021 03:47  arecord -D hw:3,0 -f cd -d 10 > test.wav\n
+  789  6/24/2021 03:47  arecord -D hw:1,0 -f cd -d 10 > test.wav\n
+  982  6/30/2021 01:40  history | grep arecord

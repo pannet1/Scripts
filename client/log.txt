@@ -1,0 +1,12 @@
+i am pannet1
+backup found .. at /home/pannet1/Backup/hosting/home/creditaccess/
+copying from backup done
+Site creditaccess already enabled
+Reloading Apache httpd web server: apache2 failed!
+The apache2 configtest failed. Not doing anything. ... (warning).
+/etc/apache2/sites-available/creditaccess.conf:        ServerName "creditaccess"	
+/etc/apache2/sites-available/creditaccess.conf:	DocumentRoot /var/www/html/creditaccess/web
+/etc/apache2/sites-available/creditaccess.conf:	<Directory /var/www/html/creditaccess/web>
+/etc/apache2/sites-available/creditaccess.conf:	ErrorLog /var/www/html/creditaccess/log/error.log
+/etc/apache2/sites-available/creditaccess.conf:	CustomLog /var/www/html/creditaccess/log/access.log combined
+[0;31m do you wish to install wordpress cms ? [0m 
