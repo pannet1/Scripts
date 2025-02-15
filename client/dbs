@@ -1,0 +1,8 @@
+#!/bin/bash
+MYSQL=`which mysql`
+  
+Q1="SHOW DATABASES;"
+SQL="${Q1}"
+  
+$MYSQL -u root -p -e "$SQL"
+echo $Q1;

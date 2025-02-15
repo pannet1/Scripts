@@ -1,0 +1,16 @@
+.*
+.*/
+__pycache__/
+bin/
+cache2/
+Cache/
+fatfree*/
+lib/
+lib64/
+log/
+lib64/
+node_modules/
+site-packages/
+share/
+tmp/
+vendor/
