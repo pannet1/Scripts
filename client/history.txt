@@ -1,0 +1,2 @@
+yay -Syu gnome-keyring network-manager-applet
+yay -Rc vlc

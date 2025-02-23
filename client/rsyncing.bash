@@ -1,9 +1,9 @@
 # Define your source and destination base paths
-fm="/home/pannet1"
-to="/run/media/pannet1/freeagent/latest"
+to="/home/pannet1"
+fm="/run/media/pannet1/freeagent/latest"
 
 # List of folders you want to mirror
-folders=("Personal" "Programs" "Archive" "Documents" "Public" ".config" "Pictures" "Yandex.Disk" "Videos")
+folders=("Personal" "Programs" "Archive" "Documents" "Public" "dotfiles" "Pictures" "Yandex.Disk" "Videos")
 
 
 for folder in "${folders[@]}"; do
