@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/env sh
 
 #save your monitor configuration
 # autorandr --save home autorandr --save office and then
