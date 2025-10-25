@@ -1,4 +1,3 @@
-$Url = "https://github.com/<OWNER>/<REPOSITORY>/archive/<BRANCH_OR_TAG>.zip"
-$OutputZip = "C:\Path\To\Save\Repo.zip"
-
+$Url = "https://github.com/pannet1/scripts/archive/main.zip"
+$OutputZip = "C:\scripts.zip"
 curl.exe -L -o $OutputZip $Url
