@@ -4,4 +4,6 @@
 Write-Host "Installing Debian... This may take a few minutes."
 wsl --install -d Debian
 
+winget install -e --id Microsoft.WindowsStore --source msstore
+
 # COMMAND END: Part 2B
