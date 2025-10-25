@@ -17,20 +17,13 @@ echo "--- Starting Complete Neovim/LazyVim Setup for Debian/Python ---"
 
 echo "[1/5] Installing core system utilities and dependencies..."
 
-# Update package lists
-sudo apt update
-
 # Install essential utilities and tools needed for plugins (ripgrep, fd-find)
 sudo apt install -y \
-	git \
-	curl \
-	unzip \
-	wget \
 	build-essential \
 	pkg-config \
-	file \
 	ripgrep \
-	fd-find
+	fd-find \
+	lazygit
 
 # Fix 'fd' command name on Debian/Ubuntu (it installs as 'fdfind')
 echo "[*] Creating symlink for 'fd-find' to 'fd'..."
@@ -71,7 +64,7 @@ echo "[3/5] Ensuring necessary directories are in PATH..."
 
 # Ensure /usr/local/bin is in PATH for the 'nvim' symlink
 if ! echo "$PATH" | grep -q "/usr/local/bin"; then
-	echo 'export PATH=/usr/local/bin:$PATH' >>~/.bashrc
+	echo "export PATH=/usr/local/bin:$PATH" >>~/.bashrc
 fi
 
 # -----------------------------------------------------
