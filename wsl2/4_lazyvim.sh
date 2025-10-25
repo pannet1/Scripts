@@ -85,7 +85,7 @@ sudo apt install -y python3 python3-pip python3-venv
 
 # Install essential Python tools GLOBALLY: LSP server and Neovim bridge
 echo "[*] Installing Global Python LSP Server and Neovim Integration via pip..."
-pip3 install --user \
+pip3 install --break-system-packages \
 	python-lsp-server \
 	pynvim
 
