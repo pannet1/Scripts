@@ -18,7 +18,7 @@ file nvim-linux-x86_64.tar.gz | grep "gzip compressed data" || {
 }
 
 echo "[+] Extracting Neovim..."
-tar xzvf nvim-linux-x86_64.tar.gz
+tar -xzvf nvim-linux-x86_64.tar.gz
 
 echo "[+] Installing Neovim to $NVIM_INSTALL_DIR..."
 sudo rm -rf $NVIM_INSTALL_DIR
