@@ -1,60 +1,76 @@
-@echo off
-title SCRCPY Wireless Launcher
-echo =====================================================
-echo        Android Wireless Scrcpy Automation
-echo =====================================================
+echo off
+title Stream Android Screen – USB first, then WiFi fallback
+setlocal enabledelayedexpansion
+
+echo ==============================================
+echo   Android Screen Streaming Launcher
+echo ==============================================
 echo.
 
-REM === STEP 1: Check if device is connected via USB ===
-:check_device
-for /f "skip=1 tokens=1" %%a in ('adb devices') do (
-    if "%%a"=="" goto no_device
-    if NOT "%%a"=="List" (
-        set DEVICE=%%a
-        goto device_found
-    )
+:: === Check if adb is available ===
+where adb >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] adb not found in PATH. Please install Android platform-tools.
+    pause
+    exit /b
 )
 
-:no_device
-echo [!] No device detected.
-echo Please connect your phone via USB with USB debugging enabled.
-pause
-goto check_device
+:: === STEP 1: Check for USB-connected device ===
+echo [INFO] Checking for USB-connected Android device...
+adb devices > "%temp%\adb_devices.txt"
+findstr /R "^\s*[0-9A-Za-z]\{4,\}\s*device$" "%temp%\adb_devices.txt" >nul
+if %errorlevel%==0 (
+    echo [OK] USB device detected.
+    goto LAUNCH_USB
+) else (
+    echo [WARN] No USB device detected.
+    echo [INFO] Will try wireless (TCP/IP) mode.
+    goto TRY_TCPIP
+)
 
-:device_found
-echo [+] Device detected: %DEVICE%
+:LAUNCH_USB
 echo.
+echo [ACTION] Launching scrcpy via USB...
+scrcpy --display-orientation=landscape --lock-video-orientation=landscape ^
+       --max-size=1920 --bit-rate=16M --stay-awake --turn-screen-off
+goto END
 
-REM === STEP 2: Restart adb in TCP/IP mode ===
-echo [+] Enabling TCP/IP mode on port 5555...
+:TRY_TCPIP
+:: === STEP 2: Enable TCP/IP on port 5555 ===
+echo [ACTION] Enabling ADB TCP/IP on port 5555...
 adb tcpip 5555
 echo Waiting 2 seconds...
 timeout /t 2 >nul
 
-REM === STEP 3: Get phone's IPv4 address ===
-echo [+] Fetching phone IP address...
-for /f "tokens=2 delims= " %%i in ('adb shell ip -4 addr show wlan0 ^| findstr "inet "') do (
-    for /f "tokens=1 delims=/" %%j in ("%%i") do set PHONE_IP=%%j
+:: === STEP 3: Determine device WiFi IP address ===
+echo [INFO] Fetching device WiFi IPv4 address...
+for /f "tokens=2 delims= " %%A in ('adb shell ip -4 addr show wlan0 ^| findstr " inet "') do (
+    for /f "tokens=1 delims=/" %%B in ("%%A") do set PHONE_IP=%%B
 )
 if "%PHONE_IP%"=="" (
-    echo [!] Could not retrieve IP address. Make sure Wi-Fi is ON.
+    echo [ERROR] Could not determine IPv4 address. Make sure your phone’s WiFi is ON and connected to same network.
     pause
     exit /b
 )
-echo [+] Phone IP address detected: %PHONE_IP%
-echo.
+echo [OK] Device IP: %PHONE_IP%
 
-REM === STEP 4: Connect wirelessly ===
-echo [+] Connecting to %PHONE_IP%:5555 ...
+:: === STEP 4: Connect via WiFi ===
+echo [ACTION] Connecting to %PHONE_IP%:5555 ...
 adb connect %PHONE_IP%:5555
-echo Waiting 2 seconds...
-timeout /t 2 >nul
+if errorlevel 1 (
+    echo [ERROR] Failed to connect to %PHONE_IP%:5555.
+    pause
+    exit /b
+)
 
-REM === STEP 5: Launch scrcpy ===
-echo [+] Launching scrcpy wirelessly...
-scrcpy --capture-orientation=landscape
+:: === STEP 5: Launch scrcpy wirelessly ===
+echo.
+echo [ACTION] Launching scrcpy wirelessly...
+scrcpy --display-orientation=landscape --lock-video-orientation=landscape ^
+       --max-size=1920 --bit-rate=16M --stay-awake --turn-screen-off
 
+:END
 echo.
 echo Done.
 pause
-exit /b
+
