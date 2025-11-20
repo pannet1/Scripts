@@ -8,5 +8,5 @@ rm "$loc"
 url="$*"
 echo "Fetching available formats for $url..."
 # select the video format for whatsapp
-yt-dlp "$url" -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best" -S "codec:h264:aac" --merge-output-format mp4 -o "$loc"
+yt-dlp "$url" -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best" -S "codec:h264:aac" --merge-output-format mp4 -o "$loc" --concurrent-fragments=16
 smplayer "$loc"
