@@ -11,12 +11,6 @@ echo "[+] Downloading latest Neovim release..."
 cd $TMP_DIR
 curl -LO $NVIM_URL
 
-echo "[+] Validating downloaded file..."
-file nvim-linux-x86_64.tar.gz | grep "gzip compressed data" || {
-	echo "[-] Downloaded file is not valid gzip archive. Aborting."
-	exit 1
-}
-
 echo "[+] Extracting Neovim..."
 tar -xzvf nvim-linux-x86_64.tar.gz
 
