@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+sudo apt install tmux trash-cli fzf
 
 # Variables
 NVIM_URL="https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz"
@@ -23,8 +24,8 @@ sudo ln -sf $NVIM_INSTALL_DIR/bin/nvim /usr/local/bin/nvim
 
 echo "[+] Ensuring /usr/local/bin is in PATH..."
 if ! echo $PATH | grep -q "/usr/local/bin"; then
-	echo 'export PATH=/usr/local/bin:$PATH' >>~/.bashrc
-	source ~/.bashrc
+  echo 'export PATH=/usr/local/bin:$PATH' >>~/.bashrc
+  source ~/.bashrc
 fi
 
 echo "[+] Cleanup temporary files..."
