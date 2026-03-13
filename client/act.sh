@@ -1,5 +1,5 @@
 #!/bin/bash
 
-# change to current directory
+# show current directory
 echo $(pwd)
-. ../../bin/activate
+source ../bin/activate
