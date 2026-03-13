@@ -23,7 +23,7 @@ apk add networkmanager \
     networkmanager-cli \
     networkmanager-wifi \
     wpa_supplicant \
-    rfkill
+    networkmanager-tui
 
 # 4. Save to USB Cache and Persist
 apk cache sync
