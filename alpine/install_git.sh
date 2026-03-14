@@ -1,5 +1,5 @@
 apk update
-apk add git ssh-client
+apk add git openssh-client-common
 git config --global user.email "prog@ecomsense.in"
 git config --global user.name "b karthick"
 git config --global url."git@github.com:".insteadOf "https://github.com/"
