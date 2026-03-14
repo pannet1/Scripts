@@ -116,6 +116,38 @@ else
     # Check for "Soft Blocks" that might be limiting power
     rfkill list wifi
 fi
+
+# [11/11] WIFI HARDWARE & SIGNAL AUDIT
+echo -e "\n[10/10] WIFI AUDIT  (Wi-Fi Check)..." | tee -a "$LOG_FILE"
+
+# Detect interface name dynamically (e.g., wlan0)
+WLAN_IFACE=$(iw dev | awk '/Interface/ {print $2}' | head -n 1)
+
+if [ -z "$WLAN_IFACE" ]; then
+    echo "CRITICAL: No Wi-Fi interface found in 'iw dev'." | tee -a "$LOG_FILE"
+    false # Trigger stall
+else
+    echo "Interface: $WLAN_IFACE" | tee -a "$LOG_FILE"
+
+    # Ensure radio is powered on
+    rfkill unblock wifi
+    ip link set "$WLAN_IFACE" up 2>/dev/null
+
+    # Execute scan with the syntax that worked
+    echo "Scanning for nearby networks..."
+    SCAN_DATA=$(iw dev "$WLAN_IFACE" scan | grep -E "SSID|signal" | head -n 10)
+
+    if [ -z "$SCAN_DATA" ]; then
+        echo "FAIL: Scan returned no data. Check Antennas/Firmware." | tee -a "$LOG_FILE"
+        false # Trigger stall
+    else
+        echo "$SCAN_DATA" | tee -a "$LOG_FILE"
+        echo "SUCCESS: Radio is TX/RX functional." | tee -a "$LOG_FILE"
+    fi
+fi
+
+check_and_stall
+
 echo "================================================="
 echo "          DIAGNOSTICS COMPLETE                  "
 echo "================================================="
