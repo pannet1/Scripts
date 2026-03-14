@@ -13,7 +13,7 @@ setup-apkcache /media/usb/cache
 
 # 3. Install the "Technician's Heavy Duty" Package List
 # kbd = keyboard test, alsa-utils = audio, pciutils = lspci
-apk add smartmontools memtester stress-ng acpi pciutils nvme-cli kbd alsa-utils
+apk add smartmontools memtester stress-ng acpi pciutils nvme-cli kbd alsa-utils dmidecode
 apk add alsa-utils alsa-ucm-conf
 rc-service alsa start
 # 4. Sync and Persist
