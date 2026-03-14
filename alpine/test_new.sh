@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# test_new.sh
+
 # Standard log file
 LOG_FILE="diag_report.txt"
 
