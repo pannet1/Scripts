@@ -1,5 +1,7 @@
 #!/bin/sh
 
+#test_old (renamed from test_all.sh)
+
 # Function to pause between tests
 pause() {
     echo -e "\n\e[33m--- Press [Enter] to run the next test ---\e[0m"
@@ -146,7 +148,40 @@ else
     fi
 fi
 
-check_and_stall
+# [12/12] BIOS & MOTHERBOARD AUDIT
+audit_bios() {
+    echo -e "\n--- BIOS & MOTHERBOARD AUDIT ---"
+
+    # Get Serial Number/Service Tag (Crucial for Dell/HP support sites)
+    STAG=$(dmidecode -s system-serial-number)
+    MODEL=$(dmidecode -s system-product-name)
+    B_VER=$(dmidecode -s bios-version)
+    B_DATE=$(dmidecode -s bios-release-date)
+
+    echo "Model:         $MODEL"
+    echo "Service Tag:   $STAG"
+    echo "Current BIOS:  $B_VER ($B_DATE)"
+
+    # Check if Battery is present and charged (Most BIOS updates require >10% battery)
+    if [ -d /sys/class/power_supply/BAT0 ]; then
+        CAP=$(cat /sys/class/power_supply/BAT0/capacity 2>/dev/null)
+        echo "Battery Level: ${CAP}%"
+        if [ "$CAP" -lt 15 ]; then
+            echo -e "\e[31m[!] WARNING: Battery low. Do not attempt BIOS flash.\e[0m"
+        fi
+    fi
+}
+
+get_support_link() {
+    MANU=$(dmidecode -s system-manufacturer | tr '[:upper:]' '[:lower:]')
+
+    case "$MANU" in
+    *dell*) echo "Dell Support: https://www.dell.com/support/home/en-in/product-support/servicetag/$STAG/drivers" ;;
+    *lenovo*) echo "Lenovo Support: https://pcsupport.lenovo.com/in/en/search?query=$STAG" ;;
+    *hp*) echo "HP Support: https://support.hp.com/in-en/drivers/search?q=$STAG" ;;
+    *) echo "Search Google for: $MANU $MODEL BIOS update" ;;
+    esac
+}
 
 echo "================================================="
 echo "          DIAGNOSTICS COMPLETE                  "
