@@ -19,6 +19,7 @@ apk add linux-firmware-intel \
 
 # 3. Save to USB Persistence
 apk cache sync
+touch /media/usb/.boot_repository
 lbu commit -d
 
 echo "SUCCESS: Hardware firmware installed. You may need to reload drivers or reboot."

@@ -16,6 +16,7 @@ setup-apkcache /media/usb/cache
 apk add smartmontools memtester stress-ng acpi pciutils nvme-cli kbd alsa-utils dmidecode
 apk add alsa-utils alsa-ucm-conf
 rc-service alsa start
+
 # 4. Sync and Persist
 apk cache -v sync
 touch /media/usb/cache/.boot_repository
