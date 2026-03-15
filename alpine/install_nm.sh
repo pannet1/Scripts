@@ -21,10 +21,9 @@ apk add linux-firmware-iwlwifi \
 # Added linux-firmware-iwlwifi & rtlwifi for Intel/Realtek chips
 echo "installing network manager "
 apk add networkmanager \
-    networkmanager-cli \
     networkmanager-wifi \
     wpa_supplicant \
-    networkmanager-tui
+    wireless-tools
 
 # 4. Save to USB Cache and Persist
 apk cache sync
