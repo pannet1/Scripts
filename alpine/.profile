@@ -4,4 +4,4 @@ if [ -z "$SSH_AUTH_SOCK" ]; then
     ls -la ~/.ssh
 fi
 
-export PATH=$PATH:~/Scripts/client/
+export PATH=$PATH:~/Scripts/client/:/Scripts/alpine/:
