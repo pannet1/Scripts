@@ -24,12 +24,12 @@ apk add networkmanager \
     networkmanager-wifi \
     wpa_supplicant \
     wireless-tools
+echo "tried everything nmcli, nmtui, iwd nothing worked"
+echo "sticking with iw provided by wireless-tools "
 
-# 4. Save to USB Cache and Persist
+# 3. Save to USB Persistence
 apk cache sync
 touch /media/usb/.boot_repository
 lbu commit -d
 
-echo "------------------------------------------------"
-echo "If WiFi is still off, run: rfkill unblock all"
-echo "------------------------------------------------"
+
