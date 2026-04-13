@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 # Specify the location of the bash history file
 HISTFILE=~/.bash_history

@@ -1,4 +1,4 @@
-#! /usr/bin/env sh
+#!/usr/bin/env sh
 
 # A hyprland script for a laptop-external-monitor setup, toggling between which is in use
 

@@ -1,3 +1,4 @@
+#!/bin/sh
 echo "apply defaults,noatime,nodiratime  to fstab to / directory"
 su -c 'cp /etc/fstab /etc/fstab.backup'
 su -c 'gedit /etc/fstab'

@@ -1,3 +1,4 @@
+#!/bin/sh
 cd ~/Scripts/
 git_push.sh
 

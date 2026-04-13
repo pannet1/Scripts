@@ -1,1 +1,0 @@
-/home/pannet1/.screenlayout/hdmi.sh

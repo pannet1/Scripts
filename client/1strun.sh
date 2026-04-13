@@ -1,3 +1,4 @@
+#!/bin/sh
 qtile
 atool xclip highlight
 ranger pcmanfm-gtk3
