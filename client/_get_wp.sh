@@ -1,5 +1,4 @@
  #!/bin/bash
-whoami="pannet1"
 
 if [ $# -eq 0 ]
  then 
@@ -14,7 +13,7 @@ if [ -d "$dest" ]; then
    echo "copying wordpress to $dest";              
    cp wordpress/. $dest -Rv;
    echo "changing permissions recursively";
-   chown pannet1:pannet1 $dest -Rv;
+   chown "$USER":"$USER" $dest -Rv;
    echo "cleaning up download wordpress archive"
    rm -rf latest.zip wordpress;
    cd $dest;

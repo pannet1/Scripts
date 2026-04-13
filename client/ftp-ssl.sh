@@ -1,7 +1,7 @@
 #!/bin/sh
-HOST='ftp.users.qwest.net'
-USER='yourid'
-PASSWD='yourpw'
+HOST='ftp.example.com'
+USER='username'
+PASSWD='password'
 FILE='file.txt'
 
 ftp -n $HOST <<END_SCRIPT

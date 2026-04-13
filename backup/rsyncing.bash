@@ -1,10 +1,13 @@
-# Define your source and destination base paths
-to="/home/pannet1"
-fm="/run/media/pannet1/freeagent/latest"
+#!/bin/bash
+to="$HOME"
+fm="/run/media/$USER/freeagent/latest"
 
-# List of folders you want to mirror
+if [ ! -d "$fm" ]; then
+  echo "Source path not found: $fm"
+  exit 1
+fi
+
 folders=("Personal" "Programs" "Archive" "Documents" "Public" "dotfiles" "Pictures" "Yandex.Disk" "Videos")
-
 
 for folder in "${folders[@]}"; do
   echo "Mirroring $folder..."

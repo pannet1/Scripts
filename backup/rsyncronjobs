@@ -1,0 +1,24 @@
+#!/usr/bin/sh
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' $fm/Archive $to/
+echo site1
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' /home/pannet1/Programs/php/site1 /home/pannet1/Archive/hosting/home/
+echo site2
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt'  /home/pannet1/Programs/php/site2 /home/pannet1/Archive/hosting/home/
+echo site3
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt'  /home/pannet1/Programs/php/site3 /home/pannet1/Archive/hosting/home/
+echo site4
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock'  /home/pannet1/Programs/php/site4 /home/pannet1/Archive/hosting/home/
+echo site5
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/site5 /home/pannet1/Archive/hosting/home/
+echo site6
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/site6 /home/pannet1/Archive/hosting/home/
+echo site7
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/site7 /home/pannet1/Archive/hosting/home/
+echo site8
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/site8 /home/pannet1/Archive/hosting/home/
+echo site9
+rsync --prune-empty-dirs --progress --recursive --compress --size-only --delete-excluded --stats --exclude='.*/' --exclude='.*' --exclude-from='exclude-rsync.txt' sync --update --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' /home/pannet1/Programs/php/site9 /home/pannet1/Archive/hosting/home/
+echo site10
+rsync --update --delete --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' --exclude='node_modules' /var/www/html/site10 /home/pannet1/Archive/hosting/home/
+echo site11
+rsync --update --delete --stats --exclude='tmp' --exclude='vendor' --exclude='composer.lock' --exclude='node_modules' /var/www/html/site11 /home/pannet1/Archive/hosting/home/
