@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.pdm.toml
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+__pypackages__/
+
+# Node
+node_modules/
+package-lock.json
+yarn.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+
+# Backups
+*.bak
+*.backup
+*.old
+
+# Project specific
+*.tok
+poetry.lock

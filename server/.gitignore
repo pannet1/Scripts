@@ -1,0 +1,22 @@
+# Server configs (sensitive - keep in repo for documentation only if needed)
+# .env
+# *.pem
+# *.key
+# ssl/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Backups
+*.bak
+*.backup
+
+# Temp files
+*.tmp
+*.swp
+*~
