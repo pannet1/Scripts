@@ -89,3 +89,17 @@ See `mail-config.sh` for creating mailboxes and aliases.
 - Review each step before running
 - Some steps require interaction (MariaDB setup)
 - UFW is configured but not enabled by default
+
+## Important Lessons Learned
+
+### Dovecot Configuration
+- **mail_location** setting must be in `10-mail.conf` or at the very top of `dovecot.conf` **before** `!include` statements
+- Parsing issues occur if placed in `conf.d/*.conf` files
+- Use `local.conf` or add directly to main config
+- After changes: `systemctl restart dovecot`
+
+### Nginx Configuration
+- When creating site configs, ensure `try_files` uses proper syntax: `try_files $uri $uri/ =404`
+- Missing `$uri/` causes redirect loops (301)
+- Disable default site if it conflicts: `rm /etc/nginx/sites-enabled/default`
+- After changes: `nginx -t && systemctl reload nginx`

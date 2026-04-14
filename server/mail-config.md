@@ -25,6 +25,42 @@ alias1, alias2, alias3, ... (configurable)
 | /etc/dovecot/vmail.passwd | Dovecot auth |
 | /var/vmail/ | Mail storage directory |
 
+## Important Lessons
+
+### Creating Mailboxes
+After adding entries to `vmailboxes` and `virtual`, run:
+```bash
+sudo postmap /etc/postfix/vmailboxes
+sudo postmap /etc/postfix/virtual
+sudo systemctl reload postfix
+```
+
+### Dovecot Password File
+Format per line: `username@domain:password` (plaintext, dovecot handles hashing)
+After changes: `sudo systemctl restart dovecot`
+
+### Testing Mail
+```bash
+# Check mail log
+sudo tail -f /var/log/mail.log
+
+# Test SMTP
+telnet localhost 25
+
+# Test IMAP
+telnet localhost 143
+```
+
+## Troubleshooting
+
+### "User doesn't exist" errors
+- Ensure `postmap` was run after updating vmailboxes/virtual
+- Check postfix logs: `tail /var/log/mail.log`
+
+### IMAP login failures
+- Verify dovecot can read the password file
+- Check `/etc/dovecot/conf.d/` includes are correct order
+
 ## Usage
 ```bash
 ~/mail-config.sh

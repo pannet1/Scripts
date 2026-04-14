@@ -41,11 +41,26 @@ Create a new website with Nginx, SSL certificate, and proper folder structure.
 ## Examples
 
 ```bash
-# Create ecomsense.in
+# Create ecomsense.in (full website with SSL)
 ./create_website.sh ecomsense.in
 
-# Create parked domain
-./create_website.sh sriarasutex.com www.sriarasutex.com
+# Create parked domain (no SSL, simple HTTP)
+./create_website.sh --parked sriarasutex.com
+
+# Create parked domain with custom message
+./create_website.sh --parked sriarasutex.com --message "Moved Permanently"
+```
+
+## Parked Domains
+
+For domains that should show a simple landing page without SSL:
+- No SSL certificate needed
+- Simple HTTP nginx config only
+- Use `--parked` flag
+
+```bash
+./create_website.sh --parked sriarasutex.com
+./create_website.sh --parked sriarasutex.com --message "Moved Permanently"
 ```
 
 ## Key Locations
