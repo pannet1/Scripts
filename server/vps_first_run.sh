@@ -30,14 +30,12 @@ log() {
 confirm() {
     local prompt="$1"
     local response
-    while true; do
-        read -p "$prompt [y/n]: " response
-        case "$response" in
-            [Yy]|[Yy][Ee][Ss]) return 0 ;;
-            [Nn]|[Nn][Oo]) return 1 ;;
-            *) echo "Please answer y or n" ;;
-        esac
-    done
+    echo -n "$prompt [y/n]: "
+    read -r response
+    case "$response" in
+        [Yy]|[Yy][Ee][Ss]) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 backup_file() {
