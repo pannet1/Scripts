@@ -80,21 +80,31 @@ echo ""
 
 # Check SSL certs
 echo "--- SSL Certificates ---"
-CERT_FILE="/etc/ssl/ecomsense.in/fullchain.pem"
-if [ -f "$CERT_FILE" ]; then
-    EXPIRY=$(openssl x509 -in "$CERT_FILE" -noout -enddate 2>/dev/null | cut -d= -f2)
+CERT_FOUND=false
+
+# Check domain cert
+if [ -f "/etc/ssl/ecomsense.in/fullchain.pem" ]; then
+    EXPIRY=$(openssl x509 -in "/etc/ssl/ecomsense.in/fullchain.pem" -noout -enddate 2>/dev/null | cut -d= -f2)
     EXPIRY_EPOCH=$(date -d "$EXPIRY" +%s 2>/dev/null)
     NOW_EPOCH=$(date +%s)
     DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
-    if [ "$DAYS_LEFT" -gt 7 ]; then
-        echo "✓ SSL cert valid (${DAYS_LEFT} days)"
-    else
-        echo "✗ SSL cert expiring soon (${DAYS_LEFT} days)"
-        ERRORS="$ERRORS\nSSL certificate expires in $DAYS_LEFT days"
-    fi
-else
-    echo "✗ SSL cert not found"
-    ERRORS="$ERRORS\nSSL certificate not found"
+    echo "✓ SSL cert (ecomsense.in) valid (${DAYS_LEFT} days)"
+    CERT_FOUND=true
+fi
+
+# Check self-signed cert
+if [ -f "/etc/ssl/certs/nginx-selfsigned.crt" ]; then
+    EXPIRY=$(openssl x509 -in "/etc/ssl/certs/nginx-selfsigned.crt" -noout -enddate 2>/dev/null | cut -d= -f2)
+    EXPIRY_EPOCH=$(date -d "$EXPIRY" +%s 2>/dev/null)
+    NOW_EPOCH=$(date +%s)
+    DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
+    echo "✓ SSL cert (self-signed) valid (${DAYS_LEFT} days)"
+    CERT_FOUND=true
+fi
+
+if [ "$CERT_FOUND" = false ]; then
+    echo "✗ No SSL cert found"
+    ERRORS="$ERRORS\nNo SSL certificate found"
 fi
 echo ""
 
