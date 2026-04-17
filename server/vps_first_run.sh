@@ -12,7 +12,7 @@ log() {
 
 backup_file() {
     if [ -f "$1" ]; then
-        cp "$1" "${1}.bak.$(date +%s)"
+        sudo cp "$1" "${1}.bak.$(date +%s)"
         log "Backed up: $1"
     fi
 }
