@@ -224,13 +224,13 @@ net.ipv4.tcp_keepalive_time = 300
 net.ipv4.tcp_keepalive_probes = 5
 net.ipv4.tcp_keepalive_intvl = 15
 
-# Kernel hardening
-kernel.exec-shield = 1
+# Kernel hardening (exec-shield may not exist on modern kernels)
+kernel.exec-shield = 1 2>/dev/null || true
 kernel.randomize_va_space = 2
 EOF
 
-# Apply sysctl settings
-sysctl -p /etc/sysctl.d/99-hardening.conf >> "$LOG_FILE" 2>&1
+# Apply sysctl settings (ignore errors for unavailable kernel params)
+sysctl -p /etc/sysctl.d/99-hardening.conf >> "$LOG_FILE" 2>&1 || true
 
 log "Network security settings applied"
 
