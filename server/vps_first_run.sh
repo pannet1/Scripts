@@ -17,7 +17,6 @@ backup_file() {
     fi
 }
 
-# Check key-based SSH access
 log "Checking SSH key-based authentication..."
 if [ -f "$HOME/.ssh/authorized_keys" ] && [ -s "$HOME/.ssh/authorized_keys" ]; then
     log "authorized_keys found"
@@ -27,57 +26,40 @@ else
     exit 1
 fi
 
-# ============================================
-# 1. System Updates
-# ============================================
+echo ""
+echo "=============================================="
+echo "  VPS Security Hardening"
+echo "=============================================="
+echo ""
+echo "Press 1 for Yes, 2 for No"
+echo ""
+
+# Step 1: System Updates
 echo "--- Step 1/9: System Updates ---"
 echo "  Update packages, install unattended-upgrades"
 select yn in "Yes" "No"; do
     case $yn in
-        Yes )
+        Yes)
             log "[1/9] System Updates"
             export DEBIAN_FRONTEND=noninteractive
             sudo apt-get update -y >> "$LOG_FILE" 2>&1
             sudo apt-get install -y unattended-upgrades apt-listchanges >> "$LOG_FILE" 2>&1
-            
-            sudo tee /etc/apt/apt.conf.d/50unattended-upgrades > /dev/null << 'EOF'
-Unattended-Upgrade::Allowed-Origins {
-    "${distro_id}:${distro_codename}";
-    "${distro_id}:${distro_codename}-security";
-    "${distro_id}:${distro_codename}-updates";
-};
-Unattended-Upgrade::Package-Blacklist {};
-Unattended-Upgrade::AutoFixInterruptedDpkg "true";
-Unattended-Upgrade::MinimalSteps "true";
-EOF
-Unattended-Upgrade::Allowed-Origins {
-    "${distro_id}:${distro_codename}";
-    "${distro_id}:${distro_codename}-security";
-    "${distro_id}:${distro_codename}-updates";
-};
-Unattended-Upgrade::Package-Blacklist {};
-Unattended-Upgrade::AutoFixInterruptedDpkg "true";
-Unattended-Upgrade::MinimalSteps "true";
-EOF
             log "Done"
             break;;
-        No ) break;;
+        No) break;;
     esac
 done
 
-# ============================================
-# 2. SSH Hardening
-# ============================================
+# Step 2: SSH Hardening
 echo ""
 echo "--- Step 2/9: SSH Hardening ---"
 echo "  Disable root login, password auth, set timeout"
 select yn in "Yes" "No"; do
     case $yn in
-        Yes )
+        Yes)
             log "[2/9] SSH Hardening"
             backup_file "/etc/ssh/sshd_config"
-            
-            sudo tee /etc/ssh/sshd_config.d/99-hardening.conf > /dev/null << 'EOF'
+            sudo tee /etc/ssh/sshd_config.d/99-hardening.conf > /dev/null << 'ENDCONF'
 ClientAliveInterval 120
 ClientAliveCountMax 3
 MaxAuthTries 3
@@ -87,22 +69,20 @@ AllowTcpForwarding no
 AllowStreamLocalForwarding no
 PermitEmptyPasswords no
 PasswordAuthentication no
-EOF
+ENDCONF
             log "Done"
             break;;
-        No ) break;;
+        No) break;;
     esac
 done
 
-# ============================================
-# 3. Firewall
-# ============================================
+# Step 3: Firewall
 echo ""
 echo "--- Step 3/9: Firewall ---"
 echo "  UFW: deny incoming, allow SSH/HTTP/HTTPS/8000/8001"
 select yn in "Yes" "No"; do
     case $yn in
-        Yes )
+        Yes)
             log "[3/9] Firewall Setup"
             sudo apt-get install -y ufw >> "$LOG_FILE" 2>&1
             sudo ufw default deny incoming
@@ -116,23 +96,20 @@ select yn in "Yes" "No"; do
             sudo systemctl enable ufw >> "$LOG_FILE" 2>&1
             log "Done"
             break;;
-        No ) break;;
+        No) break;;
     esac
 done
 
-# ============================================
-# 4. Fail2Ban
-# ============================================
+# Step 4: Fail2Ban
 echo ""
 echo "--- Step 4/9: Fail2Ban ---"
-echo "  SSH and HTTP protection"
+echo "  SSH protection"
 select yn in "Yes" "No"; do
     case $yn in
-        Yes )
+        Yes)
             log "[4/9] Fail2Ban"
             sudo apt-get install -y fail2ban >> "$LOG_FILE" 2>&1
-            
-            sudo tee /etc/fail2ban/jail.local > /dev/null << 'EOF'
+            sudo tee /etc/fail2ban/jail.local > /dev/null << 'ENDJAIL'
 [DEFAULT]
 bantime = 3600
 findtime = 600
@@ -145,26 +122,24 @@ logpath = /var/log/auth.log
 bantime = 3600
 findtime = 600
 maxretry = 3
-EOF
+ENDJAIL
             sudo systemctl enable fail2ban >> "$LOG_FILE" 2>&1
             sudo systemctl start fail2ban >> "$LOG_FILE" 2>&1
             log "Done"
             break;;
-        No ) break;;
+        No) break;;
     esac
 done
 
-# ============================================
-# 5. Network Security
-# ============================================
+# Step 5: Network Security
 echo ""
 echo "--- Step 5/9: Network Security ---"
 echo "  SYN cookies, ICMP hardening"
 select yn in "Yes" "No"; do
     case $yn in
-        Yes )
+        Yes)
             log "[5/9] Network Security"
-            sudo tee /etc/sysctl.d/99-hardening.conf > /dev/null << 'EOF'
+            sudo tee /etc/sysctl.d/99-hardening.conf > /dev/null << 'ENDNET'
 net.ipv4.conf.all.rp_filter = 1
 net.ipv4.conf.default.rp_filter = 1
 net.ipv4.conf.all.accept_redirects = 0
@@ -183,23 +158,21 @@ net.ipv4.tcp_keepalive_time = 300
 net.ipv4.tcp_keepalive_probes = 5
 net.ipv4.tcp_keepalive_intvl = 15
 kernel.randomize_va_space = 2
-EOF
+ENDNET
             sudo sysctl -p /etc/sysctl.d/99-hardening.conf >> "$LOG_FILE" 2>&1 || true
             log "Done"
             break;;
-        No ) break;;
+        No) break;;
     esac
 done
 
-# ============================================
-# 6. Time
-# ============================================
+# Step 6: Time
 echo ""
 echo "--- Step 6/9: Time Setup ---"
 echo "  chrony, Asia/Kolkata timezone"
 select yn in "Yes" "No"; do
     case $yn in
-        Yes )
+        Yes)
             log "[6/9] Time Setup"
             sudo apt-get install -y chrony >> "$LOG_FILE" 2>&1
             sudo timedatectl set-timezone Asia/Kolkata
@@ -207,19 +180,17 @@ select yn in "Yes" "No"; do
             sudo systemctl restart chrony >> "$LOG_FILE" 2>&1
             log "Done"
             break;;
-        No ) break;;
+        No) break;;
     esac
 done
 
-# ============================================
-# 7. File System
-# ============================================
+# Step 7: File System
 echo ""
 echo "--- Step 7/9: File System Security ---"
 echo "  umask, disable core dumps"
 select yn in "Yes" "No"; do
     case $yn in
-        Yes )
+        Yes)
             log "[7/9] File System"
             echo "umask 027" | sudo tee -a /etc/profile > /dev/null
             echo "umask 027" | sudo tee -a /etc/login.defs > /dev/null
@@ -227,42 +198,38 @@ select yn in "Yes" "No"; do
             echo "* soft core 0" | sudo tee -a /etc/security/limits.conf > /dev/null
             log "Done"
             break;;
-        No ) break;;
+        No) break;;
     esac
 done
 
-# ============================================
-# 8. Log Security
-# ============================================
+# Step 8: Log Security
 echo ""
 echo "--- Step 8/9: Log Security ---"
 echo "  logrotate, secure log permissions"
 select yn in "Yes" "No"; do
     case $yn in
-        Yes )
+        Yes)
             log "[8/9] Log Security"
-            sudo tee /etc/logrotate.d/vps-hardening > /dev/null << 'EOF'
+            sudo tee /etc/logrotate.d/vps-hardening > /dev/null << 'ENDLOG'
 /var/log/wtmp { weekly; rotate 4; create 0664 root utmp; minsize 1M; notifempty; }
 /var/log/btmp { weekly; rotate 4; create 0660 root utmp; minsize 1M; notifempty; missingok; }
-EOF
+ENDLOG
             sudo chmod 640 /var/log/*.log 2>/dev/null || true
             log "Done"
             break;;
-        No ) break;;
+        No) break;;
     esac
 done
 
-# ============================================
-# 9. Kernel Hardening
-# ============================================
+# Step 9: Kernel Hardening
 echo ""
 echo "--- Step 9/9: Kernel Hardening ---"
 echo "  Disable unused modules"
 select yn in "Yes" "No"; do
     case $yn in
-        Yes )
+        Yes)
             log "[9/9] Kernel Hardening"
-            sudo tee -a /etc/sysctl.d/99-hardening.conf > /dev/null << 'EOF'
+            sudo tee -a /etc/sysctl.d/99-hardening.conf > /dev/null << 'ENDKERN'
 install cramfs /bin/true
 install freevxfs /bin/true
 install jffs2 /bin/true
@@ -271,28 +238,25 @@ install hfsplus /bin/true
 install squashfs /bin/true
 install udf /bin/true
 install vfat /bin/true
-EOF
+ENDKERN
             sudo sysctl -p /etc/sysctl.d/99-hardening.conf >> "$LOG_FILE" 2>&1 || true
             log "Done"
             break;;
-        No ) break;;
+        No) break;;
     esac
 done
 
-# ============================================
 # Restart SSH
-# ============================================
 echo ""
 echo "--- Final: Restart SSH ---"
 echo "  Apply SSH hardening"
 select yn in "Yes" "No"; do
     case $yn in
-        Yes )
-            systemctl restart sshd
+        Yes)
             sudo systemctl restart sshd
             log "SSH restarted"
             break;;
-        No )
+        No)
             echo "Run manually: sudo systemctl restart sshd"
             break;;
     esac
