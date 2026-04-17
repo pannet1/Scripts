@@ -100,9 +100,55 @@ select yn in "Yes" "No"; do
     esac
 done
 
+# Step 3.5: HTTPS (self-signed)
+echo ""
+echo "--- Step 3.5/10: HTTPS Setup ---"
+echo "  Self-signed SSL certificate for HTTPS"
+select yn in "Yes" "No"; do
+    case $yn in
+        Yes)
+            log "[3.5/10] HTTPS Setup"
+            sudo apt-get install -y nginx >> "$LOG_FILE" 2>&1
+            
+            sudo mkdir -p /etc/ssl/private
+            
+            sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+                -keyout /etc/ssl/private/nginx-selfsigned.key \
+                -out /etc/ssl/certs/nginx-selfsigned.crt \
+                -subj "/C=IN/ST=Karnataka/L=Bangalore/O=Local/CN=65.20.83.178" \
+                >> "$LOG_FILE" 2>&1
+            
+            sudo tee /etc/nginx/sites-available/default-ssl > /dev/null << 'ENDSSL'
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    root /var/www/html;
+    index index.html;
+
+    server_name _;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+ENDSSL
+
+            sudo ln -sf /etc/nginx/sites-available/default-ssl /etc/nginx/sites-enabled/
+            sudo systemctl restart nginx
+            sudo systemctl enable nginx >> "$LOG_FILE" 2>&1
+            log "Done"
+            break;;
+        No) break;;
+    esac
+done
+
 # Step 4: Fail2Ban
 echo ""
-echo "--- Step 4/9: Fail2Ban ---"
+echo "--- Step 4/10: Fail2Ban ---"
 echo "  SSH protection"
 select yn in "Yes" "No"; do
     case $yn in
@@ -133,7 +179,7 @@ done
 
 # Step 5: Network Security
 echo ""
-echo "--- Step 5/9: Network Security ---"
+echo "--- Step 5/10: Network Security ---"
 echo "  SYN cookies, ICMP hardening"
 select yn in "Yes" "No"; do
     case $yn in
@@ -168,7 +214,7 @@ done
 
 # Step 6: Time
 echo ""
-echo "--- Step 6/9: Time Setup ---"
+echo "--- Step 6/10: Time Setup ---"
 echo "  chrony, Asia/Kolkata timezone"
 select yn in "Yes" "No"; do
     case $yn in
@@ -186,7 +232,7 @@ done
 
 # Step 7: File System
 echo ""
-echo "--- Step 7/9: File System Security ---"
+echo "--- Step 7/10: File System Security ---"
 echo "  umask, disable core dumps"
 select yn in "Yes" "No"; do
     case $yn in
@@ -204,7 +250,7 @@ done
 
 # Step 8: Log Security
 echo ""
-echo "--- Step 8/9: Log Security ---"
+echo "--- Step 8/10: Log Security ---"
 echo "  logrotate, secure log permissions"
 select yn in "Yes" "No"; do
     case $yn in
@@ -223,7 +269,7 @@ done
 
 # Step 9: Kernel Hardening
 echo ""
-echo "--- Step 9/9: Kernel Hardening ---"
+echo "--- Step 9/10: Kernel Hardening ---"
 echo "  Disable unused modules"
 select yn in "Yes" "No"; do
     case $yn in
