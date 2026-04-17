@@ -27,6 +27,19 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
+confirm() {
+    local prompt="$1"
+    local response
+    while true; do
+        read -p "$prompt [y/n]: " response
+        case "$response" in
+            [Yy]|[Yy][Ee][Ss]) return 0 ;;
+            [Nn]|[Nn][Oo]) return 1 ;;
+            *) echo "Please answer y or n" ;;
+        esac
+    done
+}
+
 backup_file() {
     local file="$1"
     if [ -f "$file" ]; then
@@ -70,6 +83,12 @@ log "Key-based SSH access verified"
 # ============================================
 # 1. System Updates
 # ============================================
+echo ""
+echo "--- Step 1/9: System Updates ---"
+echo "This will:"
+echo "  - Update all packages to latest versions"
+echo "  - Install and configure unattended-upgrades for automatic security updates"
+if ! confirm "Proceed?"; then echo "Skipped."; else
 log "[1/9] System Updates"
 
 export DEBIAN_FRONTEND=noninteractive
@@ -102,10 +121,20 @@ APT::Periodic::Unattended-Upgrade "1";
 EOF
 
 log "System updates complete"
+fi
 
 # ============================================
 # 2. SSH Hardening
 # ============================================
+echo ""
+echo "--- Step 2/9: SSH Hardening ---"
+echo "This will:"
+echo "  - Disable root login"
+echo "  - Disable password authentication (key-only)"
+echo "  - Set idle timeout to 6 minutes"
+echo "  - Limit authentication attempts"
+echo "  - Disable TCP/IP forwarding"
+if ! confirm "Proceed?"; then echo "Skipped."; else
 log "[2/9] SSH Hardening"
 
 SSHD_CONFIG="/etc/ssh/sshd_config"
@@ -141,10 +170,18 @@ else
 fi
 
 # Note: SSHD restart deferred until firewall is configured
+fi
 
 # ============================================
 # 3. Firewall (UFW)
 # ============================================
+echo ""
+echo "--- Step 3/9: Firewall Setup ---"
+echo "This will:"
+echo "  - Install UFW firewall"
+echo "  - Set default: deny incoming, allow outgoing"
+echo "  - Allow ports: SSH(22), HTTP(80), HTTPS(443), 8000, 8001"
+if ! confirm "Proceed?"; then echo "Skipped."; else
 log "[3/9] Firewall Setup"
 
 apt-get install -y ufw >> "$LOG_FILE" 2>&1
@@ -171,10 +208,18 @@ echo "y" | ufw enable >> "$LOG_FILE" 2>&1
 systemctl enable ufw >> "$LOG_FILE" 2>&1
 
 log "Firewall enabled with default deny incoming"
+fi
 
 # ============================================
 # 4. Fail2Ban
 # ============================================
+echo ""
+echo "--- Step 4/9: Fail2Ban Setup ---"
+echo "This will:"
+echo "  - Install fail2ban intrusion prevention"
+echo "  - Configure SSH protection (3 attempts, 1 hour ban)"
+echo "  - Configure HTTP DoS protection"
+if ! confirm "Proceed?"; then echo "Skipped."; else
 log "[4/9] Fail2Ban Setup"
 
 apt-get install -y fail2ban >> "$LOG_FILE" 2>&1
@@ -210,10 +255,19 @@ systemctl enable fail2ban >> "$LOG_FILE" 2>&1
 systemctl start fail2ban >> "$LOG_FILE" 2>&1
 
 log "Fail2Ban configured and started"
+fi
 
 # ============================================
 # 5. Network Security (sysctl)
 # ============================================
+echo ""
+echo "--- Step 5/9: Network Security ---"
+echo "This will:"
+echo "  - Enable SYN cookies (SYN flood protection)"
+echo "  - Disable ICMP redirects"
+echo "  - Configure IP spoofing protection"
+echo "  - Set TCP keepalive parameters"
+if ! confirm "Proceed?"; then echo "Skipped."; else
 log "[5/9] Network Security"
 
 # Create sysctl hardening config
@@ -259,10 +313,17 @@ EOF
 sysctl -p /etc/sysctl.d/99-hardening.conf >> "$LOG_FILE" 2>&1 || true
 
 log "Network security settings applied"
+fi
 
 # ============================================
 # 6. Service Hardening (Time)
 # ============================================
+echo ""
+echo "--- Step 6/9: Service Hardening (Time) ---"
+echo "This will:"
+echo "  - Install and configure chrony (NTP client)"
+echo "  - Set timezone to Asia/Kolkata"
+if ! confirm "Proceed?"; then echo "Skipped."; else
 log "[6/9] Service Hardening"
 
 # Install and configure chrony
@@ -298,10 +359,19 @@ systemctl enable chrony >> "$LOG_FILE" 2>&1
 systemctl restart chrony >> "$LOG_FILE" 2>&1
 
 log "Time synchronization configured (Asia/Kolkata)"
+fi
 
 # ============================================
 # 7. File System Security
 # ============================================
+echo ""
+echo "--- Step 7/9: File System Security ---"
+echo "This will:"
+echo "  - Set umask to 027 for new files"
+echo "  - Mount /tmp with noexec,nosuid,nodev options"
+echo "  - Disable core dumps"
+echo "  - Secure /proc filesystem"
+if ! confirm "Proceed?"; then echo "Skipped."; else
 log "[7/9] File System Security"
 
 # Set umask for new files
@@ -334,10 +404,17 @@ EOF
 fi
 
 log "File system security configured"
+fi
 
 # ============================================
 # 8. Log Security
 # ============================================
+echo ""
+echo "--- Step 8/9: Log Security ---"
+echo "This will:"
+echo "  - Configure logrotate for wtmp/btmp"
+echo "  - Set restrictive permissions on log files"
+if ! confirm "Proceed?"; then echo "Skipped."; else
 log "[8/9] Log Security"
 
 # Configure logrotate
@@ -365,10 +442,17 @@ chmod 640 /var/log/*.log 2>/dev/null || true
 chmod 640 /var/log/auth.log 2>/dev/null || true
 
 log "Log security configured"
+fi
 
 # ============================================
 # 9. Kernel Hardening (additional)
 # ============================================
+echo ""
+echo "--- Step 9/9: Kernel Hardening ---"
+echo "This will:"
+echo "  - Enable ASLR (Address Space Layout Randomization)"
+echo "  - Disable loading of unused filesystem modules"
+if ! confirm "Proceed?"; then echo "Skipped."; else
 log "[9/9] Kernel Hardening"
 
 # Add additional kernel hardening
@@ -395,17 +479,25 @@ EOF
 sysctl -p /etc/sysctl.d/99-hardening.conf >> "$LOG_FILE" 2>&1
 
 log "Kernel hardening applied"
+fi
 
 # ============================================
 # Restart SSH and Final Steps
 # ============================================
-log "Finalizing configuration"
-
-if [ "$SKIP_SSHD_RESTART" = false ]; then
+echo ""
+echo "--- Final Step: Restart SSH Daemon ---"
+echo "This will restart SSH to apply the hardening settings."
+echo "IMPORTANT: Test SSH in a NEW window before closing this one!"
+if [ "$SKIP_SSHD_RESTART" = true ]; then
+    echo "Skipped (--skip-sshd-restart flag set)"
+    log "SSH restart skipped (--skip-sshd-restart)"
+elif confirm "Restart SSH now?"; then
+    log "Finalizing configuration"
     systemctl restart sshd
     log "SSH daemon restarted"
 else
-    log "SKIPPED: SSH daemon restart (--skip-sshd-restart)"
+    echo "Skipped. You must restart SSH manually: sudo systemctl restart sshd"
+    log "SSH restart skipped by user"
 fi
 
 # Apply new /tmp mount without reboot
