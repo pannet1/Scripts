@@ -37,10 +37,19 @@ select yn in "Yes" "No"; do
         Yes )
             log "[1/9] System Updates"
             export DEBIAN_FRONTEND=noninteractive
-            apt-get update -y >> "$LOG_FILE" 2>&1
-            apt-get install -y unattended-upgrades apt-listchanges >> "$LOG_FILE" 2>&1
+            sudo apt-get update -y >> "$LOG_FILE" 2>&1
+            sudo apt-get install -y unattended-upgrades apt-listchanges >> "$LOG_FILE" 2>&1
             
-            cat > /etc/apt/apt.conf.d/50unattended-upgrades << 'EOF'
+            sudo tee /etc/apt/apt.conf.d/50unattended-upgrades > /dev/null << 'EOF'
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}";
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}:${distro_codename}-updates";
+};
+Unattended-Upgrade::Package-Blacklist {};
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+EOF
 Unattended-Upgrade::Allowed-Origins {
     "${distro_id}:${distro_codename}";
     "${distro_id}:${distro_codename}-security";
@@ -68,7 +77,7 @@ select yn in "Yes" "No"; do
             log "[2/9] SSH Hardening"
             backup_file "/etc/ssh/sshd_config"
             
-            cat > /etc/ssh/sshd_config.d/99-hardening.conf << 'EOF'
+            sudo tee /etc/ssh/sshd_config.d/99-hardening.conf > /dev/null << 'EOF'
 ClientAliveInterval 120
 ClientAliveCountMax 3
 MaxAuthTries 3
@@ -95,16 +104,16 @@ select yn in "Yes" "No"; do
     case $yn in
         Yes )
             log "[3/9] Firewall Setup"
-            apt-get install -y ufw >> "$LOG_FILE" 2>&1
-            ufw default deny incoming
-            ufw default allow outgoing
-            ufw allow ssh
-            ufw allow http
-            ufw allow https
-            ufw allow 8000/tcp
-            ufw allow 8001/tcp
-            echo "y" | ufw enable >> "$LOG_FILE" 2>&1
-            systemctl enable ufw >> "$LOG_FILE" 2>&1
+            sudo apt-get install -y ufw >> "$LOG_FILE" 2>&1
+            sudo ufw default deny incoming
+            sudo ufw default allow outgoing
+            sudo ufw allow ssh
+            sudo ufw allow http
+            sudo ufw allow https
+            sudo ufw allow 8000/tcp
+            sudo ufw allow 8001/tcp
+            echo "y" | sudo ufw enable >> "$LOG_FILE" 2>&1
+            sudo systemctl enable ufw >> "$LOG_FILE" 2>&1
             log "Done"
             break;;
         No ) break;;
@@ -121,9 +130,9 @@ select yn in "Yes" "No"; do
     case $yn in
         Yes )
             log "[4/9] Fail2Ban"
-            apt-get install -y fail2ban >> "$LOG_FILE" 2>&1
+            sudo apt-get install -y fail2ban >> "$LOG_FILE" 2>&1
             
-            cat > /etc/fail2ban/jail.local << 'EOF'
+            sudo tee /etc/fail2ban/jail.local > /dev/null << 'EOF'
 [DEFAULT]
 bantime = 3600
 findtime = 600
@@ -137,8 +146,8 @@ bantime = 3600
 findtime = 600
 maxretry = 3
 EOF
-            systemctl enable fail2ban >> "$LOG_FILE" 2>&1
-            systemctl start fail2ban >> "$LOG_FILE" 2>&1
+            sudo systemctl enable fail2ban >> "$LOG_FILE" 2>&1
+            sudo systemctl start fail2ban >> "$LOG_FILE" 2>&1
             log "Done"
             break;;
         No ) break;;
@@ -155,7 +164,7 @@ select yn in "Yes" "No"; do
     case $yn in
         Yes )
             log "[5/9] Network Security"
-            cat > /etc/sysctl.d/99-hardening.conf << 'EOF'
+            sudo tee /etc/sysctl.d/99-hardening.conf > /dev/null << 'EOF'
 net.ipv4.conf.all.rp_filter = 1
 net.ipv4.conf.default.rp_filter = 1
 net.ipv4.conf.all.accept_redirects = 0
@@ -175,7 +184,7 @@ net.ipv4.tcp_keepalive_probes = 5
 net.ipv4.tcp_keepalive_intvl = 15
 kernel.randomize_va_space = 2
 EOF
-            sysctl -p /etc/sysctl.d/99-hardening.conf >> "$LOG_FILE" 2>&1 || true
+            sudo sysctl -p /etc/sysctl.d/99-hardening.conf >> "$LOG_FILE" 2>&1 || true
             log "Done"
             break;;
         No ) break;;
@@ -192,10 +201,10 @@ select yn in "Yes" "No"; do
     case $yn in
         Yes )
             log "[6/9] Time Setup"
-            apt-get install -y chrony >> "$LOG_FILE" 2>&1
-            timedatectl set-timezone Asia/Kolkata
-            systemctl enable chrony >> "$LOG_FILE" 2>&1
-            systemctl restart chrony >> "$LOG_FILE" 2>&1
+            sudo apt-get install -y chrony >> "$LOG_FILE" 2>&1
+            sudo timedatectl set-timezone Asia/Kolkata
+            sudo systemctl enable chrony >> "$LOG_FILE" 2>&1
+            sudo systemctl restart chrony >> "$LOG_FILE" 2>&1
             log "Done"
             break;;
         No ) break;;
@@ -212,10 +221,10 @@ select yn in "Yes" "No"; do
     case $yn in
         Yes )
             log "[7/9] File System"
-            echo "umask 027" >> /etc/profile
-            echo "umask 027" >> /etc/login.defs
-            echo "* hard core 0" >> /etc/security/limits.conf
-            echo "* soft core 0" >> /etc/security/limits.conf
+            echo "umask 027" | sudo tee -a /etc/profile > /dev/null
+            echo "umask 027" | sudo tee -a /etc/login.defs > /dev/null
+            echo "* hard core 0" | sudo tee -a /etc/security/limits.conf > /dev/null
+            echo "* soft core 0" | sudo tee -a /etc/security/limits.conf > /dev/null
             log "Done"
             break;;
         No ) break;;
@@ -232,11 +241,11 @@ select yn in "Yes" "No"; do
     case $yn in
         Yes )
             log "[8/9] Log Security"
-            cat > /etc/logrotate.d/vps-hardening << 'EOF'
+            sudo tee /etc/logrotate.d/vps-hardening > /dev/null << 'EOF'
 /var/log/wtmp { weekly; rotate 4; create 0664 root utmp; minsize 1M; notifempty; }
 /var/log/btmp { weekly; rotate 4; create 0660 root utmp; minsize 1M; notifempty; missingok; }
 EOF
-            chmod 640 /var/log/*.log 2>/dev/null || true
+            sudo chmod 640 /var/log/*.log 2>/dev/null || true
             log "Done"
             break;;
         No ) break;;
@@ -253,7 +262,7 @@ select yn in "Yes" "No"; do
     case $yn in
         Yes )
             log "[9/9] Kernel Hardening"
-            cat >> /etc/sysctl.d/99-hardening.conf << 'EOF'
+            sudo tee -a /etc/sysctl.d/99-hardening.conf > /dev/null << 'EOF'
 install cramfs /bin/true
 install freevxfs /bin/true
 install jffs2 /bin/true
@@ -263,7 +272,7 @@ install squashfs /bin/true
 install udf /bin/true
 install vfat /bin/true
 EOF
-            sysctl -p /etc/sysctl.d/99-hardening.conf >> "$LOG_FILE" 2>&1 || true
+            sudo sysctl -p /etc/sysctl.d/99-hardening.conf >> "$LOG_FILE" 2>&1 || true
             log "Done"
             break;;
         No ) break;;
@@ -280,6 +289,7 @@ select yn in "Yes" "No"; do
     case $yn in
         Yes )
             systemctl restart sshd
+            sudo systemctl restart sshd
             log "SSH restarted"
             break;;
         No )
