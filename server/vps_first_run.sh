@@ -42,6 +42,32 @@ echo ""
 log "Starting VPS hardening. Log: $LOG_FILE"
 
 # ============================================
+# 0. Check Key-Based SSH Access
+# ============================================
+log "[0/9] Checking SSH key-based authentication..."
+
+CURRENT_USER=$(whoami)
+
+if [ -f "$HOME/.ssh/authorized_keys" ] && [ -s "$HOME/.ssh/authorized_keys" ]; then
+    log "authorized_keys found and not empty"
+else
+    echo ""
+    echo "ERROR: Key-based SSH authentication not configured!"
+    echo ""
+    echo "This script disables password authentication."
+    echo "You MUST have SSH key access before running this script."
+    echo ""
+    echo "To set up SSH key access:"
+    echo "  1. On LOCAL machine: ssh-copy-id user@server-ip"
+    echo "  2. Test: ssh user@server-ip (should NOT ask for password)"
+    echo ""
+    log "ABORTED: Key-based SSH not configured"
+    exit 1
+fi
+
+log "Key-based SSH access verified"
+
+# ============================================
 # 1. System Updates
 # ============================================
 log "[1/9] System Updates"
