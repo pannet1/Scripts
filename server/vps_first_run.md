@@ -5,80 +5,105 @@ This script runs after initial VPS setup (minimal debian installation trixie) to
 
 ## Prerequisites
 - Fresh Debian installation
-- Root/sudo access
-- Non-root user with sudo privileges created
+- Non-root user with sudo privileges
+- SSH key-based authentication configured
 
 ## Security Measures
 
 ### 1. System Updates
-- [ ] Update all packages to latest versions
-- [ ] Enable automatic security updates
+- [x] Update all packages
+- [x] Enable automatic security updates (unattended-upgrades)
 
-### 3. SSH Hardening
-- [ ] Disable root login
-- [ ] Set idle timeout
+### 2. SSH Hardening
+- [x] Disable root login
+- [x] Disable password authentication (key-only)
+- [x] Set idle timeout (120s)
+- [x] Limit auth attempts (3)
+- [x] Disable TCP forwarding
 
-### 4. Firewall (UFW)
-- [ ] Install UFW
-- [ ] Default deny incoming
-- [ ] Default allow outgoing
-- [ ] Allow SSH (with custom port if changed)
-- [ ] Allow HTTP/HTTPS
-- [ ] Allow Ports 8000, 8001
-- [ ] Enable UFW
+### 3. Firewall (UFW)
+- [x] Install UFW
+- [x] Default deny incoming, allow outgoing
+- [x] Allow SSH (22), HTTP (80), HTTPS (443)
+- [x] Allow custom ports (8000, 8001)
+- [x] Enable on boot
+
+### 4. HTTPS Setup (Optional)
+- [x] Install nginx
+- [x] Self-signed SSL certificate
+- [x] Configure HTTPS on port 443
 
 ### 5. Fail2Ban
-- [ ] Install fail2ban
-- [ ] Configure SSH protection
-- [ ] Set ban/retry parameters
-- [ ] Enable and start service
+- [x] Install fail2ban
+- [x] Configure SSH protection (3 attempts, 1hr ban)
+- [x] Enable and start service
 
 ### 6. Network Security
-- [ ] Disable ICMP broadcast
-- [ ] Disable ICMP redirect
-- [ ] Enable SYN cookies
-- [ ] Configure sysctl network parameters
+- [x] Enable SYN cookies
+- [x] Disable ICMP redirects
+- [x] IP spoofing protection
+- [x] TCP keepalive tuning
 
-### 7. Service Hardening
-- [ ] Install NTP/chrony
-- [ ] Set Timezone to Asia/Kolkotta (+5:30)
+### 7. Time Setup
+- [x] Install chrony (NTP)
+- [x] Set timezone to Asia/Kolkata
 
 ### 8. File System Security
-- [ ] Set sticky bit on /tmp
-- [ ] Mount /tmp with noexec,nosuid,nodev options
-- [ ] Restrict core dumps
-- [ ] Secure /proc
-- [ ] Set appropriate umask
+- [x] Set umask 027
+- [x] Restrict core dumps
+- [x] Disable unused filesystem modules
 
 ### 9. Log Security
-- [ ] Configure rsyslog
-- [ ] Set up logrotate
-- [ ] Protect log files
+- [x] Configure logrotate
+- [x] Secure log file permissions
 
-### 10. Package Security
-- [ ] Configure unattended-upgrades
+### 10. Kernel Hardening
+- [x] Enable ASLR
+- [x] Disable unused kernel modules
 
-### 11. Kernel Hardening
-- [ ] Configure sysctl parameters
-- [ ] Enable ASLR
+## Usage
 
-## Implementation Order
-1. System updates
-2. SSH hardening (keep connection open!)
-3. Firewall setup
-4. Fail2Ban
-5. Network sysctl settings
-6. User & permission hardening
-7. Service cleanup
-8. File system hardening
-9. Security tools installation
-10. Monitoring setup
+```bash
+# Run locally on server (recommended)
+bash ~/Scripts/server/vps_first_run.sh
+
+# Run via SSH with -t for terminal
+ssh -t user@server "bash ~/Scripts/server/vps_first_run.sh"
+```
+
+## Interactive Prompts
+- Uses `select` for Yes/No choices
+- Press 1 for Yes, 2 for No
+- Each step can be skipped individually
+
+## Key Locations
+
+| Item | Location |
+|------|----------|
+| SSH hardening | /etc/ssh/sshd_config.d/99-hardening.conf |
+| Firewall | /etc/ufw/ |
+| Fail2Ban | /etc/fail2ban/jail.local |
+| Network sysctl | /etc/sysctl.d/99-hardening.conf |
+| SSL cert | /etc/ssl/certs/nginx-selfsigned.crt |
+| SSL key | /etc/ssl/private/nginx-selfsigned.key |
+| Log | /tmp/vps_hardening_*.log |
 
 ## Safety Notes
-- **Always keep an SSH session open** while making changes
-- Test changes before disconnecting
-- Have console/emergency access ready
-- Backup configs before modifying
+- Keep an SSH session open while testing
+- Test SSH in a NEW window after restart
+- Backup files created with .bak.{timestamp}
+- Rollback: `cp /etc/ssh/sshd_config.bak.* /etc/ssh/sshd_config`
 
-## Rollback Plan
-- Keep original config files backed up
+## Troubleshooting
+
+### Script exits on error
+- Some commands may need sudo (already added)
+- Check log file for details
+
+### SSH connection closes during script
+- Run with `-t` flag
+- Or run directly on server terminal
+
+### Permission denied errors
+- Ensure user is in sudo group
+- All system commands use sudo in script
