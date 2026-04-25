@@ -1,18 +1,26 @@
 #!/bin/bash
 # install-uv.sh - Install uv and Python 3.10 on VPS
-# Usage: curl -fsSL https://raw.githubusercontent.com/pannet1/Scripts/main/server/install-uv.sh | ssh user@host 'cat > /tmp/install-uv.sh && chmod +x /tmp/install-uv.sh && /tmp/install-uv.sh'
+# Usage: ./install-uv.sh user@ipaddress
+# Or via SSH: ssh user@host "bash -s" < install-uv.sh
 
 set -e
 
-echo "=== Installing uv and Python 3.10 ==="
+TARGET="$1"
 
-# Install uv (standalone installer)
-if command -v uv &> /dev/null; then
-    echo "uv already installed"
-else
-    echo "Installing uv..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+if [ -z "$TARGET" ]; then
+    echo "Usage: ./install-uv.sh user@ipaddress"
+    echo "Example: ./install-uv.sh uma@65.20.83.178"
+    exit 1
 fi
+
+echo "=== Installing uv and Python 3.10 on $TARGET ==="
+
+# Install uv via SSH
+ssh "$TARGET" 'bash -s' <<'EOF'
+set -e
+
+echo "Installing uv..."
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Source uv environment
 if [ -f "$HOME/.local/bin/env" ]; then
@@ -21,7 +29,7 @@ fi
 
 # Add to PATH permanently if not already
 if ! grep -q "\.local/bin/env" "$HOME/.bashrc" 2>/dev/null; then
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+    echo 'source $HOME/.local/bin/env' >> "$HOME/.bashrc"
     echo "Added uv to PATH in ~/.bashrc"
 fi
 
@@ -39,4 +47,6 @@ uv python list | head -5
 
 echo ""
 echo "=== Done ==="
-echo "To use: source ~/.bashrc or restart shell"
+EOF
+
+echo "uv and Python 3.10 installed on $TARGET"
