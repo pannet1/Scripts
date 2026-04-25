@@ -8,8 +8,11 @@ set -e
 TARGET="$1"
 
 if [ -z "$TARGET" ]; then
-    echo "Usage: ./install-uv.sh user@ipaddress"
-    echo "Example: ./install-uv.sh uma@65.20.83.178"
+    read -p "Enter user@ipaddress (e.g., uma@65.20.83.178): " TARGET
+fi
+
+if [ -z "$TARGET" ]; then
+    echo "Error: No target specified"
     exit 1
 fi
 
