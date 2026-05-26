@@ -14,7 +14,6 @@ Run after fresh server deployment.
 
 | Script | Description |
 |--------|-------------|
-| [create_website.sh](./create_website.md) | Create new website with SSL |
 | [mail-config.sh](./mail-config.md) | View mailboxes and aliases |
 | [web-status.sh](./web-status.md) | Check nginx and web server status |
 
@@ -37,9 +36,6 @@ Runs daily at **6:00 AM** via cron.
 ```bash
 # Setup new server
 ./setup.sh
-
-# Create website
-./create_website.sh domain.com
 
 # View mail config
 ./mail-config.sh
