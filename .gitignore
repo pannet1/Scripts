@@ -41,6 +41,25 @@ logs/
 *.backup
 *.old
 
-# Project specific
+# Security - credentials & keys
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+id_rsa*
+id_ed25519*
+id_ecdsa*
+known_hosts
+authorized_keys
+*.env
+*.env.*
 *.tok
+
+# Config files (can contain secrets)
+conf/
+backup/exclude_lists/
+
+# Project specific
 poetry.lock

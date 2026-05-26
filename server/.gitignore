@@ -1,8 +1,11 @@
-# Server configs (sensitive - keep in repo for documentation only if needed)
-# .env
-# *.pem
-# *.key
-# ssl/
+# Security - credentials, keys, SSL
+.env
+.env.*
+*.pem
+*.key
+*.cert
+*.crt
+ssl/
 
 # System files
 .DS_Store
