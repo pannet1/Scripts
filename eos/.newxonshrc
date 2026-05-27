@@ -1,0 +1,115 @@
+import os
+# $XONSH_DEBUG=1
+# XONSH WEBCONFIG START
+
+__import__('warnings').simplefilter('ignore', DeprecationWarning, 118)
+
+
+$XONSH_CAPTURE_ALWAYS=True
+# Right+Left combination. Meaning for prompt-toolkit: @bindings.add('right', 'left')
+#$XONTRIB_OUTPUT_SEARCH_KEY_META='right'
+#$XONTRIB_OUTPUT_SEARCH_KEY='left'  # the text placeholder will be `left__`
+$EDITOR = 'vim'
+$VISUAL = $EDITOR
+$XONSH_COLOR_STYLE = 'gruvbox'
+$TERMINAL = 'kitty'
+$PATH.append('/home/pannet1/Scripts/client')
+$PATH.append('/home/pannet1/.local/bin')
+$PATH.append('/home/pannet1/.yarn/bin')
+$PROJECT_DIRS=[os.path.expanduser("/home/pannet1/Programs/py/")]
+$VIRTUALENV_HOME= '/home/pannet1/Programs/py/'
+$DOCKER_BASE_URL= 'unix://var/run/docker.sock'
+$MPLBACKEND = 'Qt5Agg'
+$JUPYTER_PLATFORM_DIRS='1'
+xontrib load abbrevs argcomplete autovox avox autoxsh back2dir broot coreutils distributed docker_tabcomplete gruvbox gitinfo hist_navigator histcpy kitty mpl onepath output_search powerline3 prompt_vi_mode readable-traceback sh ssh_agent up vox vox_tabcomplete xlsd z
+# $XONTRIB_PROMPT_BAR_THEME = {
+#    'left': '{hostname}{short_cwd}',
+#    'right': '{env_name#strip_brackets#section}{date_time_tz}',
+#    'bar_bg': '{BACKGROUND_#323232}',
+#    'bar_fg': '{#AAA}',
+#    'section_bg': '{BACKGROUND_#444}',
+#    'section_fg': '{#CCC}',
+#    'accent_fg': '{BOLD_#DDD}',
+# }
+
+# Add `{long_cmd_duration}` section
+# $XONTRIB_PROMPT_BAR_RIGHT = '{long_cmd_duration}{env_name#strip_brackets#section}{localtime}'
+# xontrib load prompt_bar
+xontrib load cmd_done
+
+xontrib load powerline3
+# the foreground/background colors of the prompt-fields can be configured as below.
+# This works for custom fields as well
+# The format is `<prompt-field-name>__pl_colors`. It can be a function returning `tuple[str, str]`
+# or set tuples directly as below.
+$PROMPT_FIELDS["cwd__pl_colors"] = ("WHITE", "CYAN")
+
+# choose the powerline glyph used
+$POWERLINE_MODE = "powerline" # if not set then it will choose random
+# available modes: round/down/up/flame/squares/ruiny/lego
+$PROMPT_FIELDS['prompt_end'] = '@'
+# define the prompts using the format style and you are good to go
+$PROMPT = "".join(
+    [
+        "{vte_new_tab_cwd}",
+        "{short_cwd:{}}",
+        "{gitstatus:\ue0a0{}}",
+#        "{ret_code}",
+        "{background_jobs}",
+        os.linesep,
+        "{env_name: \U0001f40d{}}",
+        "$",
+    ]
+)
+$RIGHT_PROMPT = "".join(
+    (
+        "{long_cmd_duration: \u231b{}}",
+        "{user: \U0001f916{}}",
+        "{hostname: \U0001f5a5{}}",
+        "{localtime: \U0001f570{}}",
+    )
+)
+
+execx($(zoxide init xonsh), 'exec', __xonsh__.ctx, filename='zoxide')
+
+aliases['ensite']="sudo $HOME/Scripts/client/_ensite.sh"
+aliases['disite']="sudo $HOME/Scripts/client/_disite.sh"
+aliases['act']="source-bash bin/activate;which python"
+aliases['deact']="deactivate"
+
+aliases['personal']="cd ~/Personal; ls -la"
+aliases['scripts']="cd ~/Scripts/client; ls -la"
+aliases['html']="cd ~/Programs/php; ls -la"
+aliases['hosting']="cd /run/media/pannet1/FAT32/latest; ls -la"
+aliases['venv']="vox activate $PROJECT_DIRS"
+
+aliases['konf']="cd ~/.config/kitty; nvim ~/.config/kitty/kitty.conf"
+aliases['sonf']="cd ~/.config/sxhkd; nvim ~/.config/sxhkd/sxhkdrc"
+aliases['qonf']="cd ~/.config/qtile; nvim ~/.config/qtile/config.py"
+aliases['ronf']="cd ~/.config/rclone; nvim rclone.conf"
+aliases['vonf']="cd ~/.config/LazyVim/; nvim"
+aliases['wonf']="cd ~/.config/worm; nvim ~/.config/worm/rc"
+aliases['xonf']="nvim ~/.xonshrc"
+
+aliases['vkb']="tail ~/.config/nvim/lua/user/keymaps.lua -n 30"
+aliases['xkb']="tail ~/.xonshrc -n 30"
+
+aliases['dif']="kitty +kitten diff"
+aliases['fif']="find . -type f -name "
+aliases['fid']="find . -type d -name "
+aliases['hg']='kitty +kitten hyperlinked_grep'
+aliases['hsa']='history show all'
+aliases['grom']="gromit-mpx --key 'w'"
+aliases['gif']="git difftool --no-symlinks --dir-diff"
+aliases['nvim-astro']="$NVIM_APPNAME='AstroVim'; nvim"
+aliases['nvim-lazy']="$NVIM_APPNAME='LazyVim'; nvim"
+aliases['va']=lambda args: f"vox activate {args[0]}"
+aliases['vd']="cd; vox deactivate"
+aliases['ydl']='yt-dlp --concurrent-fragments 5 '
+aliases['yayu']='yay --devel --config /etc/pacman.old.conf --aur'
+aliases['yt']="ytfzf -t "
+aliases['dus']="ncdu "
+aliases['lsla']="exa --tree --long -L 1 --reverse  --sort=modified --color=always --group-directories-first | more"
+# XONSH WIZARD START
+xontrib load hist_navigator onepath autoxsh xlsd abbrevs gruvbox output_search cmd_done distributed avox docker_tabcomplete vox_tabcomplete voxapi gitinfo sh broot autovox argcomplete back2dir prompt_vi_mode readable-traceback powerline3 ssh_agent mplhooks histcpy kitty up vox notifypy mpl z coreutils
+# XONSH WIZARD END

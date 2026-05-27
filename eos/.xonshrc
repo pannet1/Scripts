@@ -1,0 +1,70 @@
+import os
+#$XONSH_DEBUG=1
+#XONSH WEBCONFIG START
+
+__import__('warnings').simplefilter('ignore', DeprecationWarning, 118)
+
+
+$XONSH_CAPTURE_ALWAYS=True
+# Right+Left combination. Meaning for prompt-toolkit: @bindings.add('right', 'left')
+#$XONTRIB_OUTPUT_SEARCH_KEY_META='right'
+#$XONTRIB_OUTPUT_SEARCH_KEY='left'  # the text placeholder will be `left__`
+
+$XONSH_COLOR_STYLE = 'gruvbox'
+$FOREIGN_ALIASES_SUPPRESS_SKIP_MESSAGE = True
+$TERMINAL = 'kitty'
+$PATH.append('/home/pannet1/Scripts/client')
+$PATH.append('/home/pannet1/.local/bin')
+$PROJECT_DIRS=[os.path.expanduser("/home/pannet1/Programs/py/")]
+$VIRTUALENV_HOME= '/home/pannet1/Programs/py/'
+#$VIRTUAL_ENV= '/home/pannet1/Programs/py/'
+
+xontrib load abbrevs argcomplete autovox avox autoxsh back2dir broot coreutils distributed gruvbox gitinfo hist_navigator histcpy kitty mpl onepath output_search pdb powerline_binding prompt_vi_mode readable-traceback sh ssh_agent up vox vox_tabcomplete xlsd z
+# $XONTRIB_PROMPT_BAR_THEME = {
+#    'left': '{hostname}{short_cwd}',
+#    'right': '{env_name#strip_brackets#section}{date_time_tz}',
+#    'bar_bg': '{BACKGROUND_#323232}',
+#    'bar_fg': '{#AAA}',
+#    'section_bg': '{BACKGROUND_#444}',
+#    'section_fg': '{#CCC}',
+#    'accent_fg': '{BOLD_#DDD}',
+# }
+
+# Add `{long_cmd_duration}` section
+# $XONTRIB_PROMPT_BAR_RIGHT = '{long_cmd_duration}{env_name#strip_brackets#section}{localtime}'
+# xontrib load prompt_bar
+xontrib load cmd_done
+execx($(zoxide init xonsh), 'exec', __xonsh__.ctx, filename='zoxide')
+
+aliases['ensite']="sudo $HOME/Scripts/client/_ensite.sh"
+aliases['disite']="sudo $HOME/Scripts/client/_disite.sh"
+aliases['act']="source-bash bin/activate;which python"
+aliases['deact']="deactivate"
+
+aliases['personal']="cd ~/Personal; dir"
+aliases['scripts']="cd ~/Scripts/client; dir"
+aliases['html']="cd ~/Programs/php; dir"
+aliases['hosting']="cd /run/media/pannet1/FAT32/latest; dir"
+aliases['venv']="cd $PROJECT_DIRS; vox activate $PROJECT_DIRS"
+aliases['93py']="cd $HOME/Programs/py/; vox activate 93py"
+
+aliases['konf']="cd ~/.config/kitty; nvim ~/.config/kitty/kitty.conf"
+aliases['sonf']="cd ~/.config/sxhkd; nvim ~/.config/sxhkd/sxhkdrc"
+aliases['ponf']="cd ~/dotfiles/powerline/.config/powerline; nvim"
+aliases['qonf']="cd ~/.config/qtile; nvim ~/.config/qtile/config.py"
+aliases['vonf']="cd ~/.config/nvim/lua/; nvim plugins"
+aliases['xonf']="nvim ~/.xonshrc"
+
+aliases['vkb']="tail ~/.config/nvim/lua/user/keymaps.lua -n 30"
+aliases['xkb']="tail ~/.xonshrc -n 30"
+
+aliases['dif']="kitty +kitten diff"
+aliases['fif']="find . -type f -name "
+aliases['fid']="find . -type d -name "
+aliases['hg']='kitty +kitten hyperlinked_grep'
+aliases['hsa']='history show all'
+aliases['grom']="gromit-mpx --key 'w'"
+aliases['gif']="git difftool --no-symlinks --dir-diff"
+aliases['ydl']='yt-dlp --concurrent-fragments 5 '
+aliases['yayu']='yay --devel --config /etc/pacman.old.conf --aur'
+

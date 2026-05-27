@@ -1,0 +1,22 @@
+#!/bin/bash
+# sshd_increase_timeout - Increase VPS SSH timeouts
+# Run this when you have SSH access to a VPS
+
+echo "=== Checking current SSH settings ==="
+grep -i clientalive /etc/ssh/sshd_config || echo "No ClientAlive settings found"
+
+echo ""
+echo "=== Applying new settings ==="
+echo "ClientAliveInterval 60" | sudo tee -a /etc/ssh/sshd_config
+echo "ClientAliveCountMax 10" | sudo tee -a /etc/ssh/sshd_config
+
+echo ""
+echo "=== Restarting SSH ==="
+sudo systemctl restart sshd
+
+echo ""
+echo "=== Verifying settings ==="
+grep -i clientalive /etc/ssh/sshd_config
+
+echo ""
+echo "Done! SSH timeout increased to 10 minutes."
