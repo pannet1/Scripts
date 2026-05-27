@@ -146,8 +146,13 @@ stow -R --target="$HOME" wsl2 2>/dev/null || stow --target="$HOME" wsl2
 ok "wsl2 symlinked"
 
 # Secrets symlink
-SECRETS_ENV="$HOME/programs/shell/github.com/pannet1/secrets/github.com/pannet1/shell/wsl2/.env"
-if [ -f "$SECRETS_ENV" ]; then
+SECRETS_DIR="$HOME/programs/shell/github.com/pannet1/secrets"
+SECRETS_ENV="$SECRETS_DIR/github.com/pannet1/shell/wsl2/.env"
+if [ -d "$SECRETS_DIR" ]; then
+    # Unlock git-crypt if key exists
+    if [ -f "$HOME/secrets.key" ]; then
+        cd "$SECRETS_DIR" && git-crypt unlock "$HOME/secrets.key" 2>/dev/null && ok "secrets unlocked"
+    fi
     mkdir -p "$HOME/.secrets"
     ln -sf "$SECRETS_ENV" "$HOME/.secrets/wsl2.env"
     ok "secrets symlinked"
