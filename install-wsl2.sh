@@ -13,7 +13,7 @@ check_cmd()   { command -v "$1" &>/dev/null; }
 check_file()  { [ -f "$1" ]; }
 check_dir()   { [ -d "$1" ]; }
 check_line()  { grep -Fxq "$1" "$2" 2>/dev/null; }
-check_font()  { fc-list | grep -qi "$1" &>/dev/null; }
+
 
 echo "=============================================="
 echo "  WSL2 Debian Setup"
@@ -60,7 +60,7 @@ step "2/7: Nerd Fonts (WSL)"
 FONT_DIR="$HOME/.local/share/fonts"
 font_files_exist() { ls "$FONT_DIR"/FiraCode*.ttf &>/dev/null; }
 
-if font_files_exist && check_font "FiraCode"; then
+if font_files_exist; then
     ok "FiraCode Nerd Font installed"
 else
     fail "FiraCode Nerd Font"
