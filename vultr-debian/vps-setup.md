@@ -1,6 +1,12 @@
 # VPS Setup & Health Check
 
-Run locally to provision a remote Debian VPS.
+Run locally to provision a remote Debian VPS via password SSH.
+
+## Usage
+
+```bash
+./vps-setup.sh user ip password
+```
 
 | Step | What it does |
 |------|-------------|
@@ -12,12 +18,4 @@ Run locally to provision a remote Debian VPS.
 | 6 | Log rotation & permissions |
 | 7 | Health check (services, disk, memory, uptime) |
 
-## Usage
-
-```bash
-./vps-setup.sh user@ip
-```
-
-Prompts for target if not provided. Requires key-based SSH access.
-
-SSH hardening takes effect after restart. Test in a new window first.
+Requires `sshpass` (auto-installed if missing).

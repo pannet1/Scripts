@@ -1,32 +1,42 @@
 #!/bin/bash
 # VPS Setup & Health Check — run from local machine to provision a remote VPS
-# Usage: ./vps-setup.sh [user@ip]
+# Usage: ./vps-setup.sh <user> <ip> <password>
 
 set -euo pipefail
 
-TARGET="${1:-}"
+USER="${1:-}"
+IP="${2:-}"
+PASSWORD="${3:-}"
 
-if [ -z "$TARGET" ]; then
-    read -p "Enter user@ipaddress: " TARGET
-fi
-
-if [ -z "$TARGET" ]; then
-    echo "Error: No target specified"
+if [ -z "$USER" ] || [ -z "$IP" ] || [ -z "$PASSWORD" ]; then
+    echo "Usage: $0 <user> <ip> <password>"
+    echo "  user     - SSH username (e.g. root, uma)"
+    echo "  ip       - server IP address"
+    echo "  password - SSH password"
     exit 1
 fi
+
+TARGET="$USER@$IP"
 
 echo "=== VPS Setup & Health Check ==="
 echo "Target: $TARGET"
 echo ""
 
+if ! command -v sshpass &>/dev/null; then
+    echo "Installing sshpass..."
+    sudo apt-get install -y sshpass >/dev/null 2>&1
+fi
+
+SSH_CMD=(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
+
 # Check SSH access
-if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "$TARGET" "echo OK" &>/dev/null; then
-    echo "SSH key not configured for $TARGET"
-    echo "Run: ssh-copy-id $TARGET"
+if ! "${SSH_CMD[@]}" "$TARGET" "echo OK" &>/dev/null; then
+    echo "Cannot connect to $TARGET"
     exit 1
 fi
 
-ssh "$TARGET" 'bash -s' <<'REMOTE'
+# Run remote script via stdin
+"${SSH_CMD[@]}" "$TARGET" "bash -s" << 'REMOTESCRIPT'
 set -euo pipefail
 
 LOG_FILE="/tmp/vps-setup_$(date +%Y%m%d_%H%M%S).log"
@@ -176,4 +186,4 @@ echo "=============================================="
 echo "Log: $LOG_FILE"
 echo ""
 echo "Test SSH in a NEW window before closing this one!"
-REMOTE
+REMOTESCRIPT
