@@ -1,15 +1,21 @@
 #!/bin/bash
 # VPS Setup & Health Check — run from local machine to provision a remote VPS
-# Usage: ./vps-setup.sh <user> <ip> <password>
+# Usage: ./vps-setup.sh [--dry-run] <user> <ip> <password>
 
 set -euo pipefail
+
+DRY_RUN=false
+if [ "${1:-}" = "--dry-run" ]; then
+    DRY_RUN=true
+    shift
+fi
 
 USER="${1:-}"
 IP="${2:-}"
 PASSWORD="${3:-}"
 
 if [ -z "$USER" ] || [ -z "$IP" ] || [ -z "$PASSWORD" ]; then
-    echo "Usage: $0 <user> <ip> <password>"
+    echo "Usage: $0 [--dry-run] <user> <ip> <password>"
     echo "  user     - SSH username (e.g. root, uma)"
     echo "  ip       - server IP address"
     echo "  password - SSH password"
@@ -22,12 +28,93 @@ echo "=== VPS Setup & Health Check ==="
 echo "Target: $TARGET"
 echo ""
 
+if [ "$DRY_RUN" = true ]; then
+    echo "[DRY RUN] No changes will be made"
+
+    cat << 'DRY'
+
+  Step 1/7: System Updates
+    - apt-get update
+    - apt-get install unattended-upgrades apt-listchanges
+
+  Step 2/7: Timezone & Time Sync
+    - timedatectl set-timezone Asia/Kolkata
+    - apt-get install chrony
+    - systemctl enable && restart chrony
+
+  Step 3/7: UFW Firewall
+    - apt-get install ufw
+    - ufw default deny incoming
+    - ufw default allow outgoing
+    - ufw allow ssh
+    - ufw allow http
+    - ufw allow https
+    - ufw allow 8000/tcp
+    - ufw allow 8001/tcp
+    - ufw enable
+
+  Step 4/7: SSH Hardening
+    - Backup /etc/ssh/sshd_config
+    - Write /etc/ssh/sshd_config.d/99-hardening.conf
+      - PermitRootLogin no
+      - PasswordAuthentication (unchanged, keep enabled)
+      - ClientAliveInterval 120
+      - MaxAuthTries 3
+      - X11Forwarding no
+
+  Step 5/7: Fail2Ban
+    - apt-get install fail2ban
+    - Write /etc/fail2ban/jail.local (SSH jail, 3 retries, 1h ban)
+    - systemctl enable && start fail2ban
+
+  Step 6/7: Log Security
+    - Write /etc/logrotate.d/vps-hardening
+    - chmod 640 /var/log/*.log
+
+  Step 7/7: Health Check
+    - Show service status, firewall, disk, memory, uptime
+DRY
+    echo ""
+fi
+
 if ! command -v sshpass &>/dev/null; then
-    echo "Installing sshpass..."
-    sudo apt-get install -y sshpass >/dev/null 2>&1
+    if [ "$DRY_RUN" = true ]; then
+        echo "[DRY RUN] Would install: apt-get install sshpass"
+    else
+        echo "Installing sshpass..."
+        sudo apt-get install -y sshpass >/dev/null 2>&1
+    fi
 fi
 
 SSH_CMD=(sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
+
+if [ "$DRY_RUN" = true ]; then
+    echo "[DRY RUN] Would connect: ${SSH_CMD[*]} $TARGET"
+    echo ""
+    echo "--- Remote Health Check (dry run) ---"
+    "${SSH_CMD[@]}" "$TARGET" "bash -s" << 'DRYCHECK'
+echo "  Target: $(hostname) ($(uname -r))"
+echo ""
+echo "--- Services ---"
+for svc in chrony fail2ban; do
+    if systemctl is-active --quiet "$svc" 2>/dev/null; then
+        echo "  ✓ $svc running"
+    else
+        echo "  ✗ $svc not running"
+    fi
+done
+echo ""
+echo "--- Disk ---"
+df -h / | tail -1 | awk '{print "  Usage: " $5 " of " $2}'
+echo ""
+echo "--- Memory ---"
+free -h | grep Mem | awk '{print "  Used: " $3 " / " $2}'
+echo ""
+echo "--- Uptime ---"
+uptime -p | sed 's/^up/Uptime:/'
+DRYCHECK
+    exit 0
+fi
 
 # Check SSH access
 if ! "${SSH_CMD[@]}" "$TARGET" "echo OK" &>/dev/null; then
@@ -35,7 +122,7 @@ if ! "${SSH_CMD[@]}" "$TARGET" "echo OK" &>/dev/null; then
     exit 1
 fi
 
-# Run remote script via stdin
+# Run remote setup + health check
 "${SSH_CMD[@]}" "$TARGET" "bash -s" << 'REMOTESCRIPT'
 set -euo pipefail
 
