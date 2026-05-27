@@ -21,8 +21,7 @@ echo "[+] Rebuilding font cache..."
 fc-cache -fv
 
 echo "[✔] Nerd Font installation complete!"
-echo "👉 Now, open Windows Terminal and set the font to one of these:"
-echo "    - 'FiraCode Nerd Font'"
-echo "    - 'FiraCode Nerd Font Mono'"
-
-echo "[+] You can verify by running: fc-list | grep 'FiraCode'"
+echo "    Font installed for WSL apps (tmux, nvim, etc.)"
+echo "    Windows Terminal font is set automatically by pwsh/2_install_debian.ps1"
+echo ""
+echo "[+] Verify: fc-list | grep 'FiraCode'"
