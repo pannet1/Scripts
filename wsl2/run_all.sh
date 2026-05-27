@@ -56,19 +56,21 @@ fi
 
 # ── 2. Nerd Fonts ──
 step "2/7: Nerd Fonts (WSL)"
-if check_font "FiraCode"; then
+FONT_DIR="$HOME/.local/share/fonts"
+font_files_exist() { ls "$FONT_DIR"/FiraCode*.ttf &>/dev/null; }
+
+if font_files_exist && check_font "FiraCode"; then
     ok "FiraCode Nerd Font installed"
 else
     fail "FiraCode Nerd Font"
-    FONT_DIR="$HOME/.local/share/fonts"
     mkdir -p "$FONT_DIR"
     cd /tmp
     fix "downloading FiraCode Nerd Font"
     curl -fLo FiraCode.zip -L "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FiraCode.zip"
     unzip -o FiraCode.zip -d "$FONT_DIR" >/dev/null
     rm FiraCode.zip
-    fc-cache -f >/dev/null 2>&1
-    if check_font "FiraCode"; then
+    fc-cache -f "$FONT_DIR" >/dev/null 2>&1
+    if font_files_exist; then
         ok "FiraCode Nerd Font installed"
     else
         fail "FiraCode Nerd Font install FAILED"

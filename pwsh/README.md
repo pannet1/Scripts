@@ -46,4 +46,4 @@ Reboot if prompted, then:
 | File | Purpose |
 |---|---|
 | `reboot_to_bios.bat` | Reboot straight into UEFI/BIOS |
-| `stream_android.bat` | scrcpy Android screen mirror (USB/WiFi) |
+| `stream_android.ps1` | scrcpy Android screen mirror (USB/WiFi) — auto-downloads adb + scrcpy |
