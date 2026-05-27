@@ -175,4 +175,6 @@ export LESS=-RFX
 [ -f /usr/share/bash-completion/bash_completion ] && . /usr/share/bash-completion/bash_completion
 
 # Local secrets (machine-specific, not tracked in git)
+SECRETS_REPO="$HOME/programs/shell/github.com/pannet1/secrets"
+[ -f "$HOME/secrets.key" ] && (cd "$SECRETS_REPO" && git-crypt unlock "$HOME/secrets.key") 2>/dev/null || true
 [ -f "$HOME/.secrets/wsl2.env" ] && source "$HOME/.secrets/wsl2.env"
