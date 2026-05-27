@@ -122,25 +122,21 @@ export GPG_TTY=$(tty)
 
 export PATH="$HOME/.npm-global/bin:$PATH"
 if grep -qi microsoft /proc/version 2>/dev/null; then
-if grep -qi microsoft /proc/version 2>/dev/null; then
-if grep -qi microsoft /proc/version 2>/dev/null; then
-if grep -qi microsoft /proc/version 2>/dev/null; then
-export LD_LIBRARY_PATH=/usr/lib/wsl/lib:$LD_LIBRARY_PATH
-export WSL_DISABLE_INTEROP=1
-alias usbread='sudo mkdir -p /mnt/d && sudo mount -t drvfs D: /mnt/d && echo "USB Updated Successfully"'
-fi
-fi
-fi
+  if grep -qi microsoft /proc/version 2>/dev/null; then
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+      if grep -qi microsoft /proc/version 2>/dev/null; then
+        export LD_LIBRARY_PATH=/usr/lib/wsl/lib:$LD_LIBRARY_PATH
+        export WSL_DISABLE_INTEROP=1
+        alias usbread='sudo mkdir -p /mnt/d && sudo mount -t drvfs D: /mnt/d && echo "USB Updated Successfully"'
+      fi
+    fi
+  fi
 fi
 alias mail='/usr/bin/aerc'
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
-
-
-
-export # OPENCODE_ZEN_KEY removed (see ~/.secrets/wsl2.env)
 
 export EDITOR="/usr/bin/nvim"
 ###-begin-opencode-completions-###
@@ -177,3 +173,6 @@ export PAGER=less
 export LESS=-RFX
 [ -f ~/.bash_aliases ] && . ~/.bash_aliases
 [ -f /usr/share/bash-completion/bash_completion ] && . /usr/share/bash-completion/bash_completion
+
+# Local secrets (machine-specific, not tracked in git)
+[ -f "$HOME/.secrets/wsl2.env" ] && source "$HOME/.secrets/wsl2.env"
