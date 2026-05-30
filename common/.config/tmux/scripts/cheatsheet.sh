@@ -16,8 +16,12 @@ cat <<'EOF'
 │    prefix+"    choose-window — interactive window picker            │
 │                                                                     │
 │  WINDOWS                                                            │
+│    prefix+^C   new window                                           │
+│    prefix+^A   last / previous window                               │
 │    prefix+n    next window (wraps: last → first)                    │
 │    prefix+H/L  previous / next window (no wrap)                     │
+│    prefix+"    choose-window — interactive picker                   │
+│    prefix+r    rename window                                        │
 │    prefix+&    kill window                                          │
 │                                                                     │
 │  PANE SPLITTING                                                     │
