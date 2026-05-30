@@ -15,8 +15,7 @@ function M.run(raw_args)
 
   local cmd = cmd_base .. " " .. raw_args
 
-  local prompt_needed = prefix ~= "implement" and prefix ~= "delete" and prefix ~= ""
-  if prompt_needed and not raw_args:match("%-%-prompt") then
+  if not raw_args:match("%-%-prompt") then
     local bufnr = vim.api.nvim_get_current_buf()
     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
     local content = table.concat(lines, "\n"):gsub("%s+$", "")
@@ -76,7 +75,7 @@ end
 
 vim.api.nvim_create_user_command("Orch", function(opts)
   M.run(opts.args)
-end, { nargs = 1, desc = "Run orchestrator: feature/X, implement/X, modify/X, bugfix/X, delete/X" })
+end, { nargs = 1, desc = "Run orchestrator: new/X / do/X / modify/X / bugfix/X / delete/X" })
 
 vim.api.nvim_create_user_command("OrchLast", function()
   M.last()
@@ -88,7 +87,7 @@ end, {})
 
 vim.keymap.set("n", "<leader>or", "<cmd>OrchLast<CR>", { desc = "Re-run last orchestrator command" })
 vim.keymap.set("n", "<leader>ot", "<cmd>OrchToggle<CR>", { desc = "Toggle orchestrator terminal" })
-vim.keymap.set("n", "<leader>os", '<cmd>Orch feature/<CR>', { desc = "Scaffold (type: Orch feature/X --prompt ...)" })
-vim.keymap.set("n", "<leader>oi", '<cmd>Orch implement/<CR>', { desc = "Implement (type: Orch implement/X)" })
+vim.keymap.set("n", "<leader>os", '<cmd>Orch new/<CR>', { desc = "Scaffold (type: Orch new/X --prompt ...)" })
+vim.keymap.set("n", "<leader>oi", '<cmd>Orch do/<CR>', { desc = "Implement (type: Orch do/X)" })
 
 print("[orchestrator] Loaded. :Orch feature/modify/bugfix/X reads current buffer as prompt.")
