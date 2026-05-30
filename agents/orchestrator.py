@@ -28,7 +28,22 @@ from typing import Any, Optional
 
 REPO_ROOT = Path.cwd()
 AGENTS_DIR = Path(__file__).resolve().parent
-FEATURES_DIR = REPO_ROOT / "apps" / "backend" / "app" / "features"
+
+def _detect_features_dir(repo_root: Path) -> Path:
+    candidates = [
+        repo_root / "apps" / "backend" / "app" / "features",
+        repo_root / "backend" / "src" / "features",
+        repo_root / "backend" / "app" / "features",
+        repo_root / "src" / "features",
+        repo_root / "app" / "features",
+        repo_root / "features",
+    ]
+    for path in candidates:
+        if path.is_dir():
+            return path
+    return candidates[0]
+
+FEATURES_DIR = _detect_features_dir(REPO_ROOT)
 FEATURES_CONFIG = REPO_ROOT / ".features.json"
 if not FEATURES_CONFIG.exists():
     FEATURES_CONFIG = AGENTS_DIR / "features.json"
@@ -590,6 +605,60 @@ def unregister_feature_from_json(feature_name: str, feature_dir: Optional[Path] 
     return removed
 
 
+def _scan_existing_features(features_dir: Path) -> dict[str, str]:
+    features: dict[str, str] = {}
+    if not features_dir.is_dir():
+        return features
+    for domain_dir in features_dir.iterdir():
+        if not domain_dir.is_dir() or domain_dir.name.startswith("_"):
+            continue
+        if (domain_dir / "Handler.py").exists():
+            features[domain_dir.name] = domain_dir.name
+        else:
+            for feature_dir in domain_dir.iterdir():
+                if feature_dir.is_dir() and not feature_dir.name.startswith("_"):
+                    features[feature_dir.name] = domain_dir.name
+    return features
+
+
+def do_scaffold() -> None:
+    print("[Orchestrator] Scanning project structure...")
+    found_dir = _detect_features_dir(REPO_ROOT)
+
+    if found_dir.is_dir():
+        print(f"[Orchestrator] Detected features directory: {found_dir.relative_to(REPO_ROOT)}")
+    else:
+        print(f"[Orchestrator] No features directory found. Will use: {found_dir.relative_to(REPO_ROOT)}")
+
+    features = _scan_existing_features(found_dir)
+    known: dict[str, str] = {}
+    keywords: dict[str, list[str]] = {}
+    for fname, domain in features.items():
+        known[fname] = domain
+        keyword = fname.lower().replace("feature", "").replace("handler", "").replace("controller", "")
+        if keyword and keyword not in keywords:
+            keywords[keyword] = [domain, fname]
+
+    payload: dict[str, Any] = {
+        "known_features": known,
+        "domain_keywords": keywords,
+    }
+    if found_dir.is_dir():
+        FEATURES_CONFIG.write_text(json.dumps(payload, indent=2) + "\n")
+        print(f"[Orchestrator] Created {FEATURES_CONFIG.name} with {len(known)} features")
+    else:
+        print(f"[Orchestrator] No features found. Created empty {FEATURES_CONFIG.name}")
+        FEATURES_CONFIG.write_text(json.dumps(payload, indent=2) + "\n")
+
+    print()
+    print(f"[Orchestrator] Project ready. Files:")
+    print(f"  .features.json         — feature registry ({len(known)} features)")
+    print(f"  .agents/               — agentic toolkit (symlink to ~/.agents)")
+    print()
+    print("Next: run a feature command")
+    print(f"  ./.agents/orchestrator.py feature/YourFeature")
+
+
 def orchestrate(request: str, prompt_content: str = "", no_controller: bool = False) -> None:
     cmd = request.strip().split(None, 1)
     verb = cmd[0] if cmd else ""
@@ -604,6 +673,11 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
     else:
         prefix = verb.lower()
         action = rest.strip()
+
+    # --- scaffold: project init (no args) ---
+    if prefix == "scaffold" and not action:
+        do_scaffold()
+        return
 
     # --- feature/X: scaffold new feature ---
     if prefix == "feature":
