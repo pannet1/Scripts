@@ -18,14 +18,11 @@ if [ -n "${SESSIONIZER_ROOTS:-}" ]; then
 else
   ROOTS=(
     "$HOME/programs"
-    "$HOME/projects"
-    "$HOME/github"
-    "$HOME/.config"
   )
 fi
 
 selected="$(
-  find "${ROOTS[@]}" -mindepth 1 -maxdepth 3 -type d 2>/dev/null \
+  find "${ROOTS[@]}" -mindepth 1 -maxdepth 5 -type d 2>/dev/null \
     | grep -v '/node_modules$' \
     | grep -v '/vendor$' \
     | grep -v '/.git$' \
