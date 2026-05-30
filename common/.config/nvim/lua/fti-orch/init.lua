@@ -1,33 +1,5 @@
--- fti-orchestrator — Neovim plugin for the orchestration harness
--- Lazy spec (add to ~/.config/nvim/lua/plugins/fti-orch.lua or similar):
---   {
---     dir = "~/programs/python/github.com/pannet1/fti-holdings/nvim/orchestrator",
---     name = "fti-orch",
---     lazy = false,
---   }
---
--- Commands:
---   :Orch feature/X --prompt "..."   scaffold with prompt
---   :Orch implement/X                 generate code
---   :Orch modify/X                    amend spec (uses current buffer as prompt)
---   :Orch bugfix/X                    document defect (uses current buffer as prompt)
---   :Orch delete/X                    purge feature + branch
---   :Orch feature/X                   scaffold (no prompt — orchestrator will error)
---   :OrchLast                         re-run the last command
---   :OrchToggle                       toggle terminal window
---
--- For commands that expect a prompt (feature, modify, bugfix), the current
--- buffer is read automatically when no --prompt flag is given. The terminal
--- shows live AI output as files write.
-
 local M = {}
 
--- Resolve repo root from the plugin's own directory
-local src = debug.getinfo(1, "S").source:match("@(.+)") or ""
-local repo_root = src:gsub("/nvim/orchestrator/plugin/orch%.lua$", "")
-local cmd_base = repo_root .. "/.agents/orchestrator.py"
-
--- Terminal window
 local term_win = nil
 local term_buf = nil
 local last_raw_args = nil
@@ -35,13 +7,14 @@ local last_raw_args = nil
 function M.run(raw_args)
   last_raw_args = raw_args
 
+  local cmd_base = vim.fn.getcwd() .. "/.agents/orchestrator.py"
+
   local args = vim.split(raw_args, "%s+")
   local first = args[1] or ""
   local prefix = first:match("^(%w+)/") or ""
 
   local cmd = cmd_base .. " " .. raw_args
 
-  -- If no --prompt flag and command expects one, read current buffer as prompt
   local prompt_needed = prefix ~= "implement" and prefix ~= "delete" and prefix ~= ""
   if prompt_needed and not raw_args:match("%-%-prompt") then
     local bufnr = vim.api.nvim_get_current_buf()
@@ -60,7 +33,6 @@ function M.run(raw_args)
 
   local prev_win = vim.api.nvim_get_current_win()
 
-  -- Reuse existing terminal if valid
   if term_buf and vim.api.nvim_buf_is_valid(term_buf) then
     local chan = vim.api.nvim_buf_get_var(term_buf, "terminal_job_id")
     vim.fn.chansend(chan, cmd .. "\n")
@@ -68,7 +40,6 @@ function M.run(raw_args)
     return
   end
 
-  -- Open terminal split
   vim.cmd("belowright split | terminal")
   term_buf = vim.api.nvim_get_current_buf()
   term_win = vim.api.nvim_get_current_win()
@@ -103,7 +74,6 @@ function M.toggle()
   end
 end
 
--- User commands
 vim.api.nvim_create_user_command("Orch", function(opts)
   M.run(opts.args)
 end, { nargs = 1, desc = "Run orchestrator: feature/X, implement/X, modify/X, bugfix/X, delete/X" })
@@ -116,7 +86,6 @@ vim.api.nvim_create_user_command("OrchToggle", function()
   M.toggle()
 end, {})
 
--- Keymaps
 vim.keymap.set("n", "<leader>or", "<cmd>OrchLast<CR>", { desc = "Re-run last orchestrator command" })
 vim.keymap.set("n", "<leader>ot", "<cmd>OrchToggle<CR>", { desc = "Toggle orchestrator terminal" })
 vim.keymap.set("n", "<leader>os", '<cmd>Orch feature/<CR>', { desc = "Scaffold (type: Orch feature/X --prompt ...)" })
