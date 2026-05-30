@@ -22,15 +22,15 @@ cat <<'EOF'
 │    prefix+&    kill window                                          │
 │                                                                     │
 │  PANE SPLITTING                                                     │
-│    prefix+s    split vertically (top/bottom)                        │
-│    prefix+v    split horizontally (left/right)                      │
+│    prefix+|    split left/right (vertical line = columns)           │
+│    prefix+-    split top/bottom (horizontal line = rows)            │
 │    prefix+z    zoom / unzoom current pane                           │
 │    prefix+c    kill pane                                            │
 │                                                                     │
 │  PANE NAVIGATION                                                    │
 │    Ctrl+h/j/k/l   move between panes (also nvim)                   │
 │    prefix+h/j/k/l move between panes (tmux native)                 │
-│    prefix+,/./-/= resize pane                                       │
+│    prefix+,/./_/= resize pane (grow left/right/down/up)             │
 │                                                                     │
 │  AGENTIC WORKFLOW                                                   │
 │    prefix+p    popup terminal (floax) — run agent commands          │
