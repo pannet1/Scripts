@@ -12,13 +12,12 @@ cat <<'EOF'
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  SESSION MANAGEMENT                                                 │
-│    prefix+O    sessionizer — fzf project switcher                   │
-│    prefix+S    choose-session — interactive session picker          │
+│    prefix+o    sessionizer — fzf project switcher                   │
 │    prefix+"    choose-window — interactive window picker            │
 │                                                                     │
 │  WINDOWS                                                            │
-│    prefix+C    new window (Ctrl-C)                                  │
-│    prefix+H/L  previous / next window                               │
+│    prefix+n    next window                                          │
+│    prefix+^P   previous window (Ctrl+P)                             │
 │    prefix+&    kill window                                          │
 │                                                                     │
 │  PANE SPLITTING                                                     │
@@ -34,10 +33,10 @@ cat <<'EOF'
 │                                                                     │
 │  AGENTIC WORKFLOW                                                   │
 │    prefix+p    popup terminal (floax) — run agent commands          │
-│    prefix+F    fzf menu — switch session/window/pane               │
+│    prefix+f    fzf menu — switch session/window/pane               │
 │    prefix+u    fzf-url — open URLs from pane output                │
 │    prefix+Space tmux-thumbs — fuzzy select & yank text              │
-│    prefix+K    clear current pane                                   │
+│    prefix+q    clear current pane                                   │
 │                                                                     │
 │  PLUGINS                                                            │
 │    prefix+I    install TPM plugins                                  │
