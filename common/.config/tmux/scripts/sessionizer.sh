@@ -20,26 +20,22 @@ else
     "$HOME/programs"
     "$HOME/projects"
     "$HOME/github"
-    "$HOME/go/src"
     "$HOME/.config"
   )
 fi
 
 selected="$(
   find "${ROOTS[@]}" -mindepth 1 -maxdepth 3 -type d 2>/dev/null \
-    | grep -v '/\\.' \
     | grep -v '/node_modules$' \
     | grep -v '/vendor$' \
     | grep -v '/.git$' \
     | sort -u \
-    | fzf --tmux 80% \
+    | fzf --height=100% \
         --prompt="  session > " \
         --header="  Switch / Create tmux session" \
         --preview="ls -1 --color=always {} 2>/dev/null" \
         --preview-window="right:40%"
-)"
-
-[ -z "$selected" ] && exit 0
+)" || exit 0
 
 # Session name = directory basename (sanitized)
 session_name="$(basename "$selected" | tr ' .' '_')"
