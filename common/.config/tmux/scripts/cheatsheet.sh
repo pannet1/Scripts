@@ -45,10 +45,7 @@ cat <<'EOF'
 │                                                                     │
 │  MISC                                                               │
 │    prefix+/    show this cheatsheet                                 │
-│    prefix+?    show ALL keybindings (built-in)                      │
 │    prefix+R    reload tmux.conf                                     │
-│    prefix+D    detach from session                                  │
-│    prefix+:    command prompt                                       │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 EOF
