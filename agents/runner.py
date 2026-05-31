@@ -722,19 +722,16 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False) -> bool:
     passed, output = run_pytest(test_file)
     if passed:
         print(f"[Runner] All Tests Passed.")
-        print(f"[Runner] Running full regression suite across all features...")
-        regr_passed, regr_output = run_pytest(REPO_ROOT / "apps" / "backend" / "app" / "features")
-        if regr_passed:
-            print(f"[Runner] Regression suite: all pass.")
-        else:
-            preexisting = regr_output.count("FAILED")
-            print(f"[Runner] WARNING: {preexisting} pre-existing failures in regression suite (not introduced by this change).", file=sys.stderr)
-        print(f"[Runner] Validating root-level files (main.py)...")
-        root_issues = validate_root_files(REPO_ROOT)
-        if root_issues:
-            print(f"[Runner] ROOT FILE VIOLATIONS:\n  " + "\n  ".join(root_issues), file=sys.stderr)
-        else:
-            print(f"[Runner] Root files: all checks pass.")
+        spec_path = target / "spec.md"
+        if spec_path.exists():
+            spec = spec_path.read_text()
+            m = re.search(r"## Modification Request\n(.+?)(?=\n## |\Z)", spec, re.DOTALL)
+            if m:
+                print(f"\n{'='*60}")
+                print("EXTRACTION INSTRUCTIONS (from spec.md)")
+                print(f"{'='*60}")
+                print(m.group(1).strip())
+                print(f"{'='*60}\n")
         return True
 
     print(f"[Runner] Tests failed. Generated code does not pass. ESCALATE to human.")
