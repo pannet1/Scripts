@@ -679,6 +679,9 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False) -> bool:
             print(f"[Runner] Wrote {w}")
         bad = truncated_files(written)
         if bad:
+            for p in written:
+                if p.name in bad:
+                    p.unlink()
             last_error = f"Files appear truncated: {bad}. Regenerate complete code."
             print(f"[Runner] {last_error} Retrying...", file=sys.stderr)
             continue
