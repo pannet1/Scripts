@@ -194,39 +194,6 @@ def build_prompt(persona: str, target: Path, target_files: dict, task: str, erro
     if error:
         parts.append("## Error / Test Failure\n```\n" + error + "\n```")
     parts.append("## Task\n" + task)
-    parts.append(
-        "## Compliance Requirements (MANDATORY)\n"
-        "Your output MUST follow these rules EXACTLY:\n"
-        "1. Include ALL 4 files: Schema.py, Handler.py, Controller.py, Tests.py — every time.\n"
-        "2. Logging: use `from shared.logger import logging_func; logger = logging_func(__name__)` — never `logging.getLogger(__name__)`.\n"
-        "3. Zero comments in code (no `#` lines except `# noqa`).\n"
-        "4. No print() statements (use logger instead).\n"
-        "5. PEP 484 type annotations on ALL function signatures and module-level variables.\n"
-        "6. PEP 8: max 120 chars per line (E501), 2 blank lines between top-level definitions (E302).\n"
-        "7. Schema.py: class inherits from pydantic.BaseModel (v2).\n"
-        "8. Handler.py: class with methods, module-level logger.\n"
-        "9. Controller.py: imports Handler + Schema, class with handle() method.\n"
-        "10. Tests.py: class with test_ methods (pytest style).\n"
-        "11. No emoji characters.\n"
-        "12. All imports used — no unused imports.\n"
-        "13. Use pendulum for time (never datetime/time/calendar).\n"
-    )
-    parts.append(
-        "## Output Format (CRITICAL)\n"
-        "Output ONLY a single JSON object. No markdown, no explanation, no extra text.\n"
-        'Keys are filenames, values are the full file contents. All 4 files are required.\n'
-        "Example:\n"
-        '```json\n'
-        '{\n'
-        '  "Schema.py": "from pydantic import BaseModel...",\n'
-        '  "Handler.py": "from shared.logger import logging_func\\\\nlogger = logging_func(__name__)...",\n'
-        '  "Controller.py": "from .Handler import...",\n'
-        '  "Tests.py": "import pytest\\\\nclass Test...\\\\n    def test_...:"\n'
-        '}\n'
-        '```\n'
-        "CRITICAL: Every key must end in `.py`. Every value must be valid Python code.\n"
-        "Include ALL 4 files. Do NOT truncate. Do NOT use ... or comments like `# rest of code`."
-    )
     return "\n".join(parts)
 
 
@@ -681,8 +648,13 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False) -> bool:
     for attempt in range(1, 4):
         print(f"[Runner] LLM attempt {attempt}/3...")
         if last_error:
-            retry_prompt = prompt + "\n\n## Previous Attempt Feedback\n" + last_error + \
-                "\nFix ALL of the above issues. Output valid JSON only."
+            current = {p.name: p.read_text() for p in target.iterdir() if p.suffix == ".py"}
+            current_block = "\n".join(f"### {f}\n```python\n{c}\n```" for f, c in sorted(current.items()))
+            retry_prompt = (
+                "Fix the violations below. Output valid JSON with ALL 4 files (Schema.py, Handler.py, Controller.py, Tests.py).\n"
+                "## Current Files\n" + current_block + "\n"
+                "## Previous Feedback\n" + last_error
+            )
             response = call_llm(retry_prompt)
         else:
             response = call_llm(prompt)
