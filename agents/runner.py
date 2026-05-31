@@ -561,6 +561,13 @@ def truncated_files(written: list[Path]) -> list[str]:
         last_char = content[-1]
         if last_char in "([{," or content.endswith("Optional["):
             truncated.append(p.name)
+            continue
+        lines = content.splitlines()
+        for line in lines:
+            s = line.strip()
+            if re.match(r'^\w+\s*=\s*$', s):
+                truncated.append(p.name)
+                break
     return truncated
 
 
@@ -591,7 +598,7 @@ def validate_code_structure(code: str, fname: str) -> list[str]:
         issues.append("Schema.py must import and use pydantic.BaseModel")
     if fname == "Handler.py" and "class " not in code:
         issues.append("Handler.py must define a class")
-    if fname == "Handler.py" and "logging.getLogger" not in code:
+    if fname == "Handler.py" and "logging_func" not in code:
         issues.append("Handler.py must have a module-level logger")
     if fname == "Tests.py" and "def test_" not in code:
         issues.append("Tests.py must contain test functions")
