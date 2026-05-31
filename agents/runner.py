@@ -205,13 +205,16 @@ def call_llm(prompt: str) -> str:
     return response
 
 
+def _unescape(text: str) -> str:
+    return text.replace("\\n", "\n")
+
 def extract_code_blocks(text: str) -> dict[str, str]:
     files: dict[str, str] = {}
 
     # Primary: try JSON (both bare and fenced)
     files = extract_json_blocks(text)
     if files:
-        return files
+        return {k: _unescape(v) for k, v in files.items()}
 
     # Fallback: markdown patterns
     # Pattern 1: ### filename\n```python ... ```
@@ -223,7 +226,7 @@ def extract_code_blocks(text: str) -> dict[str, str]:
         fname = match.group(1)
         code = match.group(2).strip()
         if fname and code:
-            files[fname] = code
+            files[fname] = _unescape(code)
 
     # Pattern 2: ## `path/to/filename` ... ```python ... ```
     pattern2 = re.compile(
@@ -234,7 +237,7 @@ def extract_code_blocks(text: str) -> dict[str, str]:
         fname = match.group(1)
         code = match.group(2).strip()
         if fname and code and fname not in files:
-            files[fname] = code
+            files[fname] = _unescape(code)
 
     # Pattern 3: any ```python ... ``` block preceded by a filename somewhere nearby
     if not files:
@@ -248,7 +251,7 @@ def extract_code_blocks(text: str) -> dict[str, str]:
             before = blocks[i - 1]
             candidates = re.findall(r'(\w+\.py)', before)
             if candidates:
-                files[candidates[-1]] = code
+                files[candidates[-1]] = _unescape(code)
 
     return files
 
