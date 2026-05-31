@@ -112,12 +112,14 @@ def _zen_chat(prompt: str) -> str | None:
                     sys.stderr.flush()
             ticker = threading.Thread(target=_tick, daemon=True)
             ticker.start()
+            t0 = time.time()
             try:
                 with urllib.request.urlopen(req, timeout=300) as resp:
                     body = json.loads(resp.read())
             finally:
+                elapsed = time.time() - t0
                 done = True
-            print(file=sys.stderr)
+            print(f" {elapsed:.1f}s", file=sys.stderr)
         except urllib.error.HTTPError as e:
             if e.code == 401:
                 print(f"[Runner] Model '{model}' unavailable (free tier ended). Trying next...", file=sys.stderr)
@@ -661,10 +663,12 @@ def run_pytest(test_path: Path) -> tuple[bool, str]:
 
 def auto_backend(target: Path, prompt: str, verbose: bool = False) -> bool:
     expected = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
+    t_total = time.time()
 
     last_error: str = ""
     written: list[Path] = []
     for attempt in range(1, 4):
+        t_attempt = time.time()
         print(f"[Runner] LLM attempt {attempt}/3...")
         if last_error:
             current = {p.name: p.read_text() for p in target.iterdir() if p.suffix == ".py"}
@@ -700,30 +704,35 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False) -> bool:
         const_violations = validate_constitution(REPO_ROOT, target)
         pep8_violations = validate_pep8(REPO_ROOT, target)
         all_violations = struct_issues + std_violations + const_violations + pep8_violations
+        t_elapsed = time.time() - t_attempt
         if all_violations:
             last_error = "Violations:\n  " + "\n  ".join(all_violations)
             print(f"[Runner] {last_error}", file=sys.stderr)
         missing = expected - set(files.keys())
         if missing:
             last_error = f"Missing files: {missing}. Must include ALL 4 files."
-            print(f"[Runner] {last_error} Retrying...", file=sys.stderr)
+            print(f"[Runner] {last_error} Retrying... ({t_elapsed:.1f}s)", file=sys.stderr)
             continue
         if not all_violations and not missing:
             last_error = ""
+            print(f"[Runner] Attempt {attempt} OK ({t_elapsed:.1f}s)", file=sys.stderr)
             break
     else:
-        print(f"[Runner] Failed to generate complete code after 3 attempts.", file=sys.stderr)
+        total = time.time() - t_total
+        print(f"[Runner] Failed after 3 attempts ({total:.1f}s total).", file=sys.stderr)
         return False
 
     test_file = target / "Tests.py"
     if not test_file.exists():
-        print(f"[Runner] No Tests.py found at {test_file}, skipping auto-QA.")
+        total = time.time() - t_total
+        print(f"[Runner] No Tests.py found, skipping auto-QA ({total:.1f}s total).")
         return True
 
     print(f"[Runner] Running tests for {target.name}...")
     passed, output = run_pytest(test_file)
+    total = time.time() - t_total
     if passed:
-        print(f"[Runner] All Tests Passed.")
+        print(f"[Runner] All Tests Passed ({total:.1f}s total).")
         spec_path = target / "spec.md"
         if spec_path.exists():
             spec = spec_path.read_text()
