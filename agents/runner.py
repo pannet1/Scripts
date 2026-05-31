@@ -644,7 +644,7 @@ def run_pytest(test_path: Path) -> tuple[bool, str]:
     with subprocess.Popen(
         ["uv", "run", "pytest", str(test_path), "--tb=long", "-v"],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, cwd=str(REPO_ROOT / "apps" / "backend"),
+        text=True, cwd=str(REPO_ROOT),
     ) as proc:
         output = ""
         for line in proc.stdout:
