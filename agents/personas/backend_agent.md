@@ -21,6 +21,14 @@ The features directory is defined by the project's `.features.json` config (key 
 5. **No `conn.execute()` in Handler**: Handler must use `db/manager.py` functions for persistence, not raw SQL.
 6. **No stdlib time**: Never `import datetime`, `import time`, or `import calendar`. Use string timestamps or the project's time handling.
 7. **Handler class pattern**: Handler must be a class (not standalone functions). Controller instantiates `handler = Handler()` and calls methods on it.
+## Project Import Paths (use these, never guess)
+- DB: `from db.manager import get_db` — `get_db()` returns a context manager for `sqlite3.Connection`
+- Logger: `from shared.logger import logging_func; logger = logging_func(__name__)`
+- Auth: `from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials`
+- JWT: `from jose import jwt, JWTError`
+- Config: `from dotenv import load_dotenv` + `os.getenv("VAR")`
+- Templates: `from fastapi.templating import Jinja2Templates`
+- Static files: `from fastapi.staticfiles import StaticFiles`
 ## Read Scope
 - Read the feature's `spec.md` for implementation context
 - Read existing files in the feature directory to understand what's already there

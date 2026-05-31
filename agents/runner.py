@@ -253,11 +253,12 @@ def extract_code_blocks(text: str) -> dict[str, str]:
     return files
 
 
-def write_code_blocks(files: dict[str, str], target: Path) -> tuple[list[Path], list[Path]]:
+def write_code_blocks(files: dict[str, str], target: Path, protect: set[str] | None = None) -> tuple[list[Path], list[Path]]:
     written: list[Path] = []
     deleted: list[Path] = []
     expected = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
     produced = set()
+    protect = protect or set()
 
     for fname, code in files.items():
         path = target / fname
@@ -266,7 +267,7 @@ def write_code_blocks(files: dict[str, str], target: Path) -> tuple[list[Path], 
         produced.add(fname)
 
     for fname in list(expected):
-        if fname not in produced:
+        if fname not in produced and fname not in protect:
             path = target / fname
             if path.exists():
                 path.unlink()
@@ -274,7 +275,7 @@ def write_code_blocks(files: dict[str, str], target: Path) -> tuple[list[Path], 
                 print(f"[Runner] Deleted {fname} (absent from AI output)")
 
     all_on_disk = {p.name for p in target.iterdir() if p.suffix == ".py"}
-    unexpected = all_on_disk - produced - {p.name for p in deleted}
+    unexpected = all_on_disk - produced - set(p.name for p in deleted) - protect
     for fname in unexpected:
         path = target / fname
         path.unlink()
@@ -356,6 +357,8 @@ def check_unused_imports(code: str, fname: str) -> list[str]:
         if "from __future__ import annotations" in code and full_import.startswith("from typing import"):
             continue
         if name == "__name__":
+            continue
+        if name == "pytest" and fname == "Tests.py":
             continue
         rest = '\n'.join(lines[ln:])
         if name not in rest:
@@ -645,6 +648,7 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False) -> bool:
     expected = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
 
     last_error: str = ""
+    written: list[Path] = []
     for attempt in range(1, 4):
         print(f"[Runner] LLM attempt {attempt}/3...")
         if last_error:
@@ -663,7 +667,7 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False) -> bool:
             last_error = "No code blocks found in LLM response."
             print(f"[Runner] {last_error} Retrying...", file=sys.stderr)
             continue
-        written, deleted = write_code_blocks(files, target)
+        written, deleted = write_code_blocks(files, target, protect=set(p.name for p in written))
         for w in written:
             print(f"[Runner] Wrote {w}")
         bad = truncated_files(written)
