@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -156,11 +157,10 @@ def run_runner(persona_key: str, target: Path, task: str, error_path: Optional[P
     if error_path:
         cmd += ["--error", str(error_path)]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    print(result.stdout, end="")
-    if result.stderr:
-        print(result.stderr, file=sys.stderr, end="")
-    return result.returncode == 0
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1) as proc:
+        for line in proc.stdout:
+            print(line, end="", flush=True)
+    return proc.returncode == 0
 
 
 def run_scaffolder(args: list[str]) -> bool:
@@ -173,12 +173,27 @@ def run_scaffolder(args: list[str]) -> bool:
 
 
 def _derive_feature_name_from_path(path_str: str) -> str:
-    p = Path(path_str)
+    clean = path_str.strip().strip('"').strip("'")
+    m = re.search(r"features/([A-Za-z0-9_-]+)/([A-Za-z0-9_-]+)", clean)
+    if m:
+        return m.group(2)
+    p = Path(clean)
     stem = p.stem
-    name = "".join(word.capitalize() for word in stem.replace("-", "_").split("_"))
-    if not name:
-        name = "".join(word.capitalize() for word in p.parent.name.replace("-", "_").split("_"))
-    return name
+    if re.fullmatch(r"[A-Za-z0-9_./\\-]+", clean):
+        name = "".join(word.capitalize() for word in stem.replace("-", "_").split("_"))
+        if name:
+            return name
+        parent_name = "".join(word.capitalize() for word in p.parent.name.replace("-", "_").split("_"))
+        if parent_name:
+            return parent_name
+    words = re.findall(r"[A-Za-z]+", clean)
+    stopwords = {"the", "a", "an", "from", "into", "with", "for", "to", "in", "of", "and", "or", "is", "as", "by", "on", "at"}
+    significant = [w for w in words if w.lower() not in stopwords]
+    if len(significant) >= 2:
+        return significant[0].capitalize() + significant[1].capitalize()
+    if significant:
+        return significant[0].capitalize() + "Feature"
+    return "Feature"
 
 
 def _resolve_current_file() -> Optional[str]:
@@ -217,26 +232,111 @@ def _resolve_prompt_for_implicit(rest: str, prompt_content: str) -> Optional[str
     return rest.strip()
 
 
+def _ensure_shared_logger() -> None:
+    logger_path = REPO_ROOT / "shared" / "logger.py"
+    if logger_path.exists():
+        return
+    logger_path.parent.mkdir(parents=True, exist_ok=True)
+    logger_path.write_text(
+        'from __future__ import annotations\n'
+        '\n'
+        'import logging\n'
+        'from typing import Any\n'
+        '\n'
+        '\n'
+        'def logging_func(name: str) -> logging.Logger:\n'
+        '    return logging.getLogger(name)\n'
+    )
+    print(f"[Orchestrator] Created {logger_path.relative_to(REPO_ROOT)}")
+
+
+def _detect_features_dir(repo_root: Path) -> str:
+    candidates = [
+        "apps/backend/app/features",
+        "backend/src/features",
+        "backend/app/features",
+        "src/features",
+        "app/features",
+        "features",
+    ]
+    for path in candidates:
+        if (repo_root / path).is_dir():
+            return path
+    return "features"
+
+
+FEATURE_SCAN_DIRS = frozenset({
+    "scripts", "health", "web", "migrations", "private",
+    "db", "common", "tests", "factory",
+})
+
+
+def _detect_existing_features() -> dict[str, str]:
+    """Scan project directories for existing script/feature files."""
+    features: dict[str, str] = {}
+    for dirname in FEATURE_SCAN_DIRS:
+        d = REPO_ROOT / dirname
+        if not d.is_dir():
+            continue
+        for fp in sorted(d.rglob("*.py")):
+            fname = fp.stem
+            if fname.startswith("_"):
+                continue
+            if any(p.startswith(".") or p == "__pycache__" for p in fp.parts):
+                continue
+            dom = dirname
+            if fname not in features:
+                features[fname] = dom
+    return features
+
+
 def do_scaffold() -> None:
     if FEATURES_CONFIG.exists():
         print(f"[Orchestrator] {FEATURES_CONFIG} already exists.")
         return
 
+    features_dir = _detect_features_dir(REPO_ROOT)
+    existing = _detect_existing_features()
+
     payload: dict[str, Any] = {
-        "features_dir": "features",
-        "known_features": {},
+        "features_dir": features_dir,
+        "known_features": existing,
         "domain_keywords": {},
     }
     FEATURES_CONFIG.write_text(json.dumps(payload, indent=2) + "\n")
     print(f"[Orchestrator] Created {FEATURES_CONFIG}")
-    print(f"[Orchestrator] Features directory: {FEATURES_DIR.relative_to(REPO_ROOT)}/")
+    print(f"[Orchestrator] Features directory: {features_dir}/")
+
+    if existing:
+        print(f"[Orchestrator] Discovered {len(existing)} existing features:")
+        for fname, dom in sorted(existing.items()):
+            print(f"    {fname}  ({dom}/)")
     print()
-    print("Edit .features.json to change features_dir, then run:")
-    print(f"  ./.agents/orchestrator.py new/YourFeature")
+
+    _ensure_shared_logger()
+
+    print()
+    print("[Orchestrator] === Compliance Fix ===")
+    from .compliance_fixer import fix_all
+    fix_all()
+
+    print()
+    print("[Orchestrator] === Verification ===")
+    result = subprocess.run(
+        ["uv", "run", "pytest", "tests/test_compliance.py", "-v", "--tb=no"],
+        capture_output=True, text=True, cwd=str(REPO_ROOT),
+    )
+    print(result.stdout, end="")
+    if result.returncode == 0:
+        print("[Orchestrator] Project is compliant.")
+    else:
+        print("[Orchestrator] Some violations remain (see above). Re-run scaffold or fix manually.")
+    print()
+    print(f"Next: ./.agents/orchestrator.py new/YourFeature")
 
 
 _KNOWN_PREFIXES = frozenset({
-    "new", "feature", "modify", "bugfix", "do", "delete", "merge", "deploy", "scaffold", "scan",
+    "new", "feature", "modify", "bugfix", "do", "delete", "merge", "deploy", "scaffold", "scan", "rename",
 })
 
 
@@ -430,6 +530,28 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
     if prefix in ("modify", "bugfix"):
         if not action:
             current_file = _resolve_current_file()
+            if rest:
+                derived = _derive_feature_name_from_path(rest)
+                change_prompt = _resolve_prompt_for_implicit(rest, prompt_content)
+                if not change_prompt:
+                    print("[Orchestrator] No prompt provided.")
+                    return
+                check_branch(derived, prefix)
+                heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
+                real_feature = find_feature_dir(derived)
+                if real_feature:
+                    _rewrite_spec_with_ai(real_feature, change_prompt, heading)
+                    amend_spec(real_feature, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                    return
+                scaffold_new_feature("", derived, "", no_controller=True)
+                feature_dir = FEATURES_DIR / derived
+                if feature_dir.is_dir():
+                    register_feature_in_json(derived, "")
+                    _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
+                    amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                    return
+                print(f"[Orchestrator] Branch '{prefix}/{derived}' created. Not a project feature — no scaffolding.")
+                return
             if current_file:
                 derived = _derive_feature_name_from_path(current_file)
                 change_prompt = _resolve_prompt_for_implicit(rest, prompt_content)
@@ -450,7 +572,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                 else:
                     print(f"[Orchestrator] Branch '{prefix}/{derived}' created. Not a project feature — no scaffolding.")
                     return
-            print(f"[Orchestrator] No feature name given (modify/ expects a feature name or nvim context).")
+            print(f"[Orchestrator] No feature name given (modify/ expects a feature name, inline prompt, prompt file, or nvim context).")
             return
         feature_dir = _find_feature_or_resolve(action)
         if not feature_dir:
@@ -598,10 +720,75 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         print(f"[Orchestrator] Done. {feature_name} merged to main.")
         return
 
-    if prefix == "deploy":
-        print("=" * 60)
-        print("Deploy mode: follow DEPLOYMENT.md manually.")
-        print("=" * 60)
+    if prefix == "rename":
+        old_name = action
+        new_name = rest.strip().strip('"').strip("'")
+        if not old_name or not new_name:
+            print("[Orchestrator] Usage: rename/OldName NewName")
+            return
+        feature_dir = resolve_feature(old_name)
+        if not feature_dir or not feature_dir.exists():
+            print(f"[Orchestrator] Feature not found: {old_name}")
+            return
+        parent = feature_dir.parent
+        new_dir = parent / new_name
+        if new_dir.exists():
+            print(f"[Orchestrator] Target '{new_name}' already exists at {new_dir}")
+            return
+        old_name_disk = feature_dir.name
+        print(f"[Orchestrator] Renaming {old_name_disk} -> {new_name}...")
+        feature_dir.rename(new_dir)
+        features = load_features_config()
+        known = features.get("known_features", {})
+        if old_name_disk in known:
+            domain = known.pop(old_name_disk)
+            known[new_name] = domain
+            features["known_features"] = known
+            keywords = features.get("domain_keywords", {})
+            stale = [k for k, v in keywords.items() if len(v) >= 2 and v[1] == old_name_disk]
+            for k in stale:
+                del keywords[k]
+            with open(FEATURES_CONFIG, "w") as f:
+                json.dump(features, f, indent=2)
+            print(f"[Orchestrator] Updated features.json: {old_name_disk} -> {new_name}")
+        print(f"[Orchestrator] Running tests...")
+        result = subprocess.run(
+            ["uv", "run", "pytest", "tests/", "--ignore=tests/test_session_lifecycle.py", "--ignore=tests/test_links.py", "-q"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT),
+        )
+        test_ok = result.returncode == 0
+        if test_ok:
+            last = [l for l in result.stdout.strip().split("\n") if l][-3:]
+            print("\n".join(last))
+            print("[Orchestrator] All tests pass.")
+        else:
+            print(result.stdout[-500:] if len(result.stdout) > 500 else result.stdout)
+            print("[Orchestrator] Tests failed after rename. Check output above.")
+        current = current_branch()
+        merged = False
+        for br_prefix in ("feature/", "modify/", "bugfix/"):
+            old_branch = br_prefix + old_name_disk
+            new_branch = br_prefix + new_name
+            if old_branch == current:
+                print(f"[Orchestrator] Renaming branch {old_branch} -> {new_branch}...")
+                subprocess.run(["git", "branch", "-m", new_branch], cwd=str(REPO_ROOT))
+                subprocess.run(["git", "add", str(new_dir)], cwd=str(REPO_ROOT))
+                subprocess.run(["git", "commit", "-m", f"rename: {old_name_disk} -> {new_name}"], capture_output=True, cwd=str(REPO_ROOT))
+                if test_ok:
+                    print(f"[Orchestrator] Merging {new_branch} to main...")
+                    subprocess.run(["git", "push", "origin", new_branch], capture_output=True, cwd=str(REPO_ROOT))
+                    subprocess.run(["git", "checkout", "main"], capture_output=True, cwd=str(REPO_ROOT))
+                    subprocess.run(["git", "merge", new_branch], capture_output=True, cwd=str(REPO_ROOT))
+                    subprocess.run(["git", "push", "origin", "main"], capture_output=True, cwd=str(REPO_ROOT))
+                    subprocess.run(["git", "push", "origin", "--delete", new_branch], capture_output=True, cwd=str(REPO_ROOT))
+                    subprocess.run(["git", "branch", "-D", new_branch], capture_output=True, cwd=str(REPO_ROOT))
+                    print(f"[Orchestrator] Merged to main. Done.")
+                    merged = True
+                else:
+                    print(f"[Orchestrator] Tests failed — branch renamed to {new_branch}, not merged.")
+                break
+        if not merged:
+            print(f"[Orchestrator] Renamed {old_name_disk} -> {new_name}. git add + commit manually if needed.")
         return
 
     print("[Orchestrator] Unknown request.")

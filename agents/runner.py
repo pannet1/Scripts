@@ -38,6 +38,7 @@ REPO_ROOT = Path.cwd()
 AGENTS_DIR = Path(__file__).resolve().parent
 MODEL_CONFIG = AGENTS_DIR / "model_config.json"
 FEW_SHOT_COUNT = 2
+VERBOSE = False
 
 ZEN_URL = "https://opencode.ai/zen/v1/chat/completions"
 
@@ -94,8 +95,15 @@ def _zen_chat(prompt: str) -> str | None:
         }
         data = json.dumps(payload).encode()
         req = urllib.request.Request(ZEN_URL, data=data, headers=headers, method="POST")
+
+        prompt_preview = prompt[:500] + "..." if len(prompt) > 500 else prompt
+        safe_headers = {k: v for k, v in headers.items() if k.lower() != "authorization"}
+        print(f"[Runner] POST {ZEN_URL}", file=sys.stderr)
+        print(f"[Runner]   model={model}  chars={len(prompt)}  max_tokens=8192  temp=0.3", file=sys.stderr)
+        print(f"[Runner]   headers={json.dumps(safe_headers)}", file=sys.stderr)
+        print(f"[Runner]   --- prompt (first 500) ---\n{prompt_preview}\n   --- end prompt ---", file=sys.stderr)
+
         try:
-            print(f"[Runner] Sending {len(payload['messages'][0]['content'])} chars to model '{model}'...", file=sys.stderr)
             done = False
             def _tick():
                 while not done:
@@ -126,6 +134,9 @@ def _zen_chat(prompt: str) -> str | None:
             print(f"[Runner] Model '{model}' returned unexpected response: {e}", file=sys.stderr)
             continue
         content = (msg.get("content") or msg.get("reasoning_content") or "").strip()
+        resp_preview = content[:1000] + "..." if len(content) > 1000 else content
+        print(f"[Runner]   --- response ({len(content)} chars) ---\n{resp_preview}\n   --- end response ---", file=sys.stderr)
+
         if not content and model != fallbacks[-1]:
             print(f"[Runner] Model '{model}' returned empty response. Trying next...", file=sys.stderr)
             continue
@@ -392,14 +403,10 @@ def validate_constitution(repo_root: Path, target: Path) -> list[str]:
     """Enforce ALL 11 rules from AGENTS.md Section 3 via script code."""
     issues: list[str] = []
 
-    # 1. Python version: 3.10.* only
+    # 1. Python version file
     py_ver_file = repo_root / ".python-version"
-    if py_ver_file.exists():
-        ver = py_ver_file.read_text().strip()
-        if not ver.startswith("3.10"):
-            issues.append(f"Python version must be 3.10.*, got: {ver}")
-    else:
-        issues.append("Missing .python-version (must be 3.10.*)")
+    if not py_ver_file.exists():
+        issues.append("Missing .python-version")
 
     # 2. Package manager: uv only
     pyproject = repo_root / "pyproject.toml"
@@ -670,7 +677,7 @@ def run_pytest(test_path: Path) -> tuple[bool, str]:
     return passed, output
 
 
-def auto_backend(target: Path, prompt: str) -> bool:
+def auto_backend(target: Path, prompt: str, verbose: bool = False) -> bool:
     expected = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
 
     last_error: str = ""
@@ -753,7 +760,11 @@ def run() -> None:
     parser.add_argument("--error", type=Path, help="Path to error/traceback file (for fix loops)")
     parser.add_argument("--api", action="store_true", help="Auto mode: call opencode, write files, run tests")
     parser.add_argument("--prompt-only", action="store_true", help="Print prompt to stdout only (no API call)")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Print full prompt and response to stderr")
     args = parser.parse_args()
+    if args.verbose:
+        global VERBOSE
+        VERBOSE = True
 
     if not args.persona.exists():
         print(f"Error: persona not found: {args.persona}", file=sys.stderr)
@@ -775,7 +786,7 @@ def run() -> None:
         print(prompt)
         return
 
-    ok = auto_backend(args.target, prompt)
+    ok = auto_backend(args.target, prompt, verbose=args.verbose)
     if not ok:
         sys.exit(1)
 

@@ -10,35 +10,45 @@ The features directory is defined by the project's `.features.json` config (key 
 
 ## Environment Rules
 
-1. You are constrained to **Python 3.10**. Ensure all typing and syntax is strictly compatible with Python 3.10 (e.g., use `from typing import List, Dict, Optional` rather than the newer `list | dict` syntax if necessary).
+1. **Python 3.13** (managed by uv). All typing and syntax must be compatible with Python 3.13.
 2. The project uses **`uv`** for package management. Use `uv add <package>` for new dependencies. Never `pip`.
+3. No `requirements.txt` — all deps in `pyproject.toml`.
 
 ## Behavior Rules
 
-1. **Vertical Slice Pattern**: Every feature gets 4 files in its own directory: `*Controller.py`, `*Handler.py`, `*Schema.py`, `*Tests.py`. Place them under the feature's spec-defined directory.
+1. **Vertical Slice Pattern**: Every feature gets exactly 4 files in its own directory. You MUST output ALL 4 files: `Schema.py`, `Handler.py`, `Controller.py`, `Tests.py`. Never skip a file.
 
-2. **Handler First**: Write pure business logic in the Handler. No I/O, no framework imports. Every dependency is a parameter.
+2. **Handler First**: Write pure business logic in the Handler as a class with methods. No I/O, no framework imports. Every dependency is a parameter (e.g., `conn: sqlite3.Connection`). Handler MUST define a class with a module-level `logger = ...` right after imports.
 
-3. **Controller is a Shell**: The Controller parses input, instantiates the Handler, calls `.execute()`, formats the result. No business logic.
+3. **Controller is a Shell**: The Controller parses input, calls Handler methods, formats response. No business logic. Define router as `router = APIRouter(prefix=...)` and tag it.
 
-4. **Schema Validates**: Use Pydantic v2 for input schemas. Validate at the Controller boundary only.
+4. **Schema Validates**: Use Pydantic v2 `BaseModel` for input/output models. No logic in Schema files.
 
-5. **Tests Cover Edges**: Every Handler gets unit tests — happy path, empty state, zero values, type mismatches.
+5. **Tests Cover Edges**: Every Handler method gets a unit test — happy path, empty state, error cases. Tests should create a temp DB, insert test data, call handler methods, assert results, clean up.
 
-## Constraints
+## Constraints (MANDATORY — violation = rejection)
 
-- Time: use `pendulum` only. Never `datetime`, `time`, `calendar`.
-- Logging: `from shared.logger import logging_func; logger = logging_func(__name__)`. Never bare `logging.getLogger(__name__)`. Never `print()` (use `logger.info()` instead).
-- No comments in generated code.
-- No hardcoded paths. Use config or constants for paths.
+1. **Type annotations**: Every function signature MUST have type annotations on ALL parameters and return types (PEP 484). Use `from __future__ import annotations` at the top of every file.
+
+2. **Logging**: Every `.py` file MUST use `from shared.logger import logging_func; logger = logging_func(__name__)`. Never `logging.getLogger(__name__)`. Never `print()` (use `logger.info()` instead). The Handler class MUST have a module-level `logger = ...`.
+
+3. **Zero comments**: Generated code must have NO comments. No `#` lines at all (except shebang on line 1 if needed).
+
+4. **No emojis**: Never include emoji characters in any file.
+
+5. **No `conn.execute()` in Handler**: Handler must use `db/manager.py` functions for persistence, not raw SQL.
+
+6. **No stdlib time**: Never `import datetime`, `import time`, or `import calendar`. Use string timestamps or the project's time handling.
+
+7. **Handler class pattern**: Handler must be a class (not standalone functions). Controller instantiates `handler = Handler()` and calls methods on it.
 
 ## Read Scope
 
-- Read `CONSTITUTION.md` (via `AGENTS.md` symlink) for project rules
-- Read feature `spec.md` files in the feature's directory for implementation context
-- Read the project's `pyproject.toml` for workspace structure
+- Read the feature's `spec.md` for implementation context
+- Read existing files in the feature directory to understand what's already there
 
 ## Write Scope
 
-- Write only within the feature's directory (`<features_dir>/<domain>/<ActionName>/`)
+- Write only the 4 files in the feature's directory
 - Never modify files outside your feature slice
+- Output ONLY valid JSON with keys "Schema.py", "Handler.py", "Controller.py", "Tests.py" — no explanation, no markdown
