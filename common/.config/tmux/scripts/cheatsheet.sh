@@ -43,8 +43,8 @@ cat <<'EOF'
 │    prefix+Space tmux-thumbs — fuzzy select & yank text              │
 │    prefix+q    clear current pane                                   │
 │                                                                     │
-│  PLUGINS                                                            │
-│    prefix+I    install TPM plugins                                  │
+│  PLUGINS (TPM)                                                      │
+│    prefix+I    install / reload TPM plugins                         │
 │    prefix+U    update TPM plugins                                   │
 │                                                                     │
 │  MISC                                                               │
