@@ -5,11 +5,35 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
-from .config import REPO_ROOT, AGENTS_DIR, FEATURES_DIR, FEATURES_CONFIG, KNOWN_FEATURES, DOMAIN_KEYWORDS, RUNNER, PERSONAS_DIR, load_features_config
+from .config import REPO_ROOT, AGENTS_DIR, FEATURES_DIR, FEATURES_CONFIG, KNOWN_FEATURES, DOMAIN_KEYWORDS, RUNNER, SCAFFOLDER, PERSONAS_DIR, load_features_config
 from .templates import SPEC_TEMPLATE, DEFAULT_OVERVIEW, CODE_TEMPLATES
 from .zen_api import generate_spec_with_ai
 from .git_ops import current_branch, unmerged_branches, branch_exists, check_branch, read_prompt_file
 from .features import resolve_feature, find_feature_dir, register_feature_in_json, unregister_feature_from_json, _scan_existing_features
+
+
+def _remote_pr_url(branch: str) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True, text=True, timeout=5,
+        )
+        remote = result.stdout.strip()
+    except Exception:
+        remote = ""
+    if remote.startswith("https://"):
+        base = remote.removesuffix(".git")
+    elif remote.startswith("git@"):
+        parts = remote.replace(":", "/").split("/")
+        if len(parts) >= 2:
+            base = f"https://{parts[0].replace('git@', '')}/{parts[-2]}/{parts[-1].removesuffix('.git')}"
+        else:
+            base = ""
+    else:
+        base = ""
+    if base:
+        return f"{base}/pull/new/{branch}"
+    return f"https://github.com/(your-org)/(your-repo)/pull/new/{branch}"
 
 
 def read_file(path: Path) -> str:
@@ -139,6 +163,15 @@ def run_runner(persona_key: str, target: Path, task: str, error_path: Optional[P
     return result.returncode == 0
 
 
+def run_scaffolder(args: list[str]) -> bool:
+    cmd = [sys.executable, str(SCAFFOLDER)] + args
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, file=sys.stderr, end="")
+    return result.returncode == 0
+
+
 def _derive_feature_name_from_path(path_str: str) -> str:
     p = Path(path_str)
     stem = p.stem
@@ -203,7 +236,7 @@ def do_scaffold() -> None:
 
 
 _KNOWN_PREFIXES = frozenset({
-    "new", "feature", "modify", "bugfix", "do", "delete", "merge", "deploy", "scaffold",
+    "new", "feature", "modify", "bugfix", "do", "delete", "merge", "deploy", "scaffold", "scan",
 })
 
 
@@ -293,23 +326,28 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         prefix = verb.lower()
         action = rest.strip()
 
-    if prefix in ("new", "scaffold"):
-        prefix = "feature"
-
     if prefix not in _KNOWN_PREFIXES:
         print("[Orchestrator] Unknown command.")
         print()
         print("Commands:")
         print('  ./.agents/orchestrator.py modify/path/to/file.py  (resolve + modify)')
-        print('  ./.agents/orchestrator.py new/ManageCandle        (scaffold new feature)')
-        print('  ./.agents/orchestrator.py do/ManageCandle         (run backend agent)')
-        print('  ./.agents/orchestrator.py bugfix/ManageCandle     (document defect)')
-        print('  ./.agents/orchestrator.py delete/ManageCandle     (remove feature)')
+        print('  ./.agents/orchestrator.py new/YourFeature         (scaffold new feature)')
+        print('  ./.agents/orchestrator.py do/YourFeature          (run backend agent)')
+        print('  ./.agents/orchestrator.py bugfix/YourFeature      (document defect)')
+        print('  ./.agents/orchestrator.py delete/YourFeature      (remove feature)')
+        print('  ./.agents/orchestrator.py scan                    (discover existing features)')
         sys.exit(1)
 
     if prefix == "scaffold" and not action:
         do_scaffold()
         return
+
+    if prefix in ("new", "scaffold"):
+        prefix = "feature"
+
+    if prefix == "scan":
+        ok = run_scaffolder(["scan"])
+        sys.exit(0 if ok else 1)
 
     if prefix == "feature":
         description = resolve_change_prompt(rest, prompt_content, action, "feature")
@@ -379,7 +417,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
             print(f'  git commit -m "{commit_type}: {feature_dir.name}"')
             print(f"  git push origin {branch}\n")
             print("Then open a Pull Request on GitHub:")
-            print(f"  https://github.com/pannet1/fti-holdings/pull/new/{branch}")
+            print(f"  {_remote_pr_url(branch)}")
             print("=" * 60)
         else:
             print(f"\n{'='*60}")
@@ -398,14 +436,19 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                 if not change_prompt:
                     print("[Orchestrator] No prompt provided.")
                     return
-                heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
                 check_branch(derived, prefix)
-                scaffold_new_feature("", derived, f"{prefix.title()} {current_file}", no_controller=True)
-                feature_dir = FEATURES_DIR / derived
-                if feature_dir.is_dir():
-                    register_feature_in_json(derived, "")
-                    _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
-                    amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                real_feature = find_feature_dir(derived)
+                if real_feature:
+                    heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
+                    scaffold_new_feature("", derived, f"{prefix.title()} {current_file}", no_controller=True)
+                    feature_dir = FEATURES_DIR / derived
+                    if feature_dir.is_dir():
+                        register_feature_in_json(derived, "")
+                        _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
+                        amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                        return
+                else:
+                    print(f"[Orchestrator] Branch '{prefix}/{derived}' created. Not a project feature — no scaffolding.")
                     return
             print(f"[Orchestrator] No feature name given (modify/ expects a feature name or nvim context).")
             return
@@ -415,16 +458,22 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
             if resolved_path.exists() and resolved_path.is_file():
                 derived = _derive_feature_name_from_path(action)
                 change_prompt = resolve_change_prompt(rest, prompt_content, derived, prefix)
-                heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
                 check_branch(derived, prefix)
-                scaffold_new_feature("", derived, f"{prefix.title()} {action}", no_controller=True)
-                feature_dir = FEATURES_DIR / derived
-                if feature_dir.is_dir():
-                    register_feature_in_json(derived, "")
-                    _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
-                    amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                real_feature = find_feature_dir(derived)
+                if real_feature:
+                    heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
+                    scaffold_new_feature("", derived, f"{prefix.title()} {action}", no_controller=True)
+                    feature_dir = FEATURES_DIR / derived
+                    if feature_dir.is_dir():
+                        register_feature_in_json(derived, "")
+                        _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
+                        amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                        return
+                else:
+                    print(f"[Orchestrator] Branch '{prefix}/{derived}' created. Not a project feature — no scaffolding.")
                     return
-            print(f"[Orchestrator] Feature not found: {action}")
+            check_branch(action, prefix)
+            print(f"[Orchestrator] Branch '{prefix}/{action}' created. Not a project feature — no scaffolding.")
             return
         resolved_name = feature_dir.name
         change_prompt = resolve_change_prompt(rest, prompt_content, resolved_name, prefix)
@@ -558,10 +607,11 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
     print("[Orchestrator] Unknown request.")
     print()
     print("Commands:")
-    print('  ./.agents/orchestrator.py ManageCandle               (auto-resolves to modify/)')
-    print('  ./.agents/orchestrator.py new/ManageCandle           (scaffold new feature)')
-    print('  ./.agents/orchestrator.py do/ManageCandle            (run backend agent)')
-    print('  ./.agents/orchestrator.py modify/ManageCandle        (amend existing spec)')
-    print('  ./.agents/orchestrator.py bugfix/ManageCandle        (document defect)')
-    print('  ./.agents/orchestrator.py delete/ManageCandle        (remove feature)')
+    print('  ./.agents/orchestrator.py YourFeature                (auto-resolves to modify/)')
+    print('  ./.agents/orchestrator.py new/YourFeature            (scaffold new feature)')
+    print('  ./.agents/orchestrator.py do/YourFeature             (run backend agent)')
+    print('  ./.agents/orchestrator.py modify/YourFeature         (amend existing spec)')
+    print('  ./.agents/orchestrator.py bugfix/YourFeature         (document defect)')
+    print('  ./.agents/orchestrator.py delete/YourFeature         (remove feature)')
     print('  ./.agents/orchestrator.py scaffold                   (init project)')
+    print('  ./.agents/orchestrator.py scan                       (discover existing features)')

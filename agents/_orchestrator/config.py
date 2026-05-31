@@ -22,6 +22,7 @@ def _get_features_dir() -> Path:
 
 FEATURES_DIR = _get_features_dir()
 RUNNER = AGENTS_DIR / "runner.py"
+SCAFFOLDER = AGENTS_DIR / "scaffolder.py"
 PERSONAS_DIR = AGENTS_DIR / "personas"
 MODEL_CONFIG = AGENTS_DIR / "model_config.json"
 

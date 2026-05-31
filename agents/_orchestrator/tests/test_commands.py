@@ -13,7 +13,7 @@ from _orchestrator.commands import (
 class TestKnownPrefixes:
 
     def test_includes_all_commands(self) -> None:
-        expected = {"new", "feature", "do", "modify", "bugfix", "delete", "merge", "deploy", "scaffold"}
+        expected = {"new", "feature", "do", "modify", "bugfix", "delete", "merge", "deploy", "scaffold", "scan"}
         assert _KNOWN_PREFIXES == expected
 
 

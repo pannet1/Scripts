@@ -16,7 +16,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "command",
         nargs="*",
-        help="e.g. feature/ManageCandle / do/ManageCandle / modify/RunRatchetStrategy",
+        help="e.g. feature/YourFeature / do/YourFeature / modify/YourFeature",
     )
     parser.add_argument(
         "--prompt", "-p",
@@ -38,13 +38,14 @@ def parse_args() -> argparse.Namespace:
         parser.print_help()
         print()
         print("Commands:")
-        print("  ./.agents/orchestrator.py ManageCandle               (auto-resolves to modify/)")
-        print("  ./.agents/orchestrator.py new/ManageCandle           (scaffold new feature)")
-        print("  ./.agents/orchestrator.py do/ManageCandle            (run backend agent)")
-        print("  ./.agents/orchestrator.py modify/ManageCandle        (amend existing spec)")
-        print("  ./.agents/orchestrator.py bugfix/ManageCandle        (document defect)")
-        print("  ./.agents/orchestrator.py delete/ManageCandle        (remove feature)")
+        print("  ./.agents/orchestrator.py YourFeature                (auto-resolves to modify/)")
+        print("  ./.agents/orchestrator.py new/YourFeature            (scaffold new feature)")
+        print("  ./.agents/orchestrator.py do/YourFeature             (run backend agent)")
+        print("  ./.agents/orchestrator.py modify/YourFeature         (amend existing spec)")
+        print("  ./.agents/orchestrator.py bugfix/YourFeature         (document defect)")
+        print("  ./.agents/orchestrator.py delete/YourFeature         (remove feature)")
         print("  ./.agents/orchestrator.py scaffold                   (init project)")
+        print("  ./.agents/orchestrator.py scan                       (discover existing features)")
         sys.exit(1)
     return args
 

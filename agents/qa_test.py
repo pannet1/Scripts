@@ -4,7 +4,7 @@ QA Test Runner — Full Feature Regression + Code Standards Audit.
 
 Usage: python3 qa_test.py
 
-Runs pytest on every feature listed in .agents/features.json,
+Runs pytest on every feature listed in .features.json,
 audits all .py files for code standard violations, and prints a report.
 """
 import ast
@@ -15,9 +15,39 @@ from pathlib import Path
 
 REPO = Path.cwd()
 _FEATURES_JSON = REPO / ".features.json"
-FEATURES_JSON = _FEATURES_JSON if _FEATURES_JSON.exists() else REPO / ".agents" / "features.json"
-BACKEND_DIR = REPO / "apps" / "backend"
-FEATURES_DIR = "app/features"
+FEATURES_FILE = _FEATURES_JSON if _FEATURES_JSON.exists() else REPO / ".agents" / "features.json"
+
+
+def _get_features_dir() -> Path:
+    if FEATURES_FILE.exists():
+        try:
+            cfg = json.loads(FEATURES_FILE.read_text())
+            dir_name = cfg.get("features_dir", "features")
+            return REPO / dir_name
+        except Exception:
+            pass
+    return REPO / "features"
+
+
+def _get_known_features() -> dict[str, str]:
+    if FEATURES_FILE.exists():
+        try:
+            return json.loads(FEATURES_FILE.read_text()).get("known_features", {})
+        except Exception:
+            pass
+    return {}
+
+
+FEATURES_DIR = _get_features_dir()
+
+
+def _should_skip(path: Path) -> bool:
+    rel = path.relative_to(REPO)
+    parts = rel.parts
+    for skip in (".agents", "__pycache__", ".git", ".venv", ".mypy_cache", ".ruff_cache", "__init__.py"):
+        if skip in parts:
+            return True
+    return False
 
 
 def audit_py_file(path: Path) -> list[str]:
@@ -25,21 +55,18 @@ def audit_py_file(path: Path) -> list[str]:
     violations: list[str] = []
     lines = text.splitlines()
 
-    # Gate 0a: comments
     for i, line in enumerate(lines, 1):
         s = line.strip()
         if s and s[0] == "#" and "noqa" not in s and "# -*-" not in s and "#!/" not in s:
             violations.append(f"  comment at {path.name}:{i}")
             break
 
-    # Gate 0b: print()
     for i, line in enumerate(lines, 1):
         s = line.strip()
         if "print(" in s and "logger" not in s and not s.startswith("#"):
             violations.append(f"  print() at {path.name}:{i}")
             break
 
-    # Gate 1: AST-based type annotation check
     try:
         tree = ast.parse(text)
     except SyntaxError:
@@ -55,7 +82,6 @@ def audit_py_file(path: Path) -> list[str]:
         if node.returns is None:
             violations.append(f"  {path.name}: {fn} missing return type")
 
-        # Check None defaults without Optional
         defaults = [None] * (len(node.args.args) - len(node.args.defaults)) + node.args.defaults
         for arg, default in zip(node.args.args, defaults):
             if arg.annotation is None:
@@ -72,8 +98,7 @@ def audit_py_file(path: Path) -> list[str]:
 
 
 def main() -> int:
-    with open(FEATURES_JSON) as f:
-        features = json.load(f)["known_features"]
+    features = _get_known_features()
 
     all_passed: list[str] = []
     all_failed: list[str] = []
@@ -84,32 +109,28 @@ def main() -> int:
     print("=" * 50)
     print()
 
-    # Audit non-feature app files (main.py, etc.)
-    app_root = BACKEND_DIR / "app"
-    for py_file in sorted(app_root.glob("*.py")):
+    for py_file in sorted(REPO.glob("*.py")):
+        if _should_skip(py_file):
+            continue
         for v in audit_py_file(py_file):
             all_violations.append(f"    app/{v.lstrip()}")
 
     for name, domain in features.items():
-        test_path = f"{FEATURES_DIR}/{domain}/{name}/Tests.py"
-        abs_test = BACKEND_DIR / test_path
-        if not abs_test.exists():
+        feat_dir = FEATURES_DIR / domain / name if domain else FEATURES_DIR / name
+        test_file = feat_dir / "Tests.py"
+        if not test_file.exists():
             continue
-
-        feat_dir = BACKEND_DIR / FEATURES_DIR / domain / name
 
         print(f"  [{domain}/{name}]")
 
-        # Audit code standards
         for py_file in sorted(feat_dir.glob("*.py")):
             for v in audit_py_file(py_file):
                 all_violations.append(f"    {domain}/{name}/{v}")
 
-        # Run tests
         result = subprocess.run(
-            ["uv", "run", "pytest", str(test_path), "-v"],
+            ["uv", "run", "pytest", str(test_file), "-v"],
             capture_output=True, text=True,
-            cwd=str(BACKEND_DIR), timeout=120,
+            cwd=str(REPO), timeout=120,
         )
         for line in result.stdout.splitlines():
             if " PASSED" in line:
@@ -122,7 +143,6 @@ def main() -> int:
                 all_failed.append(f"      {domain}/{name} :: {t}")
         print()
 
-    # Summary
     print("=" * 50)
     print(" Code Standards Violations")
     print("=" * 50)
@@ -151,7 +171,7 @@ def main() -> int:
         print("    (none)")
     print()
 
-    n_features = sum(1 for n, d in features.items() if (BACKEND_DIR / f"{FEATURES_DIR}/{d}/{n}/Tests.py").exists())
+    n_features = sum(1 for n, d in features.items() if (FEATURES_DIR / d / n / "Tests.py" if d else FEATURES_DIR / n / "Tests.py").exists())
     print(f"{'=' * 50}")
     print(f" Summary: {len(all_passed)} passed, {len(all_failed)} failed, {n_features} feature slices")
     print(f"{'=' * 50}")

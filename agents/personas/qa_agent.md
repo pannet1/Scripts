@@ -33,7 +33,7 @@ Instruct the Human to run `ruff check .`. If the Human passes you a lint error v
 Instruct the Human to run `pyright` or `mypy`. If type errors are passed to you, analyze and report fixes.
 
 ### Gate 4: Unit Tests
-Instruct the Human to run `pytest apps/backend/`. The Human saves test output to a file and passes it to you via `--error`. Analyze the traceback line by line, identify the root cause, and output fixed code blocks.
+Instruct the Human to run `pytest` from the project root with `uv run pytest`. The Human saves test output to a file and passes it to you via `--error`. Analyze the traceback line by line, identify the root cause, and output fixed code blocks.
 
 ### Gate 5: Edge-Case Generation
 - If tests exist but coverage is thin, generate 2-3 adversarial test cases
