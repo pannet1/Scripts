@@ -172,38 +172,28 @@ def collect_target_files(target: Path) -> dict:
 def build_prompt(persona: str, target: Path, target_files: dict, task: str, error: str) -> str:
     parts: list[str] = []
     parts.append(persona)
-    parts.append("")
     parts.append(f"## Target Directory\n{target}")
-    parts.append("")
 
     spec = target_files.get("spec.md", "")
     if spec:
         parts.append("## Specification (spec.md)\n" + spec)
-        parts.append("")
 
-    # Few-shot examples from real working features
     examples = collect_examples(target)
     if examples:
-        parts.append("## Reference Examples (real working code — match this style exactly)")
-        parts.append("")
+        parts.append("## Reference Examples")
         for ex in examples:
-            parts.append(f"### {ex['name']} ({ex['dir']})")
             for fname in ("Schema.py", "Handler.py", "Controller.py"):
                 content = ex["files"].get(fname, "")
                 if content:
-                    parts.append(f"```python\n# {fname}\n{content}\n```")
-                    parts.append("")
+                    parts.append(f"```python\n# {fname} ({ex['dir']})\n{content}\n```")
 
     for fname in ["Schema.py", "Handler.py", "Controller.py", "Tests.py"]:
         content = target_files.get(fname, "")
         if content:
             parts.append(f"## Existing: {fname}\n{content}")
-            parts.append("")
     if error:
         parts.append("## Error / Test Failure\n```\n" + error + "\n```")
-        parts.append("")
     parts.append("## Task\n" + task)
-    parts.append("")
     parts.append(
         "## Compliance Requirements (MANDATORY)\n"
         "Your output MUST follow these rules EXACTLY:\n"
