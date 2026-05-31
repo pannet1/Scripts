@@ -308,13 +308,21 @@ def write_code_blocks(files: dict[str, str], target: Path) -> tuple[list[Path], 
         written.append(path)
         produced.add(fname)
 
-    for fname in expected:
+    for fname in list(expected):
         if fname not in produced:
             path = target / fname
             if path.exists():
                 path.unlink()
                 deleted.append(path)
                 print(f"[Runner] Deleted {fname} (absent from AI output)")
+
+    all_on_disk = {p.name for p in target.iterdir() if p.suffix == ".py"}
+    unexpected = all_on_disk - produced - {p.name for p in deleted}
+    for fname in unexpected:
+        path = target / fname
+        path.unlink()
+        deleted.append(path)
+        print(f"[Runner] Deleted unexpected file {fname}")
 
     return written, deleted
 
@@ -385,11 +393,10 @@ def check_unused_imports(code: str, fname: str) -> list[str]:
                 top = alias.split('.')[0]
                 if top and top != '_':
                     imports.append((top, i + 1, f"import {part.strip()}"))
-    has_future_annotations = "from __future__ import annotations" in code
     for name, ln, full_import in imports:
-        if has_future_annotations and name in ("List", "Dict", "Optional", "Tuple", "Set", "Callable", "Type", "Any"):
+        if full_import.startswith("from __future__"):
             continue
-        if has_future_annotations and full_import.startswith("from typing import"):
+        if "from __future__ import annotations" in code and full_import.startswith("from typing import"):
             continue
         if name == "__name__":
             continue
