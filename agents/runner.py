@@ -304,6 +304,8 @@ def validate_code_standards(written: list[Path]) -> list[str]:
                 violations.append(f"{p.name}:{i} print() found")
             if re.search(r'[\U0001F600-\U0010FFFF]', stripped):
                 violations.append(f"{p.name}:{i} emoji found")
+        for m in re.finditer(r'^(?:from\s+(flask|sqlalchemy)\s+import|import\s+(flask|sqlalchemy))', text, re.MULTILINE):
+            violations.append(f"{p.name}: forbidden import '{m.group(0)}' — use FastAPI, not Flask/SQLAlchemy")
         for m in re.finditer(r'^(?:    )*def (\w+)\(', text, re.MULTILINE):
             start = m.start()
             depth = 1

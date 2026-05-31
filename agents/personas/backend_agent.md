@@ -13,6 +13,15 @@ The features directory is defined by the project's `.features.json` config (key 
 3. **Controller is a Shell**: The Controller parses input, calls Handler methods, formats response. No business logic. Define router as `router = APIRouter(prefix=...)` and tag it.
 4. **Schema Validates**: Use Pydantic v2 `BaseModel` for input/output models. No logic in Schema files.
 5. **Tests Cover Edges**: Every Handler method gets a unit test — happy path, empty state, error cases. Tests should create a temp DB, insert test data, call handler methods, assert results, clean up.
+## Framework (MANDATORY)
+- Web framework: **FastAPI only** (`from fastapi import ...`)
+- ORM/DB: **raw SQLite via `db/manager.py`** only. Never SQLAlchemy, never Flask-SQLAlchemy.
+- NEVER use: `flask`, `sqlalchemy`, `django`, `tornado`, `bottle`, `pyramid`.
+- Auth: `from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials`
+- JWT: `from jose import jwt, JWTError`
+- Templates: `from fastapi.templating import Jinja2Templates`
+- Static: `from fastapi.staticfiles import StaticFiles`
+
 ## Constraints (MANDATORY — violation = rejection)
 1. **Type annotations**: Every function signature MUST have type annotations on ALL parameters and return types (PEP 484). Use `from __future__ import annotations` at the top of every file.
 2. **Logging**: Every `.py` file MUST use `from shared.logger import logging_func; logger = logging_func(__name__)`. Never `logging.getLogger(__name__)`. Never `print()` (use `logger.info()` instead). The Handler class MUST have a module-level `logger = ...`.
