@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 from typing import Any, Optional
 
@@ -83,6 +84,7 @@ def scaffold_new_feature(domain: str, action: str, overview: str = "", no_contro
         ai_spec = generate_spec_with_ai(domain, action, overview)
         if ai_spec:
             (slice_dir / "spec.md").write_text(ai_spec)
+            _qa_spec(slice_dir / "spec.md", overview, f"new:{action}")
         else:
             overview_text = format_spec_overview(overview)
             spec = SPEC_TEMPLATE.format(
@@ -114,6 +116,84 @@ def scaffold_new_feature(domain: str, action: str, overview: str = "", no_contro
     return slice_dir
 
 
+MAX_SPEC_QA_ATTEMPTS = 3
+
+
+def _validate_spec(spec: str, original_prompt: str) -> tuple[bool, str]:
+    """Validate spec against the original prompt, returning (is_valid, corrected_spec)."""
+    from .zen_api import _zen_chat, _zen_session_id, _zen_api_key
+
+    api_key = _zen_api_key()
+    project_id = str(uuid.uuid4())
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+        "x-opencode-project": project_id,
+        "x-opencode-session": _zen_session_id(),
+        "x-opencode-request": str(uuid.uuid4()),
+        "x-opencode-client": "python-script",
+        "User-Agent": "opencode/1.15.4",
+    }
+    from .config import MODEL_CONFIG
+    model = "deepseek-v4-flash"
+    if MODEL_CONFIG.exists():
+        try:
+            cfg = json.loads(MODEL_CONFIG.read_text())
+            model = cfg.get("model", model)
+        except Exception:
+            pass
+
+    system = (
+        "You are a spec QA validator. Compare the provided spec against the original prompt. "
+        "List every discrepancy you find (wrong method signatures, missing sections, incorrect terminology, "
+        "wrong response fields, wrong storage model, missing dependencies, wrong routes). "
+        "Be pedantic. If the spec is fully correct, reply with exactly: VALID\n\n"
+        "If there are issues, reply with ISSUES (one per line prefixed with -), "
+        "then a blank line, then the COMPLETE corrected spec in markdown format."
+    )
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": f"## Original Prompt\n\n{original_prompt}\n\n## Generated Spec\n\n{spec}"},
+        ],
+        "max_tokens": 4096,
+        "temperature": 0.2,
+    }
+    result = _zen_chat(headers, payload)
+    if result is None:
+        return True, spec
+    result = result.strip()
+    if result.startswith("VALID"):
+        return True, spec
+    lines = result.split("\n")
+    corrected = []
+    in_spec = False
+    for line in lines:
+        if line.startswith("#") and not line.startswith("-") and not in_spec:
+            in_spec = True
+        if in_spec:
+            corrected.append(line)
+    if corrected:
+        new_spec = "\n".join(corrected).strip()
+        return False, new_spec
+    return False, spec
+
+
+def _qa_spec(spec_path: Path, original_prompt: str, label: str) -> None:
+    """Run quality assurance loop on a spec file against the original prompt."""
+    for attempt in range(1, MAX_SPEC_QA_ATTEMPTS + 1):
+        spec = spec_path.read_text()
+        is_valid, corrected = _validate_spec(spec, original_prompt)
+        if is_valid:
+            print(f"[Orchestrator] Spec QA passed ({label})")
+            return
+        print(f"[Orchestrator] Spec QA issue found ({label}), attempt {attempt}/{MAX_SPEC_QA_ATTEMPTS}")
+        spec_path.write_text(corrected)
+    print(f"[Orchestrator] Spec QA exhausted {MAX_SPEC_QA_ATTEMPTS} attempts — spec may still have issues ({label})")
+
+
 def amend_spec(feature_dir: Path, heading: str, branch_prefix: str, feature_name: str = "") -> None:
     display = feature_name or feature_dir.name
     print(f"\n{'='*60}\n{heading} for {display}")
@@ -138,6 +218,9 @@ def _rewrite_spec_with_ai(feature_dir: Path, change_prompt: str, section: str) -
     else:
         spec_path.write_text(amendment)
     print(f"[Orchestrator] spec.md amended with structured '{heading}' section")
+
+    _qa_spec(spec_path, change_prompt, f"amend:{heading}")
+
     return True
 
 
