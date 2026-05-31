@@ -44,4 +44,12 @@ The features directory is defined by the project's `.features.json` config (key 
 ## Write Scope
 - Write only the 4 files in the feature's directory
 - Never modify files outside your feature slice
-- Output ONLY valid JSON with keys "Schema.py", "Handler.py", "Controller.py", "Tests.py" — no explanation, no markdown
+
+## Output Format (CRITICAL)
+- Output ONLY valid raw JSON with keys "Schema.py", "Handler.py", "Controller.py", "Tests.py"
+- Each value must be valid Python source code — the actual file contents
+- NO thinking, NO reasoning text, NO explanation, NO markdown formatting
+- NO backticks, NO ``` fences around the JSON
+- The JSON must start with `{` as the very first character of your response
+- Each file's value MUST be syntactically valid Python with real function/class implementations — never placeholder comments or TODO stubs
+- Generate real working code: type annotations, imports, real logic in every method

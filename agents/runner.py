@@ -67,7 +67,7 @@ def _zen_model() -> str:
     return ZEN_FALLBACKS[0]
 
 
-def _zen_chat(prompt: str) -> str | None:
+def _zen_chat(prompt: str, persona: str = "") -> str | None:
     fallbacks = ZEN_FALLBACKS[:]
     selected = _zen_model()
     if selected in fallbacks:
@@ -86,10 +86,15 @@ def _zen_chat(prompt: str) -> str | None:
         "User-Agent": "opencode/1.15.4",
     }
 
+    messages = []
+    if persona:
+        messages.append({"role": "system", "content": persona})
+    messages.append({"role": "user", "content": prompt})
+
     for model in fallbacks:
         payload = {
             "model": model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
             "max_tokens": 8192,
             "temperature": 0.3,
         }
@@ -173,7 +178,6 @@ def collect_target_files(target: Path) -> dict:
 
 def build_prompt(persona: str, target: Path, target_files: dict, task: str, error: str) -> str:
     parts: list[str] = []
-    parts.append(persona)
     parts.append(f"## Target Directory\n{target}")
 
     spec = target_files.get("spec.md", "")
@@ -199,8 +203,8 @@ def build_prompt(persona: str, target: Path, target_files: dict, task: str, erro
     return "\n".join(parts)
 
 
-def call_llm(prompt: str) -> str:
-    response = _zen_chat(prompt)
+def call_llm(prompt: str, persona: str = "") -> str:
+    response = _zen_chat(prompt, persona=persona)
     if response is None:
         print(f"[Runner] LLM call failed.", file=sys.stderr)
         sys.exit(1)
@@ -210,8 +214,21 @@ def call_llm(prompt: str) -> str:
 def _unescape(text: str) -> str:
     return text.replace("\\n", "\n")
 
+def strip_preamble(text: str) -> str:
+    idx = text.find("{")
+    if idx < 0:
+        idx = text.find("[")
+    if idx >= 0 and idx > 0:
+        before = text[:idx].strip()
+        if before:
+            print(f"[Runner] Stripped {len(before)} chars of preamble from response", file=sys.stderr)
+        text = text[idx:]
+    return text
+
 def extract_code_blocks(text: str) -> dict[str, str]:
     files: dict[str, str] = {}
+
+    text = strip_preamble(text)
 
     # Primary: try JSON (both bare and fenced)
     files = extract_json_blocks(text)
@@ -661,7 +678,7 @@ def run_pytest(test_path: Path) -> tuple[bool, str]:
     return passed, output
 
 
-def auto_backend(target: Path, prompt: str, verbose: bool = False) -> bool:
+def auto_backend(target: Path, prompt: str, verbose: bool = False, persona: str = "", spec: str = "") -> bool:
     expected = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
     t_total = time.time()
 
@@ -673,14 +690,18 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False) -> bool:
         if last_error:
             current = {p.name: p.read_text() for p in target.iterdir() if p.suffix == ".py"}
             current_block = "\n".join(f"### {f}\n```python\n{c}\n```" for f, c in sorted(current.items()))
-            retry_prompt = (
+            retry_parts = []
+            if spec:
+                retry_parts.append("## Specification (spec.md)\n" + spec)
+            retry_parts.append(
                 "Fix the violations below. Output valid JSON with ALL 4 files (Schema.py, Handler.py, Controller.py, Tests.py).\n"
                 "## Current Files\n" + current_block + "\n"
                 "## Previous Feedback\n" + last_error
             )
-            response = call_llm(retry_prompt)
+            retry_prompt = "\n".join(retry_parts)
+            response = call_llm(retry_prompt, persona=persona)
         else:
-            response = call_llm(prompt)
+            response = call_llm(prompt, persona=persona)
         files = extract_code_blocks(response)
         if not files:
             last_error = "No code blocks found in LLM response."
@@ -780,10 +801,14 @@ def run() -> None:
     prompt = build_prompt(persona, args.target, target_files, task, error)
 
     if args.prompt_only or not args.api:
+        print("=== PERSONA (system message) ===")
+        print(persona)
+        print("\n=== USER PROMPT ===")
         print(prompt)
         return
 
-    ok = auto_backend(args.target, prompt, verbose=args.verbose)
+    spec = target_files.get("spec.md", "")
+    ok = auto_backend(args.target, prompt, verbose=args.verbose, persona=persona, spec=spec)
     if not ok:
         sys.exit(1)
 
