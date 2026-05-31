@@ -1,31 +1,30 @@
+import json
 from pathlib import Path
+from unittest.mock import patch
 
-from _orchestrator.config import _detect_features_dir
+from _orchestrator.config import _get_features_dir
 
 
-class TestDetectFeaturesDir:
+class TestGetFeaturesDir:
 
-    def test_returns_first_existing(self, tmp_path: Path) -> None:
-        (tmp_path / "apps" / "backend" / "app" / "features").mkdir(parents=True)
-        (tmp_path / "src" / "features").mkdir(parents=True)
-        result = _detect_features_dir(tmp_path)
-        assert result == tmp_path / "apps" / "backend" / "app" / "features"
+    def test_defaults_to_features(self, tmp_path: Path) -> None:
+        with patch("_orchestrator.config.REPO_ROOT", tmp_path):
+            with patch("_orchestrator.config.FEATURES_CONFIG", tmp_path / ".features.json"):
+                result = _get_features_dir()
+        assert result == tmp_path / "features"
 
-    def test_returns_source_features(self, tmp_path: Path) -> None:
-        (tmp_path / "src" / "features").mkdir(parents=True)
-        result = _detect_features_dir(tmp_path)
+    def test_reads_from_config(self, tmp_path: Path) -> None:
+        cfg = tmp_path / ".features.json"
+        cfg.write_text(json.dumps({"features_dir": "src/features"}) + "\n")
+        with patch("_orchestrator.config.REPO_ROOT", tmp_path):
+            with patch("_orchestrator.config.FEATURES_CONFIG", cfg):
+                result = _get_features_dir()
         assert result == tmp_path / "src" / "features"
 
-    def test_returns_first_candidate_when_none_exist(self, tmp_path: Path) -> None:
-        result = _detect_features_dir(tmp_path)
-        assert result == tmp_path / "apps" / "backend" / "app" / "features"
-
-    def test_backend_app_features(self, tmp_path: Path) -> None:
-        (tmp_path / "backend" / "app" / "features").mkdir(parents=True)
-        result = _detect_features_dir(tmp_path)
-        assert result == tmp_path / "backend" / "app" / "features"
-
-    def test_root_features(self, tmp_path: Path) -> None:
-        (tmp_path / "features").mkdir(parents=True)
-        result = _detect_features_dir(tmp_path)
+    def test_default_when_config_empty(self, tmp_path: Path) -> None:
+        cfg = tmp_path / ".features.json"
+        cfg.write_text("{}")
+        with patch("_orchestrator.config.REPO_ROOT", tmp_path):
+            with patch("_orchestrator.config.FEATURES_CONFIG", cfg):
+                result = _get_features_dir()
         assert result == tmp_path / "features"

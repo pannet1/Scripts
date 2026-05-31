@@ -6,6 +6,13 @@ from typing import Any, Optional
 from .config import FEATURES_DIR, FEATURES_CONFIG, KNOWN_FEATURES, DOMAIN_KEYWORDS, load_features_config
 
 
+def _iter_features_dir():
+    if FEATURES_DIR.is_dir():
+        for entry in FEATURES_DIR.iterdir():
+            if not entry.name.startswith("_"):
+                yield entry
+
+
 def infer_domain_action(feature_name: str) -> tuple[str, str]:
     name = feature_name.strip()
     if name in KNOWN_FEATURES:
@@ -14,8 +21,8 @@ def infer_domain_action(feature_name: str) -> tuple[str, str]:
     for key, (domain, action) in DOMAIN_KEYWORDS.items():
         if lower == key or lower == action.lower():
             return domain, action
-    for domain_dir in FEATURES_DIR.iterdir():
-        if not domain_dir.is_dir() or domain_dir.name.startswith("_"):
+    for domain_dir in _iter_features_dir():
+        if not domain_dir.is_dir():
             continue
         for feature_dir in domain_dir.iterdir():
             if not feature_dir.is_dir() or feature_dir.name.startswith("_"):
@@ -34,8 +41,8 @@ def resolve_feature(request_feature: str) -> Optional[Path]:
 
 def _fuzzy_suggest(request_feature: str) -> Optional[Path]:
     candidates: dict[str, Path] = {}
-    for domain_dir in FEATURES_DIR.iterdir():
-        if not domain_dir.is_dir() or domain_dir.name.startswith("_"):
+    for domain_dir in _iter_features_dir():
+        if not domain_dir.is_dir():
             continue
         for entry in domain_dir.iterdir():
             if entry.is_dir() and not entry.name.startswith("_"):
@@ -74,8 +81,8 @@ def find_feature_dir(request_feature: str) -> Optional[Path]:
             if feature_dir.is_dir():
                 return feature_dir
 
-    for domain_dir in FEATURES_DIR.iterdir():
-        if not domain_dir.is_dir() or domain_dir.name.startswith("_"):
+    for domain_dir in _iter_features_dir():
+        if not domain_dir.is_dir():
             continue
         if domain_dir.name.lower() == lower:
             if (domain_dir / "Handler.py").exists():

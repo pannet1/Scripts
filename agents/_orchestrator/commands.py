@@ -1,10 +1,11 @@
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Optional
 
-from .config import REPO_ROOT, AGENTS_DIR, FEATURES_DIR, FEATURES_CONFIG, KNOWN_FEATURES, DOMAIN_KEYWORDS, RUNNER, PERSONAS_DIR, load_features_config, _detect_features_dir
+from .config import REPO_ROOT, AGENTS_DIR, FEATURES_DIR, FEATURES_CONFIG, KNOWN_FEATURES, DOMAIN_KEYWORDS, RUNNER, PERSONAS_DIR, load_features_config
 from .templates import SPEC_TEMPLATE, DEFAULT_OVERVIEW, CODE_TEMPLATES
 from .zen_api import generate_spec_with_ai
 from .git_ops import current_branch, unmerged_branches, branch_exists, check_branch, read_prompt_file
@@ -138,42 +139,67 @@ def run_runner(persona_key: str, target: Path, task: str, error_path: Optional[P
     return result.returncode == 0
 
 
+def _derive_feature_name_from_path(path_str: str) -> str:
+    p = Path(path_str)
+    stem = p.stem
+    name = "".join(word.capitalize() for word in stem.replace("-", "_").split("_"))
+    if not name:
+        name = "".join(word.capitalize() for word in p.parent.name.replace("-", "_").split("_"))
+    return name
+
+
+def _resolve_current_file() -> Optional[str]:
+    nvim_addr = os.environ.get("NVIM") or os.environ.get("NVIM_LISTEN_ADDRESS") or ""
+    if nvim_addr:
+        try:
+            result = subprocess.run(
+                ["nvim", "--headless", "--server", nvim_addr, "--remote-expr", "expand('%:p')"],
+                capture_output=True, text=True, timeout=3,
+            )
+            if result.returncode == 0:
+                path = result.stdout.strip().strip('"')
+                if path:
+                    return path
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            pass
+    for var in ("OPENCODE_CURRENT_FILE", "VIM_FILEPATH"):
+        val = os.environ.get(var)
+        if val:
+            p = Path(val)
+            if p.is_file():
+                return str(p.resolve())
+    return None
+
+
+def _resolve_prompt_for_implicit(rest: str, prompt_content: str) -> Optional[str]:
+    if prompt_content:
+        return prompt_content
+    if not rest:
+        return None
+    p = Path(rest)
+    if p.suffix == ".md":
+        resolved = REPO_ROOT / rest
+        if resolved.exists():
+            return resolved.read_text().strip()
+    return rest.strip()
+
+
 def do_scaffold() -> None:
-    print("[Orchestrator] Scanning project structure...")
-    found_dir = _detect_features_dir(REPO_ROOT)
-
-    if found_dir.is_dir():
-        print(f"[Orchestrator] Detected features directory: {found_dir.relative_to(REPO_ROOT)}")
-    else:
-        print(f"[Orchestrator] No features directory found. Will use: {found_dir.relative_to(REPO_ROOT)}")
-
-    features = _scan_existing_features(found_dir)
-    known: dict[str, str] = {}
-    keywords: dict[str, list[str]] = {}
-    for fname, domain in features.items():
-        known[fname] = domain
-        keyword = fname.lower().replace("feature", "").replace("handler", "").replace("controller", "")
-        if keyword and keyword not in keywords:
-            keywords[keyword] = [domain, fname]
+    if FEATURES_CONFIG.exists():
+        print(f"[Orchestrator] {FEATURES_CONFIG} already exists.")
+        return
 
     payload: dict[str, Any] = {
-        "known_features": known,
-        "domain_keywords": keywords,
+        "features_dir": "features",
+        "known_features": {},
+        "domain_keywords": {},
     }
     FEATURES_CONFIG.write_text(json.dumps(payload, indent=2) + "\n")
-
-    if features:
-        print(f"[Orchestrator] Created {FEATURES_CONFIG.name} with {len(known)} features")
-    else:
-        print(f"[Orchestrator] No features found. Created empty {FEATURES_CONFIG.name}")
-
+    print(f"[Orchestrator] Created {FEATURES_CONFIG}")
+    print(f"[Orchestrator] Features directory: {FEATURES_DIR.relative_to(REPO_ROOT)}/")
     print()
-    print(f"[Orchestrator] Project ready. Files:")
-    print(f"  .features.json         — feature registry ({len(known)} features)")
-    print(f"  .agents/               — agentic toolkit (symlink to ~/.agents)")
-    print()
-    print("Next: run a feature command")
-    print(f"  ./.agents/orchestrator.py feature/YourFeature")
+    print("Edit .features.json to change features_dir, then run:")
+    print(f"  ./.agents/orchestrator.py new/YourFeature")
 
 
 _KNOWN_PREFIXES = frozenset({
@@ -363,38 +389,52 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
             print("=" * 60)
         return
 
-    if prefix == "modify":
-        feature_name = action or rest
-        feature_dir = _find_feature_or_resolve(feature_name)
+    if prefix in ("modify", "bugfix"):
+        if not action:
+            current_file = _resolve_current_file()
+            if current_file:
+                derived = _derive_feature_name_from_path(current_file)
+                change_prompt = _resolve_prompt_for_implicit(rest, prompt_content)
+                if not change_prompt:
+                    print("[Orchestrator] No prompt provided.")
+                    return
+                heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
+                check_branch(derived, prefix)
+                scaffold_new_feature("", derived, f"{prefix.title()} {current_file}", no_controller=True)
+                feature_dir = FEATURES_DIR / derived
+                if feature_dir.is_dir():
+                    register_feature_in_json(derived, "")
+                    _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
+                    amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                    return
+            print(f"[Orchestrator] No feature name given (modify/ expects a feature name or nvim context).")
+            return
+        feature_dir = _find_feature_or_resolve(action)
         if not feature_dir:
-            print(f"[Orchestrator] Feature not found: {feature_name}")
+            resolved_path = REPO_ROOT / action
+            if resolved_path.exists() and resolved_path.is_file():
+                derived = _derive_feature_name_from_path(action)
+                change_prompt = resolve_change_prompt(rest, prompt_content, derived, prefix)
+                heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
+                check_branch(derived, prefix)
+                scaffold_new_feature("", derived, f"{prefix.title()} {action}", no_controller=True)
+                feature_dir = FEATURES_DIR / derived
+                if feature_dir.is_dir():
+                    register_feature_in_json(derived, "")
+                    _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
+                    amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                    return
+            print(f"[Orchestrator] Feature not found: {action}")
             return
         resolved_name = feature_dir.name
-        change_prompt = resolve_change_prompt(rest, prompt_content, resolved_name, "modify")
-        _rewrite_spec_with_ai(feature_dir, change_prompt, "Modification Request")
-        check_branch(resolved_name, "modify")
+        change_prompt = resolve_change_prompt(rest, prompt_content, resolved_name, prefix)
+        heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
+        _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
+        check_branch(resolved_name, prefix)
         amend_spec(
             feature_dir,
-            heading="CONTRACT AMENDMENT",
-            branch_prefix="modify",
-            feature_name=resolved_name,
-        )
-        return
-
-    if prefix == "bugfix":
-        feature_name = action or rest
-        feature_dir = _find_feature_or_resolve(feature_name)
-        if not feature_dir:
-            print(f"[Orchestrator] Feature not found: {feature_name}")
-            return
-        resolved_name = feature_dir.name
-        change_prompt = resolve_change_prompt(rest, prompt_content, resolved_name, "bugfix")
-        _rewrite_spec_with_ai(feature_dir, change_prompt, "Defect Resolution")
-        check_branch(resolved_name, "bugfix")
-        amend_spec(
-            feature_dir,
-            heading="DEFECT DOCUMENTATION",
-            branch_prefix="bugfix",
+            heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION",
+            branch_prefix=prefix,
             feature_name=resolved_name,
         )
         return

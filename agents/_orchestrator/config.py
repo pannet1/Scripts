@@ -5,36 +5,31 @@ from typing import Any
 REPO_ROOT = Path.cwd()
 AGENTS_DIR = Path(__file__).resolve().parent.parent
 
-
-def _detect_features_dir(repo_root: Path) -> Path:
-    candidates = [
-        repo_root / "apps" / "backend" / "app" / "features",
-        repo_root / "backend" / "src" / "features",
-        repo_root / "backend" / "app" / "features",
-        repo_root / "src" / "features",
-        repo_root / "app" / "features",
-        repo_root / "features",
-    ]
-    for path in candidates:
-        if path.is_dir():
-            return path
-    return candidates[0]
-
-
-FEATURES_DIR = _detect_features_dir(REPO_ROOT)
 FEATURES_CONFIG = REPO_ROOT / ".features.json"
-if not FEATURES_CONFIG.exists():
-    FEATURES_CONFIG = AGENTS_DIR / "features.json"
+
+
+def _read_features_config() -> dict[str, Any]:
+    if FEATURES_CONFIG.exists():
+        return json.loads(FEATURES_CONFIG.read_text())
+    return {}
+
+
+def _get_features_dir() -> Path:
+    cfg = _read_features_config()
+    dir_name = cfg.get("features_dir", "features")
+    return REPO_ROOT / dir_name
+
+
+FEATURES_DIR = _get_features_dir()
 RUNNER = AGENTS_DIR / "runner.py"
 PERSONAS_DIR = AGENTS_DIR / "personas"
 MODEL_CONFIG = AGENTS_DIR / "model_config.json"
 
 
 def load_features_config() -> dict[str, Any]:
-    if not FEATURES_CONFIG.exists():
-        return {"known_features": {}, "domain_keywords": {}}
-    with open(FEATURES_CONFIG) as f:
-        return json.load(f)
+    if FEATURES_CONFIG.exists():
+        return json.loads(FEATURES_CONFIG.read_text())
+    return {"known_features": {}, "domain_keywords": {}}
 
 
 FEATURES_CFG = load_features_config()

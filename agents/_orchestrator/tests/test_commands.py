@@ -36,9 +36,10 @@ class TestResolveInputToFeature:
         feature_dir.mkdir(parents=True)
         (feature_dir / "Handler.py").touch()
         file_path = str(tmp_path / "strategy" / "RunRatchetStrategy" / "Handler.py")
-        with patch("_orchestrator.commands.FEATURES_DIR", tmp_path):
-            with patch("_orchestrator.commands.REPO_ROOT", tmp_path.parent):
-                result = _resolve_input_to_feature(file_path)
+        with patch("_orchestrator.commands.FEATURES_DIR", tmp_path), \
+             patch("_orchestrator.features.FEATURES_DIR", tmp_path), \
+             patch("_orchestrator.commands.REPO_ROOT", tmp_path.parent):
+            result = _resolve_input_to_feature(file_path)
         assert result == "RunRatchetStrategy"
 
     def test_new_feature_name_returns_as_is(self, tmp_path: Path) -> None:
