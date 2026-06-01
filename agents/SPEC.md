@@ -1,7 +1,7 @@
 # SPEC.md — Technical Architecture Blueprint
 
 ## Stack
-- **Runtime**: Python 3.10, uv monorepo
+- **Runtime**: Python 3.13, uv monorepo
 - **Framework**: FastAPI (no Django, no Flask)
 - **ORM / DB**: SQLite via aiosqlite (raw SQL, no SQLAlchemy)
 - **Validation**: Pydantic v2 for all input/output schemas
