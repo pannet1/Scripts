@@ -137,7 +137,6 @@ alias mail='/usr/bin/aerc'
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
-
 export EDITOR="/usr/bin/nvim"
 ###-begin-opencode-completions-###
 #
@@ -178,3 +177,6 @@ export LESS=-RFX
 SECRETS_REPO="$HOME/programs/shell/github.com/pannet1/secrets"
 [ -f "$HOME/secrets.key" ] && (cd "$SECRETS_REPO" && git-crypt unlock "$HOME/secrets.key") 2>/dev/null || true
 [ -f "$HOME/.secrets/wsl2.env" ] && source "$HOME/.secrets/wsl2.env"
+
+export LLAMACPP="$HOME/llama.cpp"
+export PATH="$LLAMACPP/build/bin:$PATH"
