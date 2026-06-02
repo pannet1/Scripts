@@ -20,7 +20,7 @@ echo "  WSL2 Debian Setup"
 echo "=============================================="
 
 # ── 1. Packages ──
-step "1/7: System Packages"
+step "1/8: System Packages"
 PACKAGES="git curl wget fontconfig file tar zip unzip gzip tmux xclip build-essential pkg-config ripgrep fd-find lazygit python3 python3-pip python3-venv"
 
 ALL_PRESENT=true
@@ -56,7 +56,7 @@ else
 fi
 
 # ── 2. Nerd Fonts ──
-step "2/7: Nerd Fonts (WSL)"
+step "2/8: Nerd Fonts (WSL)"
 FONT_DIR="$HOME/.local/share/fonts"
 font_files_exist() { ls "$FONT_DIR"/FiraCode*.ttf &>/dev/null; }
 
@@ -79,7 +79,7 @@ else
 fi
 
 # ── 3. Neovim ──
-step "3/7: Neovim"
+step "3/8: Neovim"
 NVIM_DEPS="build-essential pkg-config ripgrep fd-find lazygit python3 python3-pip python3-venv"
 NEEDS_NVIM=false
 
@@ -105,12 +105,17 @@ if $NEEDS_NVIM; then
     rm -f nvim-linux-x86_64.tar.gz
     ok "nvim installed"
 
-    pip3 install --break-system-packages python-lsp-server pynvim >/dev/null 2>&1 || true
-    ok "pip packages installed"
+    if pip3 list --format=columns 2>/dev/null | grep -q "python-lsp-server" && \
+       pip3 list --format=columns 2>/dev/null | grep -q "pynvim"; then
+        ok "pip packages already installed"
+    else
+        pip3 install --break-system-packages python-lsp-server pynvim || true
+        ok "pip packages installed"
+    fi
 fi
 
 # ── 4. Starship ──
-step "4/7: Starship Prompt"
+step "4/8: Starship Prompt"
 if check_cmd starship; then
     ok "starship binary"
 else
@@ -120,7 +125,7 @@ else
 fi
 
 # ── 5. Zoxide ──
-step "5/7: Zoxide"
+step "5/8: Zoxide"
 if check_cmd zoxide; then
     ok "zoxide binary"
 else
@@ -130,7 +135,7 @@ else
 fi
 
 # ── 6. Dotfiles (stow) ──
-step "6/7: Dotfiles (stow)"
+step "6/8: Dotfiles (stow)"
 if ! check_cmd stow; then
     fail "stow"
     sudo apt install -y stow
@@ -139,11 +144,19 @@ fi
 
 cd "$SCRIPTS_DIR"
 
-stow -R --target="$HOME" common 2>/dev/null || stow --target="$HOME" common
-ok "common symlinked"
+if stow -R --target="$HOME" common; then
+    ok "common symlinked"
+else
+    fail "common stow"
+    fix "stow may have partial links — check manually"
+fi
 
-stow -R --target="$HOME" wsl2 2>/dev/null || stow --target="$HOME" wsl2
-ok "wsl2 symlinked"
+if stow -R --target="$HOME" wsl2; then
+    ok "wsl2 symlinked"
+else
+    fail "wsl2 stow"
+    fix "stow may have partial links — check manually"
+fi
 
 # Secrets symlink
 SECRETS_DIR="$HOME/programs/shell/github.com/pannet1/secrets"
@@ -151,7 +164,13 @@ SECRETS_ENV="$SECRETS_DIR/github.com/pannet1/shell/wsl2/.env"
 if [ -d "$SECRETS_DIR" ]; then
     # Unlock git-crypt if key exists
     if [ -f "$HOME/secrets.key" ]; then
-        cd "$SECRETS_DIR" && git-crypt unlock "$HOME/secrets.key" 2>/dev/null && ok "secrets unlocked"
+        cd "$SECRETS_DIR"
+        if [ -f "$SECRETS_ENV" ] && grep -q "=" "$SECRETS_ENV" 2>/dev/null; then
+            ok "secrets already unlocked"
+        else
+            git-crypt unlock "$HOME/secrets.key" || true
+            ok "secrets unlocked"
+        fi
     fi
     mkdir -p "$HOME/.secrets"
     ln -sf "$SECRETS_ENV" "$HOME/.secrets/wsl2.env"
@@ -168,8 +187,167 @@ if [ ! -d "$TPM_DIR" ]; then
     ok "TPM plugins installed"
 fi
 
-# ── 7. Git push ──
-step "7/7: Git push"
+# ── 7. Kotlin/Android Development (Optional) ──
+step "7/8: Kotlin/Android Development"
+
+read -rp "  Install Kotlin/Android development tools? [y/N] " REPLY_ANDROID
+
+if [[ "$REPLY_ANDROID" =~ ^[Yy]$ ]]; then
+    ANDROID_SDK="$HOME/android-sdk"
+
+    # ── 7a. Java & Dependencies ──
+    if check_cmd java; then
+        ok "java available"
+    else
+        fail "java"
+        fix "installing default-jdk-headless"
+        sudo apt install -y default-jdk-headless
+        ok "java installed"
+    fi
+
+    # ── 7b. Android cmdline-tools ──
+    if [ -d "$ANDROID_SDK/cmdline-tools/latest/bin" ]; then
+        ok "Android cmdline-tools"
+    else
+        fail "Android cmdline-tools"
+        mkdir -p "$ANDROID_SDK/cmdline-tools"
+        cd /tmp
+        fix "downloading Android command line tools"
+        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+        unzip -q cmdline-tools.zip
+        mv cmdline-tools "$ANDROID_SDK/cmdline-tools/latest"
+        rm -f cmdline-tools.zip
+        ok "Android cmdline-tools installed"
+    fi
+
+    # ── 7c. Environment Variables ──
+    NEED_BASHRC=false
+    grep -q 'export ANDROID_HOME=' "$HOME/.bashrc" 2>/dev/null && ok "ANDROID_HOME" || { fail "ANDROID_HOME"; NEED_BASHRC=true; }
+    grep -q 'ANDROID_HOME/cmdline-tools/latest/bin' "$HOME/.bashrc" 2>/dev/null && ok "cmdline-tools PATH" || { fail "cmdline-tools PATH"; NEED_BASHRC=true; }
+    grep -q 'ANDROID_HOME/platform-tools' "$HOME/.bashrc" 2>/dev/null && ok "platform-tools PATH" || { fail "platform-tools PATH"; NEED_BASHRC=true; }
+
+    if $NEED_BASHRC; then
+        fix "appending missing Android SDK exports to ~/.bashrc"
+        cat >> "$HOME/.bashrc" << 'EOF'
+
+# Android SDK
+export ANDROID_HOME="$HOME/android-sdk"
+export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
+export PATH="$PATH:$ANDROID_HOME/platform-tools"
+EOF
+        ok "Android SDK exports added to .bashrc"
+    fi
+
+    # Source in current shell for script continuation
+    export ANDROID_HOME="$HOME/android-sdk"
+    export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
+    export PATH="$PATH:$ANDROID_HOME/platform-tools"
+
+    # ── 7d. SDK Packages ──
+    SDKMANAGER="$ANDROID_SDK/cmdline-tools/latest/bin/sdkmanager"
+
+    # Licenses
+    if [ -d "$ANDROID_SDK/licenses" ] && [ "$(ls -A "$ANDROID_SDK/licenses" 2>/dev/null)" ]; then
+        ok "SDK licenses accepted"
+    else
+        fail "SDK licenses"
+        fix "accepting licenses"
+        yes | "$SDKMANAGER" --licenses || true
+        ok "SDK licenses accepted"
+    fi
+
+    MISSING=""
+    if [ -d "$ANDROID_SDK/platform-tools" ]; then
+        ok "platform-tools"
+    else
+        fail "platform-tools"
+        MISSING="$MISSING platform-tools"
+    fi
+
+    if [ -d "$ANDROID_SDK/platforms/android-34" ]; then
+        ok "platforms;android-34"
+    else
+        fail "platforms;android-34"
+        MISSING="$MISSING platforms;android-34"
+    fi
+
+    if [ -d "$ANDROID_SDK/build-tools/34.0.0" ]; then
+        ok "build-tools;34.0.0"
+    else
+        fail "build-tools;34.0.0"
+        MISSING="$MISSING build-tools;34.0.0"
+    fi
+
+    if [ -n "$MISSING" ]; then
+        fix "installing missing:$MISSING"
+        # shellcheck disable=SC2086
+        if "$SDKMANAGER" $MISSING; then
+            ok "SDK packages installed"
+        else
+            fail "SDK package installation (check internet)"
+        fi
+    fi
+
+    # ── 7e. ADB Bridge (WSL2 → Windows) ──
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+        if grep -q "ADB_SERVER_SOCKET" "$HOME/.bashrc" 2>/dev/null; then
+            ok "ADB WSL2 socket configured"
+        else
+            fail "ADB WSL2 socket"
+            fix "adding ADB_SERVER_SOCKET to ~/.bashrc"
+            cat >> "$HOME/.bashrc" << 'EOF'
+
+# ADB bridge (WSL2 → Windows)
+export ADB_SERVER_SOCKET=tcp:$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):5037
+EOF
+            ok "ADB_SERVER_SOCKET added to .bashrc"
+        fi
+
+        if check_cmd powershell.exe; then
+            # ── Install ADB on Windows ──
+            if powershell.exe -Command "if (Get-Command adb -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"; then
+                ok "ADB available on Windows"
+            else
+                fail "ADB not found on Windows"
+                fix "installing via winget"
+                if powershell.exe -Command "winget install Google.AndroidPlatformTools --accept-package-agreements --accept-source-agreements"; then
+                    ok "ADB installed via winget"
+                else
+                    fail "winget install failed"
+                    fix "Install manually: scoop install adb  or  winget install Google.AndroidPlatformTools"
+                fi
+            fi
+
+            # ── Install Android Studio on Windows ──
+            if powershell.exe -Command "if (Test-Path 'C:\Program Files\Android\Android Studio\bin\studio64.exe') { exit 0 } else { exit 1 }"; then
+                ok "Android Studio installed on Windows"
+            else
+                fail "Android Studio not found"
+                fix "installing via winget (large download)"
+                if powershell.exe -Command "winget install Google.AndroidStudio --accept-package-agreements --accept-source-agreements"; then
+                    ok "Android Studio installed via winget"
+                else
+                    fail "winget install failed"
+                    fix "Install manually: winget install Google.AndroidStudio"
+                fi
+            fi
+
+            # ── Start ADB server on Windows ──
+            if powershell.exe -Command "if (Get-Command adb -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"; then
+                fix "starting ADB server on Windows"
+                powershell.exe -Command "adb kill-server" || true
+                if powershell.exe -Command "Start-Process adb -ArgumentList '-a -P 5037 nodaemon server' -WindowStyle Hidden"; then
+                    ok "ADB server started on Windows"
+                else
+                    fail "Could not start ADB on Windows"
+                fi
+            fi
+        fi
+    fi
+fi
+
+# ── 8. Git push ──
+step "8/8: Git push"
 git add -A
 if ! git diff --cached --quiet; then
     git commit -m "wsl2: update $(date +%Y-%m-%d)"

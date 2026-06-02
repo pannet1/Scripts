@@ -180,3 +180,11 @@ SECRETS_REPO="$HOME/programs/shell/github.com/pannet1/secrets"
 
 export LLAMACPP="$HOME/llama.cpp"
 export PATH="$LLAMACPP/build/bin:$PATH"
+
+# Android SDK
+export ANDROID_HOME="$HOME/android-sdk"
+export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
+export PATH="$PATH:$ANDROID_HOME/platform-tools"
+
+# ADB bridge (WSL2 → Windows)
+export ADB_SERVER_SOCKET=tcp:$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):5037
