@@ -15,10 +15,15 @@ check_line()  { grep -Fxq "$1" "$2" 2>/dev/null; }
 
 PROJECT_DIR="$(realpath "${1:-.}")"
 
+MANIFEST="$PROJECT_DIR/app/src/main/AndroidManifest.xml"
+APP_ID=$(grep 'applicationId\s*=' "$PROJECT_DIR/app/build.gradle.kts" 2>/dev/null | head -1 | sed 's/.*"\(.*\)".*/\1/')
+ACTIVITY_FULL=$(grep 'android:name=' "$MANIFEST" 2>/dev/null | head -1 | sed 's/.*"\(.*\)".*/\1/')
+
 echo "=============================================="
 echo "  Android/Kotlin Setup + Deploy (WSL2)"
 echo "=============================================="
 echo "  Project: $PROJECT_DIR"
+echo "  App ID: $APP_ID | Activity: $ACTIVITY_FULL"
 
 ANDROID_SDK="$HOME/android-sdk"
 
@@ -233,7 +238,7 @@ cd "$PROJECT_DIR"
             fix "installing APK..."
             if powershell.exe -Command "& '$ADB_WIN_PATH' install '$APK_WIN'" 2>&1 | grep -q "Success"; then
                 ok "APK installed"
-                powershell.exe -Command "& '$ADB_WIN_PATH' shell am start -n com.example.hellokotlin/.MainActivity" 2>/dev/null
+                powershell.exe -Command "& '$ADB_WIN_PATH' shell am start -n $APP_ID/$ACTIVITY_FULL" 2>/dev/null
                 ok "App launched"
             else
                 fail "Install failed — check device authorization"
