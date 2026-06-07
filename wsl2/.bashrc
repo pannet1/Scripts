@@ -188,3 +188,6 @@ export PATH="$PATH:$ANDROID_HOME/platform-tools"
 
 # ADB bridge (WSL2 → Windows)
 export ADB_SERVER_SOCKET=tcp:$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):5037
+
+# opencode
+export PATH=/home/pannet1/.opencode/bin:$PATH
