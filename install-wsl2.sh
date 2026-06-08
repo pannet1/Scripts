@@ -20,7 +20,7 @@ echo "  WSL2 Debian Setup"
 echo "=============================================="
 
 # ── 1. Packages ──
-step "1/7: System Packages"
+step "1/8: System Packages"
 PACKAGES="git curl wget fontconfig file tar zip unzip gzip tmux xclip build-essential pkg-config ripgrep fd-find lazygit python3 python3-pip python3-venv"
 
 ALL_PRESENT=true
@@ -56,7 +56,7 @@ else
 fi
 
 # ── 2. Nerd Fonts ──
-step "2/7: Nerd Fonts (WSL)"
+step "2/8: Nerd Fonts (WSL)"
 FONT_DIR="$HOME/.local/share/fonts"
 font_files_exist() { ls "$FONT_DIR"/FiraCode*.ttf &>/dev/null; }
 
@@ -79,7 +79,7 @@ else
 fi
 
 # ── 3. Neovim ──
-step "3/7: Neovim"
+step "3/8: Neovim"
 NVIM_DEPS="build-essential pkg-config ripgrep fd-find lazygit python3 python3-pip python3-venv"
 NEEDS_NVIM=false
 
@@ -115,7 +115,7 @@ if $NEEDS_NVIM; then
 fi
 
 # ── 4. Starship ──
-step "4/7: Starship Prompt"
+step "4/8: Starship Prompt"
 if check_cmd starship; then
     ok "starship binary"
 else
@@ -125,7 +125,7 @@ else
 fi
 
 # ── 5. Zoxide ──
-step "5/7: Zoxide"
+step "5/8: Zoxide"
 if check_cmd zoxide; then
     ok "zoxide binary"
 else
@@ -134,8 +134,47 @@ else
     ok "zoxide installed"
 fi
 
-# ── 6. Dotfiles (stow) ──
-step "6/7: Dotfiles (stow)"
+# ── 6. bashrc Dependencies ──
+step "6/8: bashrc Dependencies"
+
+# Tools that .bashrc directly execs or references at source time.
+# Install before dotfiles deploy so the first source is clean.
+
+check_cmd git-crypt || fix "git-crypt"
+check_cmd adb        || fix "adb"
+
+sudo apt install -y git-crypt adb
+
+if ! check_cmd bun; then
+    fix "installing bun (PATH in .bashrc)"
+    curl -fsSL https://bun.sh/install | bash 2>/dev/null || true
+fi
+ok "bashrc optional deps handled"
+
+# Windows Terminal integration (WSL2-specific)
+# Windows Terminal provides proper TERM propagation and the wt launcher.
+# Install via winget on the Windows host, reachable from WSL2 through interop.
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    if check_cmd wt.exe; then
+        ok "Windows Terminal (wt.exe)"
+    else
+        fail "wt.exe not found"
+        if check_cmd winget.exe; then
+            fix "installing Windows Terminal via winget"
+            winget.exe install --id Microsoft.WindowsTerminal --accept-package-agreements --accept-source-agreements 2>/dev/null || true
+            if check_cmd wt.exe; then
+                ok "Windows Terminal installed"
+            else
+                fix "winget install reported success but wt.exe still missing — try manually: winget install Microsoft.WindowsTerminal"
+            fi
+        else
+            fix "winget.exe not found — install Windows Terminal from Microsoft Store, or install winget from https://github.com/microsoft/winget-cli"
+            fix "  then re-run: winget install --id Microsoft.WindowsTerminal"
+        fi
+    fi
+fi
+# ── 7. Dotfiles (stow) ──
+step "7/8: Dotfiles (stow)"
 if ! check_cmd stow; then
     fail "stow"
     sudo apt install -y stow
@@ -144,18 +183,102 @@ fi
 
 cd "$SCRIPTS_DIR"
 
-if stow -R --target="$HOME" common; then
+# ── Backup pre-existing target files before stowing ──
+# If stow finds a file at $HOME that it wants to manage, it errors out.
+# The naive fix is to delete the file, which is how dotfiles get lost.
+# Instead, back up any such files, then use --override to force the symlink.
+backup_dir="$HOME/.dotfiles-backup/$(date +%Y%m%d_%H%M%S)"
+backed_up=false
+
+backup_conflicts() {
+    local pkg="$1"
+    # Walk all files managed by stow, skipping dirs stow shouldn't own
+    # (node_modules, .git, etc. are runtime deps, not dotfiles)
+    while read -r f; do
+        local rel="${f#"$pkg/"}"
+        local target="$HOME/$rel"
+        if [ -e "$target" ] && ! [ -L "$target" ]; then
+            mkdir -p "$(dirname "$backup_dir/$rel")"
+            cp -a "$target" "$backup_dir/$rel"
+            backed_up=true
+            fix "backing up ~/$rel"
+        fi
+    done < <(find "$pkg" -type f \
+        -not -path "*/node_modules/*" \
+        -not -path "*/.git/*" \
+        -not -path "*/__pycache__/*" \
+        -not -path "*/target/*" \
+        -not -name "*.pyc")
+}
+
+backup_conflicts common
+
+# ── Remove conflicting symlinks ──
+# Stow's --override only handles regular files, not symlinks.
+# If a symlink already exists at a path stow manages (e.g. from a prior
+# manual ln -sf), stow prints "Ignoring absolute symlink" and skips it.
+# We remove any such symlinks here so stow can create its own relative ones.
+while read -r f; do
+    rel="${f#common/}"
+    rel="${rel#wsl2/}"
+    target="$HOME/$rel"
+    if [ -L "$target" ]; then
+        rm "$target"
+        fix "removed stale symlink ~/$rel"
+    fi
+done < <(find common wsl2 -type f -o -type l \
+    -not -path "*/node_modules/*" \
+    -not -path "*/.git/*")
+backup_conflicts wsl2
+
+if $backed_up; then
+    echo "    → Backed up to $backup_dir"
+fi
+
+# ── Stow with --override to recover from broken states ──
+# --override tells stow to treat any existing target file as if it belongs
+# to that package, allowing the symlink to be forced through.
+
+if stow -R --override=common --target="$HOME" common; then
     ok "common symlinked"
 else
     fail "common stow"
     fix "stow may have partial links — check manually"
 fi
 
-if stow -R --target="$HOME" wsl2; then
+if stow -R --override=wsl2 --target="$HOME" wsl2; then
     ok "wsl2 symlinked"
 else
     fail "wsl2 stow"
     fix "stow may have partial links — check manually"
+fi
+
+# ── Verify critical symlinks ──
+# Check that the files stow manages are actually pointing back to the repo.
+VERIFY_FAILED=false
+verify_symlink() {
+    local pkg="$1"
+    local rel="$2"
+    local link="$HOME/$rel"
+    # Stow creates relative symlinks from the target. When run from SCRIPTS_DIR,
+    # the link target for wsl2/.bashrc is ../wsl2/.bashrc (relative to $HOME).
+    local expected="$SCRIPTS_DIR/$pkg/$rel"
+    if [ -L "$link" ] && [ "$(readlink -f "$link")" = "$expected" ]; then
+        ok "$rel"
+    else
+        fail "$rel → $expected"
+        VERIFY_FAILED=true
+    fi
+}
+
+verify_symlink common .gitconfig
+verify_symlink common .bash_aliases
+verify_symlink wsl2 .bashrc
+verify_symlink wsl2 .bash_profile
+
+if $VERIFY_FAILED; then
+    fail "Some symlinks are incorrect"
+    fix "Re-run: stow -R --override=PACKAGE --target=\"$HOME\" PACKAGE"
 fi
 
 # Secrets symlink
@@ -188,7 +311,7 @@ if [ ! -d "$TPM_DIR" ]; then
 fi
 
 # ── 7. Git push ──
-step "7/7: Git push"
+step "8/8: Git push"
 git add -A
 if ! git diff --cached --quiet; then
     git commit -m "wsl2: update $(date +%Y-%m-%d)"
@@ -204,5 +327,6 @@ echo "  Done!"
 echo "=============================================="
 echo ""
 echo "  source ~/.bashrc"
+echo "  Backup:    $backup_dir  (if files were replaced)"
 echo "  tmux            (then prefix + I for plugins)"
 echo "  nvim            (plugins auto-install on first launch)"

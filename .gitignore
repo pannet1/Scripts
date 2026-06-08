@@ -63,3 +63,6 @@ backup/exclude_lists/
 
 # Project specific
 poetry.lock
+
+# Stow packages — per-user runtime dirs not managed by stow
+common/.config/opencode/
