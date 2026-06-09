@@ -13,9 +13,174 @@ check_file()  { [ -f "$1" ]; }
 check_dir()   { [ -d "$1" ]; }
 check_line()  { grep -Fxq "$1" "$2" 2>/dev/null; }
 
+usage() {
+  echo "Usage: $(basename "$0") [project-directory]"
+  echo ""
+  echo "If no directory is given, uses the current directory."
+  echo "If the directory has no Android project, scaffolds a starter template."
+  exit 1
+}
+
 PROJECT_DIR="$(realpath "${1:-.}")"
+PROJECT_NAME="$(basename "$PROJECT_DIR")"
+PACKAGE_NAME="com.${PROJECT_NAME,,}"
 
 MANIFEST="$PROJECT_DIR/app/src/main/AndroidManifest.xml"
+
+scaffold_project() {
+  step "0/7: Project Template"
+  fail "no Android project found"
+  fix "scaffolding starter at $PROJECT_DIR"
+
+  local src_main="$PROJECT_DIR/app/src/main"
+  local java_dir="$src_main/java/${PACKAGE_NAME//.//}"
+  local res_dir="$src_main/res/values"
+
+  mkdir -p "$java_dir" "$res_dir" "$PROJECT_DIR/gradle/wrapper"
+
+  cat > "$PROJECT_DIR/settings.gradle.kts" << 'EOF'
+pluginManagement {
+  repositories { google(); mavenCentral(); gradlePluginPortal() }
+}
+dependencyResolution {
+  repositories { google(); mavenCentral() }
+}
+rootProject.name = "__PROJECT__"
+include(":app")
+EOF
+  sed -i "s/__PROJECT__/$PROJECT_NAME/" "$PROJECT_DIR/settings.gradle.kts"
+
+  cat > "$PROJECT_DIR/build.gradle.kts" << 'EOF'
+plugins {
+  id("com.android.application") version "8.2.0" apply false
+  id("org.jetbrains.kotlin.android") version "1.9.22" apply false
+}
+EOF
+
+  cat > "$PROJECT_DIR/app/build.gradle.kts" << 'EOF'
+plugins {
+  id("com.android.application")
+  id("org.jetbrains.kotlin.android")
+}
+android {
+  namespace = "__PACKAGE__"
+  compileSdk = 34
+  defaultConfig {
+    applicationId = "__PACKAGE__"
+    minSdk = 24
+    targetSdk = 34
+    versionCode = 1
+    versionName = "1.0"
+  }
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+  }
+  kotlinOptions { jvmTarget = "17" }
+}
+dependencies {
+  implementation("androidx.core:core-ktx:1.12.0")
+  implementation("androidx.appcompat:appcompat:1.6.1")
+}
+EOF
+  sed -i "s/__PACKAGE__/$PACKAGE_NAME/g" "$PROJECT_DIR/app/build.gradle.kts"
+
+  cat > "$PROJECT_DIR/gradle.properties" << 'EOF'
+org.gradle.jvmargs=-Xmx2g
+android.useAndroidX=true
+EOF
+
+  cat > "$PROJECT_DIR/gradle/wrapper/gradle-wrapper.properties" << 'EOF'
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip
+networkTimeout=10000
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+EOF
+
+  cat > "$src_main/AndroidManifest.xml" << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application android:label="@string/app_name">
+    <activity android:name=".MainActivity" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>
+EOF
+
+  cat > "$java_dir/MainActivity.kt" << 'EOF'
+package __PACKAGE__
+
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+
+class MainActivity : AppCompatActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.activity_main)
+  }
+}
+EOF
+  sed -i "s/__PACKAGE__/$PACKAGE_NAME/" "$java_dir/MainActivity.kt"
+
+  cat > "$res_dir/strings.xml" << 'EOF'
+<resources>
+  <string name="app_name">__PROJECT__</string>
+</resources>
+EOF
+  sed -i "s/__PROJECT__/$PROJECT_NAME/" "$res_dir/strings.xml"
+
+  cat > "$res_dir/themes.xml" << 'EOF'
+<resources>
+  <style name="Theme.__PROJECT__" parent="Theme.AppCompat.Light.DarkActionBar" />
+</resources>
+EOF
+  sed -i "s/__PROJECT__/$PROJECT_NAME/" "$res_dir/themes.xml"
+
+  cat > "$src_main/res/layout/activity_main.xml" << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent">
+  <TextView
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:text="Hello World!" />
+</FrameLayout>
+EOF
+
+  fix "downloading Gradle wrapper..."
+  cd "$PROJECT_DIR"
+  if check_cmd gradle; then
+    gradle wrapper --gradle-version 8.5 2>/dev/null || true
+  fi
+  if [ ! -f gradlew ]; then
+    curl -sL "https://services.gradle.org/distributions/gradle-8.5-bin.zip" -o /tmp/gradle-wrapper.zip
+    cat > gradlew << 'SCRIPT'
+#!/bin/sh
+# Gradle wrapper placeholder — install Gradle manually or run: gradle wrapper
+SCRIPT
+    chmod +x gradlew
+  fi
+
+  ok "starter template created at $PROJECT_DIR"
+}
+
+if [ ! -f "$MANIFEST" ]; then
+  if [ "$#" -eq 0 ]; then
+    echo "No Android project found at current directory."
+    echo "Tip: pass a project path as argument, e.g.: $(basename "$0") /path/to/android/project"
+    echo ""
+  fi
+  scaffold_project
+fi
+
 APP_ID=$(grep 'applicationId\s*=' "$PROJECT_DIR/app/build.gradle.kts" 2>/dev/null | head -1 | sed 's/.*"\(.*\)".*/\1/')
 ACTIVITY_FULL=$(grep 'android:name=' "$MANIFEST" 2>/dev/null | head -1 | sed 's/.*"\(.*\)".*/\1/')
 
@@ -215,6 +380,23 @@ fi
 step "7/7: Build & Deploy"
 
 cd "$PROJECT_DIR"
+
+if [ ! -f gradlew ]; then
+  fix "generating Gradle wrapper..."
+  if check_cmd gradle; then
+    gradle wrapper --gradle-version 8.5
+  else
+    fix "installing Gradle..."
+    cd /tmp
+    curl -sL "https://services.gradle.org/distributions/gradle-8.5-bin.zip" -o gradle.zip
+    sudo unzip -q gradle.zip -d /opt
+    sudo ln -sf /opt/gradle-8.5/bin/gradle /usr/local/bin/gradle
+    rm gradle.zip
+    cd "$PROJECT_DIR"
+    gradle wrapper --gradle-version 8.5
+  fi
+  ok "Gradle wrapper ready"
+fi
 
     fix "building APK..."
     if ./gradlew assembleDebug; then

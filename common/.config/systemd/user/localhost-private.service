@@ -1,0 +1,18 @@
+[Unit]
+Description=EcomSense Private - Admin Panel
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pannet1/programs/python/github.com/pannet1/ecomsense.in
+ExecStart=/home/pannet1/.local/bin/uv run --project /home/pannet1/programs/python/github.com/pannet1/ecomsense.in private/server.py
+Restart=always
+RestartSec=5
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+Environment=PATH=/home/pannet1/.local/bin:/home/pannet1/programs/python/github.com/pannet1/ecomsense.in/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=PYTHONPATH=/home/pannet1/programs/python/github.com/pannet1/ecomsense.in
+
+[Install]
+WantedBy=default.target
