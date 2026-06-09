@@ -35,8 +35,9 @@ scaffold_project() {
   local src_main="$PROJECT_DIR/app/src/main"
   local java_dir="$src_main/java/${PACKAGE_NAME//.//}"
   local res_dir="$src_main/res/values"
+  local layout_dir="$src_main/res/layout"
 
-  mkdir -p "$java_dir" "$res_dir" "$PROJECT_DIR/gradle/wrapper"
+  mkdir -p "$java_dir" "$res_dir" "$layout_dir" "$PROJECT_DIR/gradle/wrapper"
 
   cat > "$PROJECT_DIR/settings.gradle.kts" << 'EOF'
 pluginManagement {
