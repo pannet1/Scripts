@@ -21,7 +21,7 @@ echo "=============================================="
 
 # ── 1. Packages ──
 step "1/8: System Packages"
-PACKAGES="git curl wget fontconfig file tar zip unzip gzip tmux xclip build-essential pkg-config ripgrep fd-find lazygit python3 python3-pip python3-venv"
+PACKAGES="git curl wget fontconfig file tar zip unzip gzip tmux xclip build-essential pkg-config ripgrep fd-find lazygit python3 python3-pip python3-venv sshpass openssh-client"
 
 ALL_PRESENT=true
 for pkg in $PACKAGES; do
