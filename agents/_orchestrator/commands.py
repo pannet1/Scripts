@@ -496,7 +496,7 @@ def _find_feature_or_resolve(raw: str) -> Optional[Path]:
     return feature_dir
 
 
-def orchestrate(request: str, prompt_content: str = "", no_controller: bool = False) -> None:
+def orchestrate(request: str, prompt_content: str = "", no_controller: bool = False, app: str = "") -> None:
     cmd = request.strip().split(None, 1)
     verb = cmd[0] if cmd else ""
     rest = cmd[1] if len(cmd) > 1 else ""
@@ -543,10 +543,11 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         check_branch(action, "feature")
         scaffold_new_feature(domain, action, description, no_controller=no_controller)
         if domain:
-            register_feature_in_json(action, domain)
+            register_feature_in_json(action, domain, app=app)
         print("=" * 60)
         print("THEN RUN:")
-        print(f"  ./.agents/orchestrator.py do/{action}")
+        extra = f" --app {app}" if app else ""
+        print(f"  ./.agents/orchestrator.py do/{action}{extra}")
         print("=" * 60)
         return
 

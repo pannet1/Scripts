@@ -33,6 +33,28 @@ def load_features_config() -> dict[str, Any]:
     return {"known_features": {}, "domain_keywords": {}}
 
 
+def app_features_dir(app: str = "") -> Path:
+    cfg = _read_features_config()
+    dir_name = cfg.get("features_dir", "features")
+    if app:
+        apps = cfg.get("apps", {})
+        if app in apps:
+            dir_name = apps[app].get("features_dir", dir_name)
+    return REPO_ROOT / dir_name
+
+
+def app_features_config(app: str = "") -> Path:
+    if not app:
+        return FEATURES_CONFIG
+    cfg = _read_features_config()
+    apps = cfg.get("apps", {})
+    if app in apps:
+        path = apps[app].get("config", "")
+        if path:
+            return REPO_ROOT / path
+    return FEATURES_CONFIG
+
+
 FEATURES_CFG = load_features_config()
 KNOWN_FEATURES: dict[str, str] = FEATURES_CFG.get("known_features", {})
 DOMAIN_KEYWORDS: dict[str, tuple[str, str]] = {

@@ -30,6 +30,10 @@ def parse_args() -> argparse.Namespace:
         "--no-controller", action="store_true",
         help="Skip Controller.py generation (for background workers)",
     )
+    parser.add_argument(
+        "--app", "-a", default="",
+        help="App context: 'private' for admin features (uses features/ dir instead of web/features/)",
+    )
     args = parser.parse_args()
     if args.model:
         MODEL_CONFIG.write_text(json.dumps({"model": args.model}) + "\n")
@@ -60,4 +64,4 @@ if __name__ == "__main__":
             prompt_content = path.read_text().strip()
         else:
             prompt_content = args.prompt.strip()
-    orchestrate(request, prompt_content, no_controller=args.no_controller)
+    orchestrate(request, prompt_content, no_controller=args.no_controller, app=args.app)

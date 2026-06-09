@@ -3,14 +3,26 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
-from .config import FEATURES_DIR, FEATURES_CONFIG, KNOWN_FEATURES, DOMAIN_KEYWORDS, load_features_config
+from .config import FEATURES_DIR, FEATURES_CONFIG, KNOWN_FEATURES, DOMAIN_KEYWORDS, load_features_config, app_features_dir, app_features_config
 
 
-def _iter_features_dir():
-    if FEATURES_DIR.is_dir():
-        for entry in FEATURES_DIR.iterdir():
+def _iter_features_dir(app: str = ""):
+    base = app_features_dir(app)
+    if base.is_dir():
+        for entry in base.iterdir():
             if not entry.name.startswith("_"):
                 yield entry
+
+
+def _features_config_for(feature_name: str, domain: str) -> tuple[Path, Path]:
+    """Return (features_dir, config_path) for the given feature based on its domain."""
+    cfg = load_features_config()
+    apps = cfg.get("apps", {})
+    for app_name, app_cfg in apps.items():
+        for dom in (domain, f"{app_name}/{domain}"):
+            if dom in app_cfg.get("domains", []):
+                return app_features_dir(app_name), app_features_config(app_name)
+    return FEATURES_DIR, FEATURES_CONFIG
 
 
 def infer_domain_action(feature_name: str) -> tuple[str, str]:
@@ -73,7 +85,8 @@ def find_feature_dir(request_feature: str) -> Optional[Path]:
 
     if request_feature in KNOWN_FEATURES:
         domain = KNOWN_FEATURES[request_feature]
-        domain_dir = FEATURES_DIR / domain
+        fdir, _fcfg = _features_config_for(request_feature, domain)
+        domain_dir = fdir / domain
         if domain_dir.is_dir():
             if (domain_dir / "Handler.py").exists():
                 return domain_dir
@@ -94,8 +107,12 @@ def find_feature_dir(request_feature: str) -> Optional[Path]:
     return None
 
 
-def register_feature_in_json(feature_name: str, domain: str) -> None:
-    features = load_features_config()
+def register_feature_in_json(feature_name: str, domain: str, app: str = "") -> None:
+    fdir, fcfg = _features_config_for(feature_name, domain)
+    if app:
+        fdir, fcfg = app_features_dir(app), app_features_config(app)
+    features = (json.loads(fcfg.read_text()) if fcfg.exists()
+                else {"known_features": {}, "domain_keywords": {}})
     known = features.setdefault("known_features", {})
     if feature_name not in known:
         known[feature_name] = domain
@@ -103,13 +120,18 @@ def register_feature_in_json(feature_name: str, domain: str) -> None:
         keywords = features.setdefault("domain_keywords", {})
         if keyword and keyword not in keywords:
             keywords[keyword] = [domain, feature_name]
-        with open(FEATURES_CONFIG, "w") as f:
+        with open(fcfg, "w") as f:
             json.dump(features, f, indent=2)
-        print(f"[Orchestrator] Registered '{feature_name}' -> '{domain}' in features.json")
+        print(f"[Orchestrator] Registered '{feature_name}' -> '{domain}' in {fcfg.name}")
 
 
-def unregister_feature_from_json(feature_name: str, feature_dir: Optional[Path] = None) -> None:
-    features = load_features_config()
+def unregister_feature_from_json(feature_name: str, feature_dir: Optional[Path] = None, app: str = "") -> None:
+    fdir, fcfg = _features_config_for(feature_name, "")
+    if app:
+        fdir, fcfg = app_features_dir(app), app_features_config(app)
+    if not fcfg.exists():
+        return False
+    features = json.loads(fcfg.read_text())
     known = features.get("known_features", {})
     keywords = features.get("domain_keywords", {})
 
@@ -127,9 +149,9 @@ def unregister_feature_from_json(feature_name: str, feature_dir: Optional[Path] 
     if removed:
         features["known_features"] = known
         features["domain_keywords"] = keywords
-        with open(FEATURES_CONFIG, "w") as f:
+        with open(fcfg, "w") as f:
             json.dump(features, f, indent=2)
-        print(f"[Orchestrator] Unregistered '{feature_name}' from features.json")
+        print(f"[Orchestrator] Unregistered '{feature_name}' from {fcfg.name}")
     return removed
 
 
