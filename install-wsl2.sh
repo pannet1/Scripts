@@ -173,8 +173,38 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
         fi
     fi
 fi
-# ── 7. Dotfiles (stow) ──
-step "7/8: Dotfiles (stow)"
+
+# ── 7. WSL Config (.wslconfig) ──
+step "7/9: WSL Config (.wslconfig)"
+# Enable mirrored networking mode for full network feature parity.
+# https://learn.microsoft.com/en-us/windows/wsl/networking#mirrored-mode-networking
+configure_wsl_networking() {
+    local win_home wsl_config
+    win_home=$(wslpath "$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')" 2>/dev/null) || return
+    [ -z "$win_home" ] && return
+    wsl_config="$win_home/.wslconfig"
+
+    if grep -qs "networkingMode=mirrored" "$wsl_config" 2>/dev/null; then
+        ok "WSL mirrored networking already configured"
+        return
+    fi
+
+    if [ -f "$wsl_config" ]; then
+        if grep -qs "^\[wsl2\]" "$wsl_config" 2>/dev/null; then
+            sed -i '/^\[wsl2\]/a networkingMode=mirrored' "$wsl_config"
+        else
+            printf "\n[wsl2]\nnetworkingMode=mirrored\n" >> "$wsl_config"
+        fi
+    else
+        mkdir -p "$(dirname "$wsl_config")"
+        printf "[wsl2]\nnetworkingMode=mirrored\n" > "$wsl_config"
+    fi
+    ok "WSL mirrored networking configured"
+}
+configure_wsl_networking
+
+# ── 8. Dotfiles (stow) ──
+step "8/9: Dotfiles (stow)"
 if ! check_cmd stow; then
     fail "stow"
     sudo apt install -y stow
@@ -318,7 +348,7 @@ if [ ! -d "$TPM_DIR" ]; then
 fi
 
 # ── 7. Git push ──
-step "8/8: Git push"
+step "9/9: Git push"
 git add -A
 if ! git diff --cached --quiet; then
     git commit -m "wsl2: update $(date +%Y-%m-%d)"

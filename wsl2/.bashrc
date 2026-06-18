@@ -196,3 +196,7 @@ export PATH=/home/pannet1/.opencode/bin:$PATH
 ffile() {
   find . -name "$1" -not -path './.venv/*' -not -path './.git/*' -not -path './.pytest_cache/*' 2>/dev/null
 }
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/pannet1/.local/bin:$PATH"
