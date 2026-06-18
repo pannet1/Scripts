@@ -44,21 +44,31 @@ def infer_domain_action(feature_name: str) -> tuple[str, str]:
     return "", name
 
 
-def resolve_feature(request_feature: str) -> Optional[Path]:
-    feature_dir = find_feature_dir(request_feature)
+def resolve_feature(request_feature: str, app: str = "") -> Optional[Path]:
+    feature_dir = find_feature_dir(request_feature, app=app)
     if feature_dir:
         return feature_dir
-    return _fuzzy_suggest(request_feature)
+    return _fuzzy_suggest(request_feature, app=app)
 
 
-def _fuzzy_suggest(request_feature: str) -> Optional[Path]:
+def _fuzzy_suggest(request_feature: str, app: str = "") -> Optional[Path]:
     candidates: dict[str, Path] = {}
-    for domain_dir in _iter_features_dir():
-        if not domain_dir.is_dir():
+    dirs_to_search = [FEATURES_DIR]
+    if app:
+        app_dir = app_features_dir(app)
+        if app_dir != FEATURES_DIR:
+            dirs_to_search.append(app_dir)
+    for base_dir in dirs_to_search:
+        if not base_dir.is_dir():
             continue
-        for entry in domain_dir.iterdir():
-            if entry.is_dir() and not entry.name.startswith("_"):
-                candidates[entry.name] = entry
+        for domain_dir in base_dir.iterdir():
+            if domain_dir.is_dir() and not domain_dir.name.startswith("_"):
+                candidates[domain_dir.name] = domain_dir
+                if (domain_dir / "Handler.py").exists():
+                    continue
+                for entry in domain_dir.iterdir():
+                    if entry.is_dir() and not entry.name.startswith("_"):
+                        candidates[entry.name] = entry
 
     matches = difflib.get_close_matches(request_feature, list(candidates.keys()), n=3, cutoff=0.6)
     if not matches:
@@ -80,7 +90,7 @@ def _fuzzy_suggest(request_feature: str) -> Optional[Path]:
     return None
 
 
-def find_feature_dir(request_feature: str) -> Optional[Path]:
+def find_feature_dir(request_feature: str, app: str = "") -> Optional[Path]:
     lower = request_feature.lower()
 
     if request_feature in KNOWN_FEATURES:
@@ -94,16 +104,25 @@ def find_feature_dir(request_feature: str) -> Optional[Path]:
             if feature_dir.is_dir():
                 return feature_dir
 
-    for domain_dir in _iter_features_dir():
-        if not domain_dir.is_dir():
+    dirs_to_search = [FEATURES_DIR]
+    if app:
+        app_dir = app_features_dir(app)
+        if app_dir != FEATURES_DIR:
+            dirs_to_search.append(app_dir)
+
+    for base_dir in dirs_to_search:
+        if not base_dir.is_dir():
             continue
-        if domain_dir.name.lower() == lower:
-            if (domain_dir / "Handler.py").exists():
-                return domain_dir
-        for entry in domain_dir.iterdir():
-            if entry.is_dir() and not entry.name.startswith("_"):
-                if entry.name.lower() == lower:
-                    return entry
+        for domain_dir in base_dir.iterdir():
+            if not domain_dir.is_dir() or domain_dir.name.startswith("_"):
+                continue
+            if domain_dir.name.lower() == lower:
+                if (domain_dir / "Handler.py").exists():
+                    return domain_dir
+            for entry in domain_dir.iterdir():
+                if entry.is_dir() and not entry.name.startswith("_"):
+                    if entry.name.lower() == lower:
+                        return entry
     return None
 
 
@@ -125,7 +144,7 @@ def register_feature_in_json(feature_name: str, domain: str, app: str = "") -> N
         print(f"[Orchestrator] Registered '{feature_name}' -> '{domain}' in {fcfg.name}")
 
 
-def unregister_feature_from_json(feature_name: str, feature_dir: Optional[Path] = None, app: str = "") -> None:
+def unregister_feature_from_json(feature_name: str, feature_dir: Optional[Path] = None, app: str = "") -> bool:
     fdir, fcfg = _features_config_for(feature_name, "")
     if app:
         fdir, fcfg = app_features_dir(app), app_features_config(app)

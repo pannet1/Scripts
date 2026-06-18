@@ -77,6 +77,30 @@ sudo systemctl restart sshd
 
 ### sshd_increase_timeout
 
+## OpenBoardView WASM JS API
+
+The WASM build exposes `Module._loadBoardFromMemory(ptr, length)` which takes a pointer/length pair. Use the convenience wrapper:
+
+```javascript
+Module.loadBoardFromMemory = function(arrayBuffer) {
+  const data = new Uint8Array(arrayBuffer);
+  const ptr = Module._malloc(data.length);
+  Module.HEAPU8.set(data, ptr);
+  const result = Module._loadBoardFromMemory(ptr, data.length);
+  Module._free(ptr);
+  return result; // 0=success, 1=fail, -1=error
+};
+```
+
+Usage from SPA at ecomsense.in/schematics:
+
+```javascript
+fetch('/path/to/board.brd')
+  .then(r => r.arrayBuffer())
+  .then(buf => Module.loadBoardFromMemory(buf))
+  .then(code => console.log('load result:', code));
+```
+
 When you have SSH access to a VPS, run this to increase server-side SSH timeouts:
 
 ```bash

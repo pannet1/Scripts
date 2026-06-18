@@ -300,6 +300,13 @@ if [ -d "$SECRETS_DIR" ]; then
     ok "secrets symlinked"
 fi
 
+# .agents symlink (opencode agent runtime)
+AGENTS_DIR="$HOME/programs/shell/github.com/pannet1/Scripts/agents"
+if [ -d "$AGENTS_DIR" ]; then
+    ln -sfn "$AGENTS_DIR" "$HOME/.agents"
+    ok ".agents symlinked"
+fi
+
 # Tmux TPM plugins
 TPM_DIR="$HOME/.tmux/plugins/tpm"
 if [ ! -d "$TPM_DIR" ]; then

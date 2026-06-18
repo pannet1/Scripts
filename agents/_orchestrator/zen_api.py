@@ -102,7 +102,7 @@ def _zen_chat(headers: dict, payload: dict) -> str | None:
         data = json.dumps(payload).encode()
         req = urllib.request.Request(ZEN_URL, data=data, headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(req, timeout=120) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 body = json.loads(resp.read())
         except urllib.error.HTTPError as e:
             if e.code == 401:

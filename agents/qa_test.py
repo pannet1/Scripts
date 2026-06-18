@@ -12,33 +12,36 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 REPO = Path.cwd()
 _FEATURES_JSON = REPO / ".features.json"
-FEATURES_FILE = _FEATURES_JSON if _FEATURES_JSON.exists() else REPO / ".agents" / "features.json"
 
 
-def _get_features_dir() -> Path:
-    if FEATURES_FILE.exists():
-        try:
-            cfg = json.loads(FEATURES_FILE.read_text())
-            dir_name = cfg.get("features_dir", "features")
-            return REPO / dir_name
-        except Exception:
-            pass
-    return REPO / "features"
+def _load_json(path: Path) -> dict[str, Any]:
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return {}
 
 
-def _get_known_features() -> dict[str, str]:
-    if FEATURES_FILE.exists():
-        try:
-            return json.loads(FEATURES_FILE.read_text()).get("known_features", {})
-        except Exception:
-            pass
-    return {}
+def _get_all_features() -> list[tuple[str, str, Path]]:
+    root = _load_json(_FEATURES_JSON) if _FEATURES_JSON.exists() else {}
+    known: dict[str, str] = root.get("known_features", {})
+    features_dir = REPO / root.get("features_dir", "features")
+    result: list[tuple[str, str, Path]] = []
+    for name, domain in known.items():
+        result.append((name, domain, features_dir))
 
-
-FEATURES_DIR = _get_features_dir()
+    apps: dict[str, Any] = root.get("apps", {})
+    for _app_name, app_cfg in apps.items():
+        app_config_path = app_cfg.get("config", "")
+        if app_config_path:
+            app_features = _load_json(REPO / app_config_path).get("known_features", {})
+            app_dir = REPO / app_cfg.get("features_dir", "features")
+            for name, domain in app_features.items():
+                result.append((name, domain, app_dir))
+    return result
 
 
 def _should_skip(path: Path) -> bool:
@@ -98,7 +101,7 @@ def audit_py_file(path: Path) -> list[str]:
 
 
 def main() -> int:
-    features = _get_known_features()
+    features = _get_all_features()
 
     all_passed: list[str] = []
     all_failed: list[str] = []
@@ -115,8 +118,8 @@ def main() -> int:
         for v in audit_py_file(py_file):
             all_violations.append(f"    app/{v.lstrip()}")
 
-    for name, domain in features.items():
-        feat_dir = FEATURES_DIR / domain / name if domain else FEATURES_DIR / name
+    for name, domain, features_dir in features:
+        feat_dir = features_dir / domain / name if domain else features_dir / name
         test_file = feat_dir / "Tests.py"
         if not test_file.exists():
             continue
@@ -171,7 +174,7 @@ def main() -> int:
         print("    (none)")
     print()
 
-    n_features = sum(1 for n, d in features.items() if (FEATURES_DIR / d / n / "Tests.py" if d else FEATURES_DIR / n / "Tests.py").exists())
+    n_features = sum(1 for _n, _d, _fd in features if (_fd / _d / _n / "Tests.py" if _d else _fd / _n / "Tests.py").exists())
     print(f"{'=' * 50}")
     print(f" Summary: {len(all_passed)} passed, {len(all_failed)} failed, {n_features} feature slices")
     print(f"{'=' * 50}")

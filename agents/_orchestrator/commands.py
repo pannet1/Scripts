@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from .config import REPO_ROOT, AGENTS_DIR, FEATURES_DIR, FEATURES_CONFIG, KNOWN_FEATURES, DOMAIN_KEYWORDS, RUNNER, SCAFFOLDER, PERSONAS_DIR, load_features_config
+from .config import REPO_ROOT, AGENTS_DIR, FEATURES_DIR, FEATURES_CONFIG, KNOWN_FEATURES, DOMAIN_KEYWORDS, RUNNER, SCAFFOLDER, PERSONAS_DIR, load_features_config, app_features_dir
 from .templates import SPEC_TEMPLATE, DEFAULT_OVERVIEW, CODE_TEMPLATES
 from .zen_api import generate_spec_with_ai
 from .git_ops import current_branch, unmerged_branches, branch_exists, check_branch, read_prompt_file
@@ -72,12 +72,13 @@ def resolve_change_prompt(rest: str, prompt_content: str, feature_name: str, pre
     return rest.strip()
 
 
-def scaffold_new_feature(domain: str, action: str, overview: str = "", no_controller: bool = False) -> Path:
+def scaffold_new_feature(domain: str, action: str, overview: str = "", no_controller: bool = False, app: str = "") -> Path:
+    fdir = app_features_dir(app) if app else FEATURES_DIR
     if domain:
-        base = FEATURES_DIR / domain
+        base = fdir / domain
         slice_dir = base / action
     else:
-        slice_dir = FEATURES_DIR / action
+        slice_dir = fdir / action
     slice_dir.mkdir(parents=True, exist_ok=True)
 
     if overview:
@@ -486,13 +487,13 @@ def _resolve_input_to_feature(raw_input: str) -> Optional[str]:
     return name
 
 
-def _find_feature_or_resolve(raw: str) -> Optional[Path]:
-    feature_dir = resolve_feature(raw)
+def _find_feature_or_resolve(raw: str, app: str = "") -> Optional[Path]:
+    feature_dir = resolve_feature(raw, app=app)
     if feature_dir:
         return feature_dir
     name = _resolve_input_to_feature(raw)
     if name and name != raw:
-        feature_dir = resolve_feature(name)
+        feature_dir = resolve_feature(name, app=app)
     return feature_dir
 
 
@@ -501,24 +502,46 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
     verb = cmd[0] if cmd else ""
     rest = cmd[1] if len(cmd) > 1 else ""
 
+    domain = ""
+    prefix = verb.lower()
+    action = rest.strip()
+
     if "/" in verb:
-        raw_prefix, action = verb.split("/", 1)
-        prefix = raw_prefix.lower()
-        action = action.strip()
-    else:
-        prefix = verb.lower()
-        action = rest.strip()
+        parts = verb.split("/", 2)
+        if len(parts) == 3 and parts[0].lower() not in _KNOWN_PREFIXES:
+            domain, prefix, action = parts[0], parts[1].lower(), parts[2]
+        elif len(parts) >= 2:
+            prefix = parts[0].lower()
+            action = parts[1]
+
+    if domain and not app:
+        _cfg = load_features_config()
+        for _app_name, _app_cfg in _cfg.get("apps", {}).items():
+            if domain in _app_cfg.get("domains", []):
+                app = _app_name
+                break
 
     if prefix not in _KNOWN_PREFIXES:
         print("[Orchestrator] Unknown command.")
         print()
-        print("Commands:")
-        print('  ./.agents/orchestrator.py modify/path/to/file.py  (resolve + modify)')
-        print('  ./.agents/orchestrator.py new/YourFeature         (scaffold new feature)')
-        print('  ./.agents/orchestrator.py do/YourFeature          (run backend agent)')
-        print('  ./.agents/orchestrator.py bugfix/YourFeature      (document defect)')
-        print('  ./.agents/orchestrator.py delete/YourFeature      (remove feature)')
-        print('  ./.agents/orchestrator.py scan                    (discover existing features)')
+        print("Actions (action/FeatureName):")
+        print('  ./.agents/orchestrator.py YourFeature              (auto-resolves to modify/)')
+        print('  ./.agents/orchestrator.py new/YourFeature          (scaffold new feature)')
+        print('  ./.agents/orchestrator.py do/YourFeature           (run backend agent)')
+        print('  ./.agents/orchestrator.py modify/YourFeature       (amend existing spec)')
+        print('  ./.agents/orchestrator.py bugfix/YourFeature       (document defect)')
+        print('  ./.agents/orchestrator.py delete/YourFeature       (remove feature)')
+        print('  ./.agents/orchestrator.py merge/YourFeature        (merge to main)')
+        print('  ./.agents/orchestrator.py rename/OldName NewName   (rename feature)')
+        print()
+        print("Domain-specific (domain/action/FeatureName):")
+        print('  ./.agents/orchestrator.py admin/new/Payments       (scaffold in admin domain)')
+        print('  ./.agents/orchestrator.py vps/modify/Subscription  (modify in vps domain)')
+        print('  ./.agents/orchestrator.py admin/do/Payments        (run in admin domain)')
+        print()
+        print("Utilities:")
+        print('  ./.agents/orchestrator.py scaffold                 (init project)')
+        print('  ./.agents/orchestrator.py scan                     (discover existing features)')
         sys.exit(1)
 
     if prefix == "scaffold" and not action:
@@ -534,26 +557,27 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
 
     if prefix == "feature":
         description = resolve_change_prompt(rest, prompt_content, action, "feature")
-        domain = KNOWN_FEATURES.get(action, "")
         if not domain:
-            for _key, (_dom, _act) in DOMAIN_KEYWORDS.items():
-                if _key in action.lower() or _act.lower() == action.lower():
-                    domain = _dom
-                    break
+            domain = KNOWN_FEATURES.get(action, "")
+            if not domain:
+                for _key, (_dom, _act) in DOMAIN_KEYWORDS.items():
+                    if _key in action.lower() or _act.lower() == action.lower():
+                        domain = _dom
+                        break
         check_branch(action, "feature")
-        scaffold_new_feature(domain, action, description, no_controller=no_controller)
+        scaffold_new_feature(domain, action, description, no_controller=no_controller, app=app)
         if domain:
             register_feature_in_json(action, domain, app=app)
         print("=" * 60)
         print("THEN RUN:")
-        extra = f" --app {app}" if app else ""
-        print(f"  ./.agents/orchestrator.py do/{action}{extra}")
+        suffix = f"{domain}/do/{action}" if domain else f"do/{action}"
+        print(f"  ./.agents/orchestrator.py {suffix}")
         print("=" * 60)
         return
 
     if prefix == "do":
         user_feature_name = action or rest
-        feature_dir = _find_feature_or_resolve(user_feature_name)
+        feature_dir = _find_feature_or_resolve(user_feature_name, app=app)
         if not feature_dir:
             print(f"[Orchestrator] Feature not found: {user_feature_name}.")
             print(f"  First run: ./.agents/orchestrator.py new/{user_feature_name}")
@@ -658,7 +682,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                     return
             print(f"[Orchestrator] No feature name given (modify/ expects a feature name, inline prompt, prompt file, or nvim context).")
             return
-        feature_dir = _find_feature_or_resolve(action)
+        feature_dir = _find_feature_or_resolve(action, app=app)
         if not feature_dir:
             resolved_path = REPO_ROOT / action
             if resolved_path.exists() and resolved_path.is_file():
@@ -696,7 +720,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
 
     if prefix == "delete":
         feature_name = action or rest
-        feature_dir = resolve_feature(feature_name)
+        feature_dir = resolve_feature(feature_name, app=app)
         branch = current_branch()
         target_branches = [f"feature/{feature_name}", f"modify/{feature_name}", f"bugfix/{feature_name}"]
         on_target = branch in target_branches
@@ -877,12 +901,21 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
 
     print("[Orchestrator] Unknown request.")
     print()
-    print("Commands:")
-    print('  ./.agents/orchestrator.py YourFeature                (auto-resolves to modify/)')
-    print('  ./.agents/orchestrator.py new/YourFeature            (scaffold new feature)')
-    print('  ./.agents/orchestrator.py do/YourFeature             (run backend agent)')
-    print('  ./.agents/orchestrator.py modify/YourFeature         (amend existing spec)')
-    print('  ./.agents/orchestrator.py bugfix/YourFeature         (document defect)')
-    print('  ./.agents/orchestrator.py delete/YourFeature         (remove feature)')
-    print('  ./.agents/orchestrator.py scaffold                   (init project)')
-    print('  ./.agents/orchestrator.py scan                       (discover existing features)')
+    print("Actions (action/FeatureName):")
+    print('  ./.agents/orchestrator.py YourFeature              (auto-resolves to modify/)')
+    print('  ./.agents/orchestrator.py new/YourFeature          (scaffold new feature)')
+    print('  ./.agents/orchestrator.py do/YourFeature           (run backend agent)')
+    print('  ./.agents/orchestrator.py modify/YourFeature       (amend existing spec)')
+    print('  ./.agents/orchestrator.py bugfix/YourFeature       (document defect)')
+    print('  ./.agents/orchestrator.py delete/YourFeature       (remove feature)')
+    print('  ./.agents/orchestrator.py merge/YourFeature        (merge to main)')
+    print('  ./.agents/orchestrator.py rename/OldName NewName   (rename feature)')
+    print()
+    print("Domain-specific (domain/action/FeatureName):")
+    print('  ./.agents/orchestrator.py admin/new/Payments       (scaffold in admin domain)')
+    print('  ./.agents/orchestrator.py vps/modify/Subscription  (modify in vps domain)')
+    print('  ./.agents/orchestrator.py admin/do/Payments        (run in admin domain)')
+    print()
+    print("Utilities:")
+    print('  ./.agents/orchestrator.py scaffold                 (init project)')
+    print('  ./.agents/orchestrator.py scan                     (discover existing features)')

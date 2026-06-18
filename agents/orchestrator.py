@@ -11,12 +11,12 @@ from _orchestrator.config import MODEL_CONFIG
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Orchestrator Agent -- decompose and dispatch feature work.",
-        usage="%(prog)s feature/X [--prompt <file>]",
+        usage="%(prog)s [domain/]action/FeatureName [--prompt <file>]",
     )
     parser.add_argument(
         "command",
         nargs="*",
-        help="e.g. feature/YourFeature / do/YourFeature / modify/YourFeature",
+        help="e.g. new/Payments / vps/modify/Subscription / admin/do/Payments",
     )
     parser.add_argument(
         "--prompt", "-p",
@@ -41,15 +41,24 @@ def parse_args() -> argparse.Namespace:
     if not args.command:
         parser.print_help()
         print()
-        print("Commands:")
-        print("  ./.agents/orchestrator.py YourFeature                (auto-resolves to modify/)")
-        print("  ./.agents/orchestrator.py new/YourFeature            (scaffold new feature)")
-        print("  ./.agents/orchestrator.py do/YourFeature             (run backend agent)")
-        print("  ./.agents/orchestrator.py modify/YourFeature         (amend existing spec)")
-        print("  ./.agents/orchestrator.py bugfix/YourFeature         (document defect)")
-        print("  ./.agents/orchestrator.py delete/YourFeature         (remove feature)")
-        print("  ./.agents/orchestrator.py scaffold                   (init project)")
-        print("  ./.agents/orchestrator.py scan                       (discover existing features)")
+        print("Actions (action/FeatureName):")
+        print("  ./.agents/orchestrator.py YourFeature              (auto-resolves to modify/)")
+        print("  ./.agents/orchestrator.py new/YourFeature          (scaffold new feature)")
+        print("  ./.agents/orchestrator.py do/YourFeature           (run backend agent)")
+        print("  ./.agents/orchestrator.py modify/YourFeature       (amend existing spec)")
+        print("  ./.agents/orchestrator.py bugfix/YourFeature       (document defect)")
+        print("  ./.agents/orchestrator.py delete/YourFeature       (remove feature)")
+        print("  ./.agents/orchestrator.py merge/YourFeature        (merge to main)")
+        print("  ./.agents/orchestrator.py rename/OldName NewName   (rename feature)")
+        print()
+        print("Domain-specific (domain/action/FeatureName):")
+        print("  ./.agents/orchestrator.py admin/new/Payments       (scaffold in admin domain)")
+        print("  ./.agents/orchestrator.py vps/modify/Subscription  (modify in vps domain)")
+        print("  ./.agents/orchestrator.py admin/do/Payments        (run in admin domain)")
+        print()
+        print("Utilities:")
+        print("  ./.agents/orchestrator.py scaffold                 (init project)")
+        print("  ./.agents/orchestrator.py scan                     (discover existing features)")
         sys.exit(1)
     return args
 

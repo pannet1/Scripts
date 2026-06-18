@@ -191,3 +191,8 @@ export ADB_SERVER_SOCKET=tcp:$(cat /etc/resolv.conf | grep nameserver | awk '{pr
 
 # opencode
 export PATH=/home/pannet1/.opencode/bin:$PATH
+
+# ffile: find files by pattern, excluding venv/git/cache
+ffile() {
+  find . -name "$1" -not -path './.venv/*' -not -path './.git/*' -not -path './.pytest_cache/*' 2>/dev/null
+}

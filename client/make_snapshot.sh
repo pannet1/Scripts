@@ -27,28 +27,28 @@ RSYNC=/usr/bin/rsync;
 MOUNT_DEVICE=/dev/hdb1;
 SNAPSHOT_RW=/root/snapshot;
 
-Exclude file (the stuff we dont want) :
-#rsync script exclude file
-**/.pan/messages/cache/
-**/.phoenix/default/*/Cache/
-**/.thumbnails/
-**/Desktop/Trash/
-
-Include (what dirs to be included):
-#rsync script include file
-/home/
-/home/**
-/var/
-/var/www/
-/var/www/**
-/etc/
-/etc/**
-- *
-
-Note the "- *" for excluding everything except the dirs mentioned
-in the include file.
-Also note the "/var/" entry. To backup /var/www/* , you need to
-include /var/
+# Exclude file (the stuff we dont want) :
+# rsync script exclude file
+# **/.pan/messages/cache/
+# **/.phoenix/default/*/Cache/
+# **/.thumbnails/
+# **/Desktop/Trash/
+#
+# Include (what dirs to be included):
+# rsync script include file
+# /home/
+# /home/**
+# /var/
+# /var/www/
+# /var/www/**
+# /etc/
+# /etc/**
+# - *
+#
+# Note the "- *" for excluding everything except the dirs mentioned
+# in the include file.
+# Also note the "/var/" entry. To backup /var/www/* , you need to
+# include /var/
 
 
 
