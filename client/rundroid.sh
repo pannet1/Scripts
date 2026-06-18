@@ -229,6 +229,7 @@ grep -q 'ANDROID_HOME/platform-tools' "$HOME/.bashrc" 2>/dev/null && ok "platfor
 
 if $NEED_BASHRC; then
     fix "appending missing Android SDK exports to ~/.bashrc"
+    rm -f "$HOME/.bashrc"
     cat >> "$HOME/.bashrc" << 'EOF'
 
 # Android SDK
