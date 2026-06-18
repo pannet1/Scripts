@@ -66,3 +66,4 @@ poetry.lock
 
 # Stow packages — per-user runtime dirs not managed by stow
 common/.config/opencode/common/.config/
+common/.config/gh/hosts.yml
