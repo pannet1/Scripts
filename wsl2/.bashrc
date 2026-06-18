@@ -120,7 +120,7 @@ export GPG_TTY=$(tty)
 #    tmux attach-session -t default || tmux new-session -s default
 # fi
 
-export PATH="$HOME/.npm-global/bin:$PATH"
+export PATH="$HOME/.bun/bin:$PATH"
 if grep -qi microsoft /proc/version 2>/dev/null; then
   if grep -qi microsoft /proc/version 2>/dev/null; then
     if grep -qi microsoft /proc/version 2>/dev/null; then
