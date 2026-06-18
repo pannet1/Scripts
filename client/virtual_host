@@ -1,0 +1,19 @@
+<VirtualHost *:80>
+ 	ServerAdmin root@localhost
+   ServerName "SITENAME"	
+ 	DocumentRoot "/home/USER/Programs/php/SITENAME/web"
+ 	ErrorLog /home/USER/Programs/php/SITENAME/log/error.log
+ 	CustomLog /home/USER/Programs/php/SITENAME/log/access.log combined
+ 	LogLevel warn
+ 	ServerSignature On
+  	<Directory />
+ 		Options FollowSymLinks
+ 		AllowOverride All
+ 	</Directory>
+   <Directory /home/USER/Programs/php/SITENAME/web>
+     AllowOverride All
+     Options MultiViews Indexes Includes FollowSymLinks
+     Require all granted
+   </Directory>
+ </VirtualHost>
+	
