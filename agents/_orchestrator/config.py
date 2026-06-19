@@ -55,8 +55,37 @@ def app_features_config(app: str = "") -> Path:
     return FEATURES_CONFIG
 
 
+
+def _load_merged_known_features() -> dict[str, str]:
+    cfg = load_features_config()
+    result: dict[str, str] = {}
+    result.update(cfg.get("known_features", {}))
+    for _app_name, app_cfg in cfg.get("apps", {}).items():
+        config_path_str = app_cfg.get("config", "")
+        if config_path_str:
+            app_cfg_path = REPO_ROOT / config_path_str
+            if app_cfg_path.exists():
+                app_data = json.loads(app_cfg_path.read_text())
+                result.update(app_data.get("known_features", {}))
+    return result
+
+
+def _load_merged_domain_keywords() -> dict[str, tuple[str, str]]:
+    cfg = load_features_config()
+    result: dict[str, tuple[str, str]] = {}
+    for k, v in cfg.get("domain_keywords", {}).items():
+        result[k] = tuple(v)
+    for _app_name, app_cfg in cfg.get("apps", {}).items():
+        config_path_str = app_cfg.get("config", "")
+        if config_path_str:
+            app_cfg_path = REPO_ROOT / config_path_str
+            if app_cfg_path.exists():
+                app_data = json.loads(app_cfg_path.read_text())
+                for k, v in app_data.get("domain_keywords", {}).items():
+                    result[k] = tuple(v)
+    return result
+
+
 FEATURES_CFG = load_features_config()
-KNOWN_FEATURES: dict[str, str] = FEATURES_CFG.get("known_features", {})
-DOMAIN_KEYWORDS: dict[str, tuple[str, str]] = {
-    k: tuple(v) for k, v in FEATURES_CFG.get("domain_keywords", {}).items()
-}
+KNOWN_FEATURES: dict[str, str] = _load_merged_known_features()
+DOMAIN_KEYWORDS: dict[str, tuple[str, str]] = _load_merged_domain_keywords()

@@ -90,19 +90,38 @@ def _fuzzy_suggest(request_feature: str, app: str = "") -> Optional[Path]:
     return None
 
 
+def _find_feature_in_dir(base_dir: Path, lower: str) -> Optional[Path]:
+    if not base_dir.is_dir():
+        return None
+    for domain_dir in base_dir.iterdir():
+        if not domain_dir.is_dir() or domain_dir.name.startswith("_"):
+            continue
+        if domain_dir.name.lower() == lower:
+            if (domain_dir / "Handler.py").exists():
+                return domain_dir
+        for entry in domain_dir.iterdir():
+            if entry.is_dir() and not entry.name.startswith("_"):
+                if entry.name.lower() == lower:
+                    return entry
+    return None
+
+
 def find_feature_dir(request_feature: str, app: str = "") -> Optional[Path]:
     lower = request_feature.lower()
 
     if request_feature in KNOWN_FEATURES:
         domain = KNOWN_FEATURES[request_feature]
         fdir, _fcfg = _features_config_for(request_feature, domain)
-        domain_dir = fdir / domain
+        domain_dir = fdir / domain if domain else fdir
         if domain_dir.is_dir():
             if (domain_dir / "Handler.py").exists():
                 return domain_dir
             feature_dir = domain_dir / request_feature
             if feature_dir.is_dir():
                 return feature_dir
+        flat_dir = fdir / request_feature
+        if flat_dir.is_dir() and (flat_dir / "Handler.py").exists():
+            return flat_dir
 
     dirs_to_search = [FEATURES_DIR]
     if app:
@@ -111,18 +130,9 @@ def find_feature_dir(request_feature: str, app: str = "") -> Optional[Path]:
             dirs_to_search.append(app_dir)
 
     for base_dir in dirs_to_search:
-        if not base_dir.is_dir():
-            continue
-        for domain_dir in base_dir.iterdir():
-            if not domain_dir.is_dir() or domain_dir.name.startswith("_"):
-                continue
-            if domain_dir.name.lower() == lower:
-                if (domain_dir / "Handler.py").exists():
-                    return domain_dir
-            for entry in domain_dir.iterdir():
-                if entry.is_dir() and not entry.name.startswith("_"):
-                    if entry.name.lower() == lower:
-                        return entry
+        result = _find_feature_in_dir(base_dir, lower)
+        if result:
+            return result
     return None
 
 
