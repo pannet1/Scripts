@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
-from .config import FEATURES_DIR, FEATURES_CONFIG, KNOWN_FEATURES, DOMAIN_KEYWORDS, load_features_config, app_features_dir, app_features_config
+from .config import REPO_ROOT, FEATURES_DIR, FEATURES_CONFIG, KNOWN_FEATURES, DOMAIN_KEYWORDS, load_features_config, app_features_dir, app_features_config
 
 
 def _iter_features_dir(app: str = ""):
@@ -106,28 +106,46 @@ def _find_feature_in_dir(base_dir: Path, lower: str) -> Optional[Path]:
     return None
 
 
+def _all_app_features_dirs() -> list[Path]:
+    dirs: list[Path] = [FEATURES_DIR]
+    cfg = load_features_config()
+    for _app_name, app_cfg in cfg.get("apps", {}).items():
+        adir_str = app_cfg.get("features_dir", "")
+        if adir_str:
+            adir = REPO_ROOT / adir_str
+            if adir.is_dir() and adir not in dirs:
+                dirs.append(adir)
+    return dirs
+
+
+def _dir_for_feature(feature_name: str, domain: str, app: str = "") -> Optional[Path]:
+    if app:
+        fdir = app_features_dir(app)
+    else:
+        fdir, _fcfg = _features_config_for(feature_name, domain)
+    domain_dir = fdir / domain if domain else fdir
+    if domain_dir.is_dir():
+        if (domain_dir / "Handler.py").exists():
+            return domain_dir
+        feature_dir = domain_dir / feature_name
+        if feature_dir.is_dir():
+            return feature_dir
+    flat_dir = fdir / feature_name
+    if flat_dir.is_dir() and (flat_dir / "Handler.py").exists():
+        return flat_dir
+    return None
+
+
 def find_feature_dir(request_feature: str, app: str = "") -> Optional[Path]:
     lower = request_feature.lower()
 
     if request_feature in KNOWN_FEATURES:
         domain = KNOWN_FEATURES[request_feature]
-        fdir, _fcfg = _features_config_for(request_feature, domain)
-        domain_dir = fdir / domain if domain else fdir
-        if domain_dir.is_dir():
-            if (domain_dir / "Handler.py").exists():
-                return domain_dir
-            feature_dir = domain_dir / request_feature
-            if feature_dir.is_dir():
-                return feature_dir
-        flat_dir = fdir / request_feature
-        if flat_dir.is_dir() and (flat_dir / "Handler.py").exists():
-            return flat_dir
+        found = _dir_for_feature(request_feature, domain, app=app)
+        if found:
+            return found
 
-    dirs_to_search = [FEATURES_DIR]
-    if app:
-        app_dir = app_features_dir(app)
-        if app_dir != FEATURES_DIR:
-            dirs_to_search.append(app_dir)
+    dirs_to_search = _all_app_features_dirs()
 
     for base_dir in dirs_to_search:
         result = _find_feature_in_dir(base_dir, lower)
