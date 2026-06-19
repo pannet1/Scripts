@@ -13,9 +13,9 @@ find_project_name() {
     basename "$dir"
 }
 
-# Default server config (can be overridden)
-SERVER_USER="${SERVER_USER:-uma}"
-SERVER_HOST="${SERVER_HOST:-65.20.83.178}"
+# Server config (must be set via env vars or arguments)
+SERVER_USER="${SERVER_USER:?Set SERVER_USER env var or pass as arg}"
+SERVER_HOST="${SERVER_HOST:?Set SERVER_HOST env var or pass as arg}"
 PROJECT_NAME="$(find_project_name "${1:-$(pwd)}")"
 PROJECT_PATH="${2:-/home/uma/no_env/${PROJECT_NAME}}"
 SERVER="${SERVER_USER}@${SERVER_HOST}"
