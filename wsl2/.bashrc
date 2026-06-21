@@ -122,22 +122,15 @@ export GPG_TTY=$(tty)
 
 export PATH="$HOME/.bun/bin:$PATH"
 if grep -qi microsoft /proc/version 2>/dev/null; then
-  if grep -qi microsoft /proc/version 2>/dev/null; then
-    if grep -qi microsoft /proc/version 2>/dev/null; then
-      if grep -qi microsoft /proc/version 2>/dev/null; then
-        export LD_LIBRARY_PATH=/usr/lib/wsl/lib:$LD_LIBRARY_PATH
-        export WSL_DISABLE_INTEROP=1
-        alias usbread='sudo mkdir -p /mnt/d && sudo mount -t drvfs D: /mnt/d && echo "USB Updated Successfully"'
-      fi
-    fi
-  fi
+  export LD_LIBRARY_PATH=/usr/lib/wsl/lib:$LD_LIBRARY_PATH
+  export WSL_DISABLE_INTEROP=1
+  alias usbread='sudo mkdir -p /mnt/d && sudo mount -t drvfs D: /mnt/d && echo "USB Updated Successfully"'
 fi
 alias mail='/usr/bin/aerc'
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
-export EDITOR="/usr/bin/nvim"
 ###-begin-opencode-completions-###
 #
 # yargs command completion script
@@ -170,8 +163,6 @@ export EDITOR=nvim
 export VISUAL=nvim
 export PAGER=less
 export LESS=-RFX
-[ -f ~/.bash_aliases ] && . ~/.bash_aliases
-[ -f /usr/share/bash-completion/bash_completion ] && . /usr/share/bash-completion/bash_completion
 
 # Local secrets (machine-specific, not tracked in git)
 SECRETS_REPO="$HOME/programs/shell/github.com/pannet1/secrets"

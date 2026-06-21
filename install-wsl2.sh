@@ -359,7 +359,7 @@ if [ ! -d "$TPM_DIR" ]; then
     ok "TPM plugins installed"
 fi
 
-# ── 7. Git push ──
+# ── 10. Git push ──
 step "10/10: Git push"
 git add -A
 if ! git diff --cached --quiet; then
