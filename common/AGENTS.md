@@ -1,58 +1,10 @@
 # Global Agent Rules
 
-## Browser Automation (mare-browser-mcp)
+## Browser Automation
 
-A real Chromium browser MCP server is available globally. **Always use this MCP tool** for any web-related task — never run `curl`, `wget`, `playwright`, `puppeteer`, or raw HTTP commands for browsing.
+When you need to browse a web page, interact with a website, fill a form, scrape content, or debug a web app — **use the `mare_browser_mcp` tool**. It gives you a real Chromium browser you can control.
 
-The server is already configured in the global opencode config (`~/.config/opencode/opencode.jsonc`) as `mare_browser_mcp`. Its tools are automatically available to you in your tool list, prefixed with the server name (check your available tools for the exact prefixed names).
-
-### Underlying tools (prefixed with the MCP server name)
-
-| Tool | What it does |
-|------|-------------|
-| `*browser_navigate` | Navigate to a URL |
-| `*browser_act` | Run browser actions (click, fill, keypress, etc.) |
-| `*browser_debug` | Read console logs, network requests, dialogs |
-| `*browser_query` | Read DOM content via CSS selector |
-| `*browser_screenshot` | Take a PNG screenshot |
-| `*browser_eval` | Run arbitrary JavaScript in page |
-| `*browser_scroll` | Scroll page or container |
-| `*browser_wait_for_network` | Wait for a specific API response |
-| `*browser_upload` | Upload files |
-| `*browser_restart` | Kill browser and start fresh |
-| `*browser_emulate_device` | Switch to mobile/tablet viewport |
-
-### How to invoke
-
-These tools are in your available tool list at runtime. When you need to browse a web page, interact with a site, or debug a web app, look for tools starting with your MCP server prefix and use them directly.
-
-### Recommended workflow
-
-1. `*browser_navigate(url, clear_logs: true)` — start
-2. `*browser_act(commands)` — interact with page
-3. `*browser_debug` — check console/network on errors
-4. `*browser_query(selector)` — read DOM (prefer over screenshot)
-5. `*browser_screenshot()` — **last resort**, only for visual issues
-
-### Example
-
-```
-browser_navigate("https://example.com/login", clear_logs: true)
-browser_act([{ action: "fill", selector: "#email", value: "user@test.com" },
-             { action: "click", selector: "button[type=submit]" }])
-browser_wait_for_network({ url_pattern: "/api/session" })
-browser_debug({ console_types: ["error"] })
-browser_query(".dashboard-title", { fields: ["text"] })
-```
-
-### Environment
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `HEADLESS` | `false` | Run headless (`true`) or visible (`false`) |
-| `REAL_CHROME` | `false` | Use installed Chrome instead of Playwright's Chromium |
-
-Set via `HEADLESS=true mare-browser-mcp` for non-interactive use.
+Never run `curl`, `wget`, `playwright`, `puppeteer`, or raw HTTP commands for browsing — use the MCP browser tools instead.
 
 ## Cron Setup for Systemd Services
 
