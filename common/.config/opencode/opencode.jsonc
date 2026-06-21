@@ -3,7 +3,10 @@
   "mcp": {
     "mare_browser_mcp": {
       "type": "local",
-      "command": ["mare-browser-mcp"]
+      "command": ["mare-browser-mcp"],
+      "env": {
+        "HEADLESS": "true"
+      }
     }
   }
 }

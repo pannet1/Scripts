@@ -204,8 +204,8 @@ configure_wsl_networking() {
 }
 configure_wsl_networking
 
-# ── 8. OpenCode ──
-step "8/10: OpenCode"
+# ── 8. OpenCode + MCP Browser ──
+step "8/10: OpenCode & MCP Browser"
 if check_cmd opencode; then
     ok "opencode binary"
 else
@@ -213,6 +213,19 @@ else
     fix "installing opencode"
     curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path
     ok "opencode installed"
+fi
+
+if check_cmd bun; then
+    if bun pm ls -g 2>/dev/null | grep -q mare-browser-mcp; then
+        ok "mare-browser-mcp"
+    else
+        fail "mare-browser-mcp"
+        fix "installing mare-browser-mcp globally"
+        bun install -g mare-browser-mcp
+        ok "mare-browser-mcp installed"
+    fi
+else
+    fail "bun not available — skipping mare-browser-mcp"
 fi
 
 # ── 9. Dotfiles (stow) ──
