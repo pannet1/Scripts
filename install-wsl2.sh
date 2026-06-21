@@ -20,8 +20,8 @@ echo "  WSL2 Debian Setup"
 echo "=============================================="
 
 # ── 1. Packages ──
-step "1/8: System Packages"
-PACKAGES="git curl wget fontconfig file tar zip unzip gzip tmux xclip build-essential pkg-config ripgrep fd-find lazygit python3 python3-pip python3-venv sshpass openssh-client"
+step "1/10: System Packages"
+PACKAGES="git curl wget fontconfig file tar zip unzip gzip tmux xclip build-essential pkg-config ripgrep fd-find lazygit python3 python3-pip python3-venv sshpass openssh-client nmap tree gh sqlite3 cmake"
 
 ALL_PRESENT=true
 for pkg in $PACKAGES; do
@@ -56,7 +56,7 @@ else
 fi
 
 # ── 2. Nerd Fonts ──
-step "2/8: Nerd Fonts (WSL)"
+step "2/10: Nerd Fonts (WSL)"
 FONT_DIR="$HOME/.local/share/fonts"
 font_files_exist() { ls "$FONT_DIR"/FiraCode*.ttf &>/dev/null; }
 
@@ -79,7 +79,7 @@ else
 fi
 
 # ── 3. Neovim ──
-step "3/8: Neovim"
+step "3/10: Neovim"
 NVIM_DEPS="build-essential pkg-config ripgrep fd-find lazygit python3 python3-pip python3-venv"
 NEEDS_NVIM=false
 
@@ -115,7 +115,7 @@ if $NEEDS_NVIM; then
 fi
 
 # ── 4. Starship ──
-step "4/8: Starship Prompt"
+step "4/10: Starship Prompt"
 if check_cmd starship; then
     ok "starship binary"
 else
@@ -125,7 +125,7 @@ else
 fi
 
 # ── 5. Zoxide ──
-step "5/8: Zoxide"
+step "5/10: Zoxide"
 if check_cmd zoxide; then
     ok "zoxide binary"
 else
@@ -135,7 +135,7 @@ else
 fi
 
 # ── 6. bashrc Dependencies ──
-step "6/8: bashrc Dependencies"
+step "6/10: bashrc Dependencies"
 
 # Tools that .bashrc directly execs or references at source time.
 # Install before dotfiles deploy so the first source is clean.
