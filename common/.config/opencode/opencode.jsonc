@@ -4,7 +4,7 @@
     "mare_browser_mcp": {
       "type": "local",
       "command": ["mare-browser-mcp"],
-      "env": {
+      "environment": {
         "HEADLESS": "true"
       }
     }
