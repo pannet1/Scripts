@@ -4,50 +4,46 @@
 
 A real Chromium browser MCP server is available globally. **Always use this MCP tool** for any web-related task — never run `curl`, `wget`, `playwright`, `puppeteer`, or raw HTTP commands for browsing.
 
-The server is already configured in the global opencode config (`~/.config/opencode/opencode.jsonc`) as `mare_browser_mcp`. Its tools are automatically available to you as:
+The server is already configured in the global opencode config (`~/.config/opencode/opencode.jsonc`) as `mare_browser_mcp`. Its tools are automatically available to you in your tool list, prefixed with the server name (check your available tools for the exact prefixed names).
 
-| Tool name (use this) | What it does |
-|---|---|
-| `mare_browser_mcp_browser_navigate` | Navigate to a URL |
-| `mare_browser_mcp_browser_act` | Run browser actions (click, fill, keypress, etc.) |
-| `mare_browser_mcp_browser_debug` | Read console logs, network requests, dialogs |
-| `mare_browser_mcp_browser_query` | Read DOM content via CSS selector |
-| `mare_browser_mcp_browser_screenshot` | Take a PNG screenshot |
-| `mare_browser_mcp_browser_eval` | Run arbitrary JavaScript in page |
-| `mare_browser_mcp_browser_scroll` | Scroll page or container |
-| `mare_browser_mcp_browser_wait_for_network` | Wait for a specific API response |
-| `mare_browser_mcp_browser_upload` | Upload files |
-| `mare_browser_mcp_browser_restart` | Kill browser and start fresh |
-| `mare_browser_mcp_browser_emulate_device` | Switch to mobile/tablet viewport |
+### Underlying tools (prefixed with the MCP server name)
 
-### How to invoke (call the tool by name)
+| Tool | What it does |
+|------|-------------|
+| `*browser_navigate` | Navigate to a URL |
+| `*browser_act` | Run browser actions (click, fill, keypress, etc.) |
+| `*browser_debug` | Read console logs, network requests, dialogs |
+| `*browser_query` | Read DOM content via CSS selector |
+| `*browser_screenshot` | Take a PNG screenshot |
+| `*browser_eval` | Run arbitrary JavaScript in page |
+| `*browser_scroll` | Scroll page or container |
+| `*browser_wait_for_network` | Wait for a specific API response |
+| `*browser_upload` | Upload files |
+| `*browser_restart` | Kill browser and start fresh |
+| `*browser_emulate_device` | Switch to mobile/tablet viewport |
 
-Just use the tool name directly — opencode will route it to the MCP server automatically. Examples:
+### How to invoke
 
-```
-# Navigate to a page
-mare_browser_mcp_browser_navigate(url="https://example.com", clear_logs=true)
-
-# Fill a form and click submit
-mare_browser_mcp_browser_act(commands=[
-  { action: "fill", selector: "#email", value: "user@test.com" },
-  { action: "click", selector: "button[type=submit]" }
-])
-
-# Check for errors after an action
-mare_browser_mcp_browser_debug(console_types=["error"])
-
-# Read page content
-mare_browser_mcp_browser_query(selector=".dashboard-title", fields=["text"])
-```
+These tools are in your available tool list at runtime. When you need to browse a web page, interact with a site, or debug a web app, look for tools starting with your MCP server prefix and use them directly.
 
 ### Recommended workflow
 
-1. `mare_browser_mcp_browser_navigate(url, clear_logs: true)` — start
-2. `mare_browser_mcp_browser_act(commands)` — interact with page
-3. `mare_browser_mcp_browser_debug` — check console/network on errors
-4. `mare_browser_mcp_browser_query(selector)` — read DOM (prefer over screenshot)
-5. `mare_browser_mcp_browser_screenshot()` — **last resort**, only for visual issues
+1. `*browser_navigate(url, clear_logs: true)` — start
+2. `*browser_act(commands)` — interact with page
+3. `*browser_debug` — check console/network on errors
+4. `*browser_query(selector)` — read DOM (prefer over screenshot)
+5. `*browser_screenshot()` — **last resort**, only for visual issues
+
+### Example
+
+```
+browser_navigate("https://example.com/login", clear_logs: true)
+browser_act([{ action: "fill", selector: "#email", value: "user@test.com" },
+             { action: "click", selector: "button[type=submit]" }])
+browser_wait_for_network({ url_pattern: "/api/session" })
+browser_debug({ console_types: ["error"] })
+browser_query(".dashboard-title", { fields: ["text"] })
+```
 
 ### Environment
 
