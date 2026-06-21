@@ -4,20 +4,58 @@
 
 A real Chromium browser MCP server is available globally. **Always use these tools** for any web-related task — never run `curl`, `wget`, `playwright`, `puppeteer`, or raw HTTP commands for browsing.
 
-Available tools:
-- **`browser_navigate(url, clear_logs?)`** — Navigate to a URL. Pass `clear_logs: true` when starting a new task.
-- **`browser_act(commands[])`** — Run actions: `click`, `hover`, `drag`, `fill`, `select`, `keypress`, `wait`, `scrollto`, `clicklink`, `waitfor`, `clearconsole`.
-- **`browser_debug(url_filter?, method_filter?, console_types?, last_n?)`** — **Start here on errors.** Returns URL, title, console logs, network requests, dialogs.
-- **`browser_query(selector, all?, fields?, visible_only?, limit?, count_only?)`** — Read DOM via CSS selector. Prefer over `browser_screenshot`.
-- **`browser_screenshot()`** — **Last resort.** Returns PNG. Only for visual layout issues.
-- **`browser_eval(code)`** — Run arbitrary JS in page context (escape hatch).
-- **`browser_scroll(direction?, pixels?, selector?, container?)`** — Scroll page or container.
-- **`browser_wait_for_network(url_pattern?, method?, timeout?)`** — Wait for specific network response.
-- **`browser_upload(selector, files[])`** — Upload files to a file input.
-- **`browser_restart(url?)`** — Kill browser and start fresh.
-- **`browser_emulate_device(device, orientation?, custom?)`** — Switch to device profile (mobile, tablet).
+### Quickstart
 
-Workflow: `browser_navigate → browser_act → browser_debug/browser_query → browser_screenshot` (if needed).
+```json
+// Already configured in ~/.config/opencode/opencode.jsonc
+// Server: mare_browser_mcp (global via bun)
+```
+
+### When to use each tool
+
+| Step | Tool | When |
+|------|------|------|
+| 1 | `browser_navigate(url, clear_logs: true)` | Start a new task |
+| 2 | `browser_act(commands[])` | Click, fill forms, press keys |
+| 3 | `browser_debug(console_types: ["error"])` | **First on errors** — check console/network |
+| 4 | `browser_query(selector, fields: ["text"])` | Read page content (prefer over screenshot) |
+| 5 | `browser_screenshot()` | **Last resort** — only for visual layout bugs |
+
+### Tool Reference
+
+| Tool | Description |
+|------|-------------|
+| `browser_navigate(url, clear_logs?)` | Navigate to a URL |
+| `browser_act(commands[])` | Run actions: `click`, `hover`, `drag`, `fill`, `select`, `keypress`, `wait`, `scrollto`, `clicklink`, `waitfor`, `clearconsole` |
+| `browser_debug(...)` | **Start here on errors.** Returns URL, title, console logs, network requests, dialogs |
+| `browser_query(selector, ...)` | Read DOM via CSS selector. Prefer over screenshot |
+| `browser_screenshot()` | **Last resort.** Returns base64 PNG |
+| `browser_eval(code)` | Run JS in page (escape hatch) |
+| `browser_scroll(...)` | Scroll page or scrollable container |
+| `browser_wait_for_network(...)` | Wait for specific API response |
+| `browser_upload(selector, files[])` | Upload files to input |
+| `browser_restart(url?)` | Kill browser and start fresh |
+| `browser_emulate_device(...)` | Switch to mobile/tablet profile |
+
+### Example Workflow
+
+```
+browser_navigate("https://example.com/login", clear_logs: true)
+browser_act([{ action: "fill", selector: "#email", value: "user@test.com" },
+             { action: "click", selector: "button[type=submit]" }])
+browser_wait_for_network({ url_pattern: "/api/session" })
+browser_debug({ console_types: ["error"] })
+browser_query(".dashboard-title", { fields: ["text"] })
+```
+
+### Environment
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HEADLESS` | `false` | Run headless (`true`) or visible (`false`) |
+| `REAL_CHROME` | `false` | Use installed Chrome instead of Playwright's Chromium |
+
+Set via: `HEADLESS=true mare-browser-mcp` for non-interactive use.
 
 ## Cron Setup for Systemd Services
 
