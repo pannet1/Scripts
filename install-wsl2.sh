@@ -175,7 +175,7 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
 fi
 
 # ── 7. WSL Config (.wslconfig) ──
-step "7/9: WSL Config (.wslconfig)"
+step "7/10: WSL Config (.wslconfig)"
 # Enable mirrored networking mode for full network feature parity.
 # Requires Windows 11 22H2+. Skipped silently on older Windows.
 # https://learn.microsoft.com/en-us/windows/wsl/networking#mirrored-mode-networking
@@ -204,8 +204,19 @@ configure_wsl_networking() {
 }
 configure_wsl_networking
 
-# ── 8. Dotfiles (stow) ──
-step "8/9: Dotfiles (stow)"
+# ── 8. OpenCode ──
+step "8/10: OpenCode"
+if check_cmd opencode; then
+    ok "opencode binary"
+else
+    fail "opencode binary"
+    fix "installing opencode"
+    curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path
+    ok "opencode installed"
+fi
+
+# ── 9. Dotfiles (stow) ──
+step "9/10: Dotfiles (stow)"
 if ! check_cmd stow; then
     fail "stow"
     sudo apt install -y stow
@@ -349,7 +360,7 @@ if [ ! -d "$TPM_DIR" ]; then
 fi
 
 # ── 7. Git push ──
-step "9/9: Git push"
+step "10/10: Git push"
 git add -A
 if ! git diff --cached --quiet; then
     git commit -m "wsl2: update $(date +%Y-%m-%d)"
