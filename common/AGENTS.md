@@ -1,5 +1,24 @@
 # Global Agent Rules
 
+## Browser Automation (mare-browser-mcp)
+
+A real Chromium browser MCP server is available globally. **Always use these tools** for any web-related task — never run `curl`, `wget`, `playwright`, `puppeteer`, or raw HTTP commands for browsing.
+
+Available tools:
+- **`browser_navigate(url, clear_logs?)`** — Navigate to a URL. Pass `clear_logs: true` when starting a new task.
+- **`browser_act(commands[])`** — Run actions: `click`, `hover`, `drag`, `fill`, `select`, `keypress`, `wait`, `scrollto`, `clicklink`, `waitfor`, `clearconsole`.
+- **`browser_debug(url_filter?, method_filter?, console_types?, last_n?)`** — **Start here on errors.** Returns URL, title, console logs, network requests, dialogs.
+- **`browser_query(selector, all?, fields?, visible_only?, limit?, count_only?)`** — Read DOM via CSS selector. Prefer over `browser_screenshot`.
+- **`browser_screenshot()`** — **Last resort.** Returns PNG. Only for visual layout issues.
+- **`browser_eval(code)`** — Run arbitrary JS in page context (escape hatch).
+- **`browser_scroll(direction?, pixels?, selector?, container?)`** — Scroll page or container.
+- **`browser_wait_for_network(url_pattern?, method?, timeout?)`** — Wait for specific network response.
+- **`browser_upload(selector, files[])`** — Upload files to a file input.
+- **`browser_restart(url?)`** — Kill browser and start fresh.
+- **`browser_emulate_device(device, orientation?, custom?)`** — Switch to device profile (mobile, tablet).
+
+Workflow: `browser_navigate → browser_act → browser_debug/browser_query → browser_screenshot` (if needed).
+
 ## Cron Setup for Systemd Services
 
 When setting up cron to start/stop systemd services:
