@@ -177,6 +177,7 @@ fi
 # ── 7. WSL Config (.wslconfig) ──
 step "7/9: WSL Config (.wslconfig)"
 # Enable mirrored networking mode for full network feature parity.
+# Requires Windows 11 22H2+. Skipped silently on older Windows.
 # https://learn.microsoft.com/en-us/windows/wsl/networking#mirrored-mode-networking
 configure_wsl_networking() {
     local win_home wsl_config
