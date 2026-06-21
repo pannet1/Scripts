@@ -2,51 +2,52 @@
 
 ## Browser Automation (mare-browser-mcp)
 
-A real Chromium browser MCP server is available globally. **Always use these tools** for any web-related task — never run `curl`, `wget`, `playwright`, `puppeteer`, or raw HTTP commands for browsing.
+A real Chromium browser MCP server is available globally. **Always use this MCP tool** for any web-related task — never run `curl`, `wget`, `playwright`, `puppeteer`, or raw HTTP commands for browsing.
 
-### Quickstart
+The server is already configured in the global opencode config (`~/.config/opencode/opencode.jsonc`) as `mare_browser_mcp`. Its tools are automatically available to you as:
 
-```json
-// Already configured in ~/.config/opencode/opencode.jsonc
-// Server: mare_browser_mcp (global via bun)
-```
+| Tool name (use this) | What it does |
+|---|---|
+| `mare_browser_mcp_browser_navigate` | Navigate to a URL |
+| `mare_browser_mcp_browser_act` | Run browser actions (click, fill, keypress, etc.) |
+| `mare_browser_mcp_browser_debug` | Read console logs, network requests, dialogs |
+| `mare_browser_mcp_browser_query` | Read DOM content via CSS selector |
+| `mare_browser_mcp_browser_screenshot` | Take a PNG screenshot |
+| `mare_browser_mcp_browser_eval` | Run arbitrary JavaScript in page |
+| `mare_browser_mcp_browser_scroll` | Scroll page or container |
+| `mare_browser_mcp_browser_wait_for_network` | Wait for a specific API response |
+| `mare_browser_mcp_browser_upload` | Upload files |
+| `mare_browser_mcp_browser_restart` | Kill browser and start fresh |
+| `mare_browser_mcp_browser_emulate_device` | Switch to mobile/tablet viewport |
 
-### When to use each tool
+### How to invoke (call the tool by name)
 
-| Step | Tool | When |
-|------|------|------|
-| 1 | `browser_navigate(url, clear_logs: true)` | Start a new task |
-| 2 | `browser_act(commands[])` | Click, fill forms, press keys |
-| 3 | `browser_debug(console_types: ["error"])` | **First on errors** — check console/network |
-| 4 | `browser_query(selector, fields: ["text"])` | Read page content (prefer over screenshot) |
-| 5 | `browser_screenshot()` | **Last resort** — only for visual layout bugs |
-
-### Tool Reference
-
-| Tool | Description |
-|------|-------------|
-| `browser_navigate(url, clear_logs?)` | Navigate to a URL |
-| `browser_act(commands[])` | Run actions: `click`, `hover`, `drag`, `fill`, `select`, `keypress`, `wait`, `scrollto`, `clicklink`, `waitfor`, `clearconsole` |
-| `browser_debug(...)` | **Start here on errors.** Returns URL, title, console logs, network requests, dialogs |
-| `browser_query(selector, ...)` | Read DOM via CSS selector. Prefer over screenshot |
-| `browser_screenshot()` | **Last resort.** Returns base64 PNG |
-| `browser_eval(code)` | Run JS in page (escape hatch) |
-| `browser_scroll(...)` | Scroll page or scrollable container |
-| `browser_wait_for_network(...)` | Wait for specific API response |
-| `browser_upload(selector, files[])` | Upload files to input |
-| `browser_restart(url?)` | Kill browser and start fresh |
-| `browser_emulate_device(...)` | Switch to mobile/tablet profile |
-
-### Example Workflow
+Just use the tool name directly — opencode will route it to the MCP server automatically. Examples:
 
 ```
-browser_navigate("https://example.com/login", clear_logs: true)
-browser_act([{ action: "fill", selector: "#email", value: "user@test.com" },
-             { action: "click", selector: "button[type=submit]" }])
-browser_wait_for_network({ url_pattern: "/api/session" })
-browser_debug({ console_types: ["error"] })
-browser_query(".dashboard-title", { fields: ["text"] })
+# Navigate to a page
+mare_browser_mcp_browser_navigate(url="https://example.com", clear_logs=true)
+
+# Fill a form and click submit
+mare_browser_mcp_browser_act(commands=[
+  { action: "fill", selector: "#email", value: "user@test.com" },
+  { action: "click", selector: "button[type=submit]" }
+])
+
+# Check for errors after an action
+mare_browser_mcp_browser_debug(console_types=["error"])
+
+# Read page content
+mare_browser_mcp_browser_query(selector=".dashboard-title", fields=["text"])
 ```
+
+### Recommended workflow
+
+1. `mare_browser_mcp_browser_navigate(url, clear_logs: true)` — start
+2. `mare_browser_mcp_browser_act(commands)` — interact with page
+3. `mare_browser_mcp_browser_debug` — check console/network on errors
+4. `mare_browser_mcp_browser_query(selector)` — read DOM (prefer over screenshot)
+5. `mare_browser_mcp_browser_screenshot()` — **last resort**, only for visual issues
 
 ### Environment
 
@@ -55,7 +56,7 @@ browser_query(".dashboard-title", { fields: ["text"] })
 | `HEADLESS` | `false` | Run headless (`true`) or visible (`false`) |
 | `REAL_CHROME` | `false` | Use installed Chrome instead of Playwright's Chromium |
 
-Set via: `HEADLESS=true mare-browser-mcp` for non-interactive use.
+Set via `HEADLESS=true mare-browser-mcp` for non-interactive use.
 
 ## Cron Setup for Systemd Services
 
