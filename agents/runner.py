@@ -43,8 +43,9 @@ VERBOSE = False
 ZEN_URL = "https://opencode.ai/zen/v1/chat/completions"
 
 ZEN_FALLBACKS = [
-    "deepseek-v4-flash",
     "deepseek-v4-flash-free",
+    "mimo-v2.5-free",
+    "qwen3.6-plus-free",
 ]
 
 

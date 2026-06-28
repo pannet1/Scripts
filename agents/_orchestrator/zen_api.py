@@ -13,8 +13,9 @@ from .config import REPO_ROOT, MODEL_CONFIG
 ZEN_URL = "https://opencode.ai/zen/v1/chat/completions"
 
 ZEN_FALLBACKS = [
-    "deepseek-v4-flash",
     "deepseek-v4-flash-free",
+    "mimo-v2.5-free",
+    "qwen3.6-plus-free",
 ]
 
 
@@ -114,7 +115,7 @@ def _zen_chat(headers: dict, payload: dict) -> str | None:
         data = json.dumps(payload).encode()
         req = urllib.request.Request(ZEN_URL, data=data, headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=60) as resp:
                 body = json.loads(resp.read())
         except urllib.error.HTTPError as e:
             if e.code == 401:
