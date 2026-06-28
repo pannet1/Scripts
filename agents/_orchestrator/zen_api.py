@@ -24,7 +24,19 @@ def _zen_session_id() -> str:
 
 
 def _zen_api_key() -> str:
-    return os.environ.get("OPENCODE_ZEN_KEY", "public")
+    key = os.environ.get("OPENCODE_ZEN_KEY")
+    if key:
+        return key
+    secrets_file = Path.home() / ".secrets" / "wsl2.env"
+    if secrets_file.is_file():
+        for line in secrets_file.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("export OPENCODE_ZEN_KEY=") or line.startswith("OPENCODE_ZEN_KEY="):
+                raw = line.split("=", 1)[1]
+                key = raw.strip("\"'")
+                if key:
+                    return key
+    return "public"
 
 
 def _zen_model() -> str:
