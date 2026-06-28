@@ -70,7 +70,20 @@ def _fuzzy_suggest(request_feature: str, app: str = "") -> Optional[Path]:
                     if entry.is_dir() and not entry.name.startswith("_"):
                         candidates[entry.name] = entry
 
-    matches = difflib.get_close_matches(request_feature, list(candidates.keys()), n=3, cutoff=0.6)
+    request_lower = request_feature.lower()
+    prefix_matches: list[str] = []
+    for cname in candidates:
+        clower = cname.lower()
+        if clower.startswith(request_lower) or request_lower.startswith(clower):
+            prefix_matches.append(cname)
+    matches = difflib.get_close_matches(request_feature, list(candidates.keys()), n=5, cutoff=0.4)
+    seen: set[str] = set()
+    combined: list[str] = []
+    for m in prefix_matches + matches:
+        if m not in seen:
+            seen.add(m)
+            combined.append(m)
+    matches = combined[:3]
     if not matches:
         return None
 
