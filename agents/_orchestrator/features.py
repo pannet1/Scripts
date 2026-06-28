@@ -91,7 +91,10 @@ def _fuzzy_suggest(request_feature: str, app: str = "") -> Optional[Path]:
     for i, m in enumerate(matches, 1):
         print(f"  {i}. {m}")
     print(f"  n. No, cancel")
-    choice = input(f"Enter choice [1-{len(matches)} or n]: ").strip().lower()
+    try:
+        choice = input(f"Enter choice [1-{len(matches)} or n]: ").strip().lower()
+    except EOFError:
+        choice = "n"
     if choice == "n":
         return None
     try:
