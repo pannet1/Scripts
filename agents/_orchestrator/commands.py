@@ -644,21 +644,28 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                 if not change_prompt:
                     print("[Orchestrator] No prompt provided.")
                     return
-                check_branch(derived, prefix)
                 heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
                 real_feature = find_feature_dir(derived)
                 if real_feature:
+                    check_branch(derived, prefix)
                     _rewrite_spec_with_ai(real_feature, change_prompt, heading)
                     amend_spec(real_feature, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                    return
+                fuzzy = resolve_feature(derived)
+                if fuzzy:
+                    check_branch(derived, prefix)
+                    _rewrite_spec_with_ai(fuzzy, change_prompt, heading)
+                    amend_spec(fuzzy, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
                     return
                 scaffold_new_feature("", derived, "", no_controller=True)
                 feature_dir = FEATURES_DIR / derived
                 if feature_dir.is_dir():
+                    check_branch(derived, prefix)
                     register_feature_in_json(derived, "")
                     _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
                     amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
                     return
-                print(f"[Orchestrator] Branch '{prefix}/{derived}' created. Not a project feature — no scaffolding.")
+                print(f"[Orchestrator] Could not create feature '{derived}'.")
                 return
             if current_file:
                 derived = _derive_feature_name_from_path(current_file)
@@ -666,10 +673,10 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                 if not change_prompt:
                     print("[Orchestrator] No prompt provided.")
                     return
-                check_branch(derived, prefix)
+                heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
                 real_feature = find_feature_dir(derived)
                 if real_feature:
-                    heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
+                    check_branch(derived, prefix)
                     scaffold_new_feature("", derived, f"{prefix.title()} {current_file}", no_controller=True)
                     feature_dir = FEATURES_DIR / derived
                     if feature_dir.is_dir():
@@ -677,9 +684,18 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                         _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
                         amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
                         return
-                else:
-                    print(f"[Orchestrator] Branch '{prefix}/{derived}' created. Not a project feature — no scaffolding.")
-                    return
+                fuzzy = resolve_feature(derived)
+                if fuzzy:
+                    check_branch(derived, prefix)
+                    scaffold_new_feature("", derived, f"{prefix.title()} {current_file}", no_controller=True)
+                    feature_dir = FEATURES_DIR / derived
+                    if feature_dir.is_dir():
+                        register_feature_in_json(derived, "")
+                        _rewrite_spec_with_ai(fuzzy, change_prompt, heading)
+                        amend_spec(fuzzy, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                        return
+                print(f"[Orchestrator] Feature '{derived}' not found.")
+                return
             print(f"[Orchestrator] No feature name given (modify/ expects a feature name, inline prompt, prompt file, or nvim context).")
             return
         feature_dir = _find_feature_or_resolve(action, app=app)
@@ -688,9 +704,9 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
             if resolved_path.exists() and resolved_path.is_file():
                 derived = _derive_feature_name_from_path(action)
                 change_prompt = resolve_change_prompt(rest, prompt_content, derived, prefix)
-                check_branch(derived, prefix)
                 real_feature = find_feature_dir(derived)
                 if real_feature:
+                    check_branch(derived, prefix)
                     heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
                     scaffold_new_feature("", derived, f"{prefix.title()} {action}", no_controller=True)
                     feature_dir = FEATURES_DIR / derived
@@ -700,10 +716,9 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                         amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
                         return
                 else:
-                    print(f"[Orchestrator] Branch '{prefix}/{derived}' created. Not a project feature — no scaffolding.")
+                    print(f"[Orchestrator] Feature '{derived}' not found.")
                     return
-            check_branch(action, prefix)
-            print(f"[Orchestrator] Branch '{prefix}/{action}' created. Not a project feature — no scaffolding.")
+            print(f"[Orchestrator] Feature '{action}' not found.")
             return
         resolved_name = feature_dir.name
         change_prompt = resolve_change_prompt(rest, prompt_content, resolved_name, prefix)
