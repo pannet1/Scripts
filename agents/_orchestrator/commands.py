@@ -564,15 +564,18 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                     if _key in action.lower() or _act.lower() == action.lower():
                         domain = _dom
                         break
-        check_branch(action, "feature")
-        scaffold_new_feature(domain, action, description, no_controller=no_controller, app=app)
-        if domain:
-            register_feature_in_json(action, domain, app=app)
-        print("=" * 60)
-        print("THEN RUN:")
-        suffix = f"{domain}/do/{action}" if domain else f"do/{action}"
-        print(f"  ./.agents/orchestrator.py {suffix}")
-        print("=" * 60)
+        feature_dir = scaffold_new_feature(domain, action, description, no_controller=no_controller, app=app)
+        if feature_dir and feature_dir.is_dir():
+            check_branch(action, "feature")
+            if domain:
+                register_feature_in_json(action, domain, app=app)
+            print("=" * 60)
+            print("THEN RUN:")
+            suffix = f"{domain}/do/{action}" if domain else f"do/{action}"
+            print(f"  ./.agents/orchestrator.py {suffix}")
+            print("=" * 60)
+        else:
+            print(f"[Orchestrator] Failed to scaffold feature '{action}'.")
         return
 
     if prefix == "do":
