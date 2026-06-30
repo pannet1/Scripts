@@ -8,5 +8,23 @@
         "HEADLESS": "true"
       }
     }
+  },
+  "provider": {
+    "local-ai": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Local AI (llama-swap)",
+      "options": {
+        "baseURL": "http://localhost:8080/v1",
+        "apiKey": "sk-local-dummy-key-change-me"
+      },
+      "models": {
+        "qwen2.5-7b-instruct": {
+          "name": "Qwen2.5 7B Instruct"
+        },
+        "nomic-embed-text": {
+          "name": "Nomic Embed Text v1.5"
+        }
+      }
+    }
   }
 }

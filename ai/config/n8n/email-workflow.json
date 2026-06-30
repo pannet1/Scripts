@@ -1,0 +1,111 @@
+{
+  "name": "Email → LLM Tagging",
+  "nodes": [
+    {
+      "id": "trigger-imap",
+      "name": "Poll Email (IMAP)",
+      "type": "n8n-nodes-base.emailImap",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "parameters": {
+        "protocol": "imap",
+        "host": "={{ $env.IMAP_HOST }}",
+        "port": "={{ $env.IMAP_PORT }}",
+        "user": "={{ $env.IMAP_USER }}",
+        "password": "={{ $env.IMAP_PASSWORD }}",
+        "connectionType": "secure",
+        "pollInterval": 60,
+        "format": "raw",
+        "options": {}
+      }
+    },
+    {
+      "id": "llm-tag",
+      "name": "LLM Tag Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://llama-swap:8080/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer sk-local-dummy-key-change-me"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "jsonBody": "{\n  \"model\": \"qwen2.5-7b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an email tagging assistant. Generate 3-5 short, relevant tags for the given email. Return ONLY the tags as a comma-separated list, nothing else.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Email subject: {{ $json[\"header\"][\"subject\"] }}\\n\\nFrom: {{ $json[\"header\"][\"from\"] }}\\n\\nBody: {{ $json[\"text\"] || $json[\"html\"] }}\"\n    }\n  ],\n  \"temperature\": 0.3,\n  \"max_tokens\": 100\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "save-result",
+      "name": "Save Tagged Email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [750, 300],
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "tags",
+              "value": "={{ $json[\"choices\"][0][\"message\"][\"content\"] }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $(\"trigger-imap\").item.json[\"header\"][\"subject\"] }}"
+            },
+            {
+              "name": "from",
+              "value": "={{ $(\"trigger-imap\").item.json[\"header\"][\"from\"] }}"
+            },
+            {
+              "name": "date",
+              "value": "={{ $(\"trigger-imap\").item.json[\"header\"][\"date\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "trigger-imap": {
+      "main": [
+        [
+          {
+            "node": "llm-tag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "llm-tag": {
+      "main": [
+        [
+          {
+            "node": "save-result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "versionId": "initial",
+  "active": false,
+  "settings": {},
+  "tags": [],
+  "id": "email-llm-tagging-workflow"
+}

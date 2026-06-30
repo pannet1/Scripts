@@ -1,5 +1,5 @@
 [Unit]
-Description=EcomSense Private - Admin Panel
+Description=EcomSense Admin Panel (local dev)
 After=network.target
 
 [Service]

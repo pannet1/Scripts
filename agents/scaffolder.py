@@ -83,7 +83,13 @@ def _is_feature_dir(path: Path) -> bool:
     if not path.is_dir() or path.name.startswith("_") or path.name.startswith("."):
         return False
     files = {f.name for f in path.iterdir() if f.is_file()}
-    return EXPECTED_FILES.issubset(files)
+    if EXPECTED_FILES.issubset(files):
+        return True
+    has_test = any(f.startswith("test_") and f.endswith(".py") for f in files)
+    if has_test:
+        required = EXPECTED_FILES - {"Tests.py"}
+        return required.issubset(files)
+    return False
 
 
 def cmd_init() -> int:

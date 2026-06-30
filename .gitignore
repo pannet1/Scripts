@@ -64,6 +64,11 @@ backup/exclude_lists/
 # Project specific
 poetry.lock
 
+# AI stack — large binary blobs & data (gitignored)
+ai/models/
+ai/data/
+ai/documents/
+
 # Stow packages — per-user runtime dirs not managed by stow
 common/.config/opencode/common/.config/
 common/.config/gh/hosts.yml

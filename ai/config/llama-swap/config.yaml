@@ -1,0 +1,33 @@
+# llama-swap config
+# Unified container bundles llama-swap + llama-server
+# Each model entry defines:
+#   cmd   — how to start llama-server for this model
+#   proxy — where llama-server is reachable (127.0.0.1 = same container)
+#   ttl   — seconds before unloading model from GPU after last use (0 = keep loaded)
+
+healthCheckTimeout: 30
+
+models:
+  "qwen2.5-7b-instruct":
+    proxy: "http://127.0.0.1:8081"
+    ttl: 0
+    cmd: >
+      llama-server
+      --host 127.0.0.1 --port 8081
+      --model /models/${CHAT_MODEL}
+      --n-gpu-layers 99
+      --ctx-size 8192
+      --flash-attn
+
+  "nomic-embed-text":
+    proxy: "http://127.0.0.1:8082"
+    ttl: 0
+    cmd: >
+      llama-server
+      --host 127.0.0.1 --port 8082
+      --model /models/${EMBED_MODEL}
+      --embd --embd-normalize 2
+      --ctx-size 8192
+
+# Fallback model for /v1/models listing
+default_model: qwen2.5-7b-instruct
