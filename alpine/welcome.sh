@@ -5,7 +5,8 @@
 # Auto-runs prerequisites before each option.
 # ─────────────────────────────────────────────────────────────
 
-SCRIPT_DIR="/root/Scripts/alpine"
+SCRIPT_DIR=$(dirname "$0" 2>/dev/null)
+[ -z "$SCRIPT_DIR" ] && SCRIPT_DIR="/root/Scripts/alpine"
 
 # ── Prerequisite helpers ──
 need_pkg() {

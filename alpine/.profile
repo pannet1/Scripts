@@ -3,7 +3,12 @@ if [ -z "$SSH_AUTH_SOCK" ] && [ -f ~/.ssh/id_ed25519 ]; then
     eval $(ssh-agent -s) >/dev/null 2>&1
 fi
 
-export PATH=$PATH:~/Scripts/client/:/root/Scripts/alpine/:/media/usb/Scripts/alpine/
+# Scan media mount points for Scripts directory
+MEDIA_PATH=""
+for m in /media/*; do
+    [ -d "$m/Scripts/alpine" ] && MEDIA_PATH="$m/Scripts/alpine" && break
+done
+export PATH=$PATH:~/Scripts/client/:/root/Scripts/alpine/:${MEDIA_PATH}
 
 # Launch welcome menu if interactive login and not already running
 if [ -t 0 ] && [ -z "$WELCOME_RAN" ]; then
