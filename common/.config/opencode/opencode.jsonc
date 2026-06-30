@@ -7,6 +7,15 @@
       "environment": {
         "HEADLESS": "true"
       }
+    },
+    "anythingllm": {
+      "type": "local",
+      "command": ["anythingllm-mcp-server"],
+      "environment": {
+        "ANYTHINGLLM_BASE_URL": "http://localhost:3001/api",
+        "ANYTHINGLLM_API_KEY": "sk-anythingllm-local-dev",
+        "ANYTHINGLLM_WORKSPACE": "local-rag"
+      }
     }
   },
   "provider": {

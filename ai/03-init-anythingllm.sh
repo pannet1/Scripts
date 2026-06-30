@@ -10,7 +10,7 @@ WORKSPACE="${WORKSPACE_NAME:-Local RAG}"
 
 echo "── Waiting for AnythingLLM to be ready ──"
 for i in $(seq 1 30); do
-  if curl -f "$BASE_URL/api/health"; then
+  if curl -sf "$BASE_URL/api/health" >/dev/null 2>&1; then
     echo "  ✓ AnythingLLM ready (attempt $i)"
     break
   fi
@@ -19,27 +19,20 @@ for i in $(seq 1 30); do
 done
 
 echo ""
-echo "── Creating default admin account (if first boot) ──"
-curl -f -X POST "$BASE_URL/api/auth" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin@local","password":"admin","name":"Admin"}' \
-  && echo "  ✓ Admin account ready" || echo "  ⚠ Admin setup skipped or already configured"
-
-echo ""
 echo "── Creating default workspace ──"
-WS_EXISTS=$(curl -f "$BASE_URL/api/workspaces" \
+WS_EXISTS=$(curl -sf "$BASE_URL/api/v1/workspaces" \
   -H "Authorization: Bearer $API_KEY" 2>/dev/null | \
   python3 -c "import sys,json; data=json.load(sys.stdin).get('workspaces',[]); print(any(w.get('name')=='$WORKSPACE' for w in data))" 2>/dev/null || echo "false")
 
 if [ "$WS_EXISTS" = "True" ]; then
   echo "  ✓ Workspace '$WORKSPACE' already exists"
 else
-  curl -f -X POST "$BASE_URL/api/workspace" \
+  curl -sf -X POST "$BASE_URL/api/v1/workspace" \
     -H "Authorization: Bearer $API_KEY" \
     -H "Content-Type: application/json" \
-    -d "{\"name\":\"$WORKSPACE\"}" \
-    && echo "  ✓ Created workspace: $WORKSPACE"
+    -d "{\"name\":\"$WORKSPACE\"}" >/dev/null \
+    && echo "  ✓ Created workspace: $WORKSPACE" \
+    || echo "  ✗ Failed to create workspace"
 fi
 
 echo ""

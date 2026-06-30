@@ -15,22 +15,22 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ${DATA_DIR:-./data}/anythingllm:/app/storage
+      - ${DATA_DIR:-./data}/anythingllm:/app/server/storage
       - ${DATA_DIR:-./data}/lancedb:/app/lancedb
       - ${DOCUMENTS_DIR:-./documents}:/documents:ro
     environment:
       - SERVER_PORT=3001
-      - STORAGE_DIR=/app/storage
+      - STORAGE_DIR=/app/server/storage
 
 
       # LLM provider → local OpenAI-compatible via host llama-swap
-      - LLM_PROVIDER=openai
-      - OPEN_AI_KEY=${LLAMA_SWAP_API_KEY:-sk-local-dummy}
-      - OPEN_AI_MODEL_PREF=qwen2.5-7b-instruct
-      - OPEN_AI_BASE_PATH=http://host.docker.internal:${LLAMA_SWAP_PORT:-8080}/v1
+      - LLM_PROVIDER=generic-openai
+      - GENERIC_OPEN_AI_BASE_PATH=http://host.docker.internal:${LLAMA_SWAP_PORT:-8080}/v1
+      - GENERIC_OPEN_AI_MODEL_PREF=qwen2.5-7b-instruct
+      - GENERIC_OPEN_AI_API_KEY=${LLAMA_SWAP_API_KEY:-sk-local-dummy}
 
-      # Embedding provider → same local endpoint
-      - EMBEDDING_ENGINE=openai
+      # Embedding provider → same local endpoint (generic-openai skips key validation)
+      - EMBEDDING_ENGINE=generic-openai
       - EMBEDDING_BASE_PATH=http://host.docker.internal:${LLAMA_SWAP_PORT:-8080}/v1
       - EMBEDDING_MODEL_PREF=nomic-embed-text
       - EMBEDDING_MODEL_MAX_CHUNK_LENGTH=512
@@ -46,7 +46,8 @@ services:
       # Security
       - DISABLE_TELEMETRY=true
       - PASSWORDMINCHAR=8
-      - AUTH_TOKEN=${ANYTHINGLLM_API_KEY:-sk-anythingllm-local-dev}
+      # Single-user mode — no AUTH_TOKEN needed
+      # - AUTH_TOKEN=${ANYTHINGLLM_API_KEY:-sk-anythingllm-local-dev}
     cap_add:
       - SYS_ADMIN
     restart: unless-stopped

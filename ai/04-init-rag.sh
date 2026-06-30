@@ -6,63 +6,51 @@ BASE_URL="${ANYTHINGLLM_URL:-http://localhost:3001}"
 API_KEY="${ANYTHINGLLM_API_KEY:-sk-anythingllm-local-dev}"
 WORKSPACE="${WORKSPACE_NAME:-Local RAG}"
 DOCUMENTS_DIR="$SCRIPT_DIR/documents"
+AUTH="Authorization: Bearer $API_KEY"
 
-echo "── Uploading documents from $DOCUMENTS_DIR ──"
-for doc in "$DOCUMENTS_DIR"/*; do
-  [ -f "$doc" ] || continue
-  echo "  Uploading: $(basename "$doc")"
-  curl -f -X POST "$BASE_URL/api/document/upload" \
-    -H "Authorization: Bearer $API_KEY" \
-    -F "file=@$doc" \
-    && echo "    ✓ Uploaded" || echo "    ✗ Failed"
-done
-
-echo ""
-echo "── Moving documents to workspace '$WORKSPACE' ──"
-WS_SLUG=$(curl -f "$BASE_URL/api/workspaces" \
-  -H "Authorization: Bearer $API_KEY" | \
+echo "── Looking up workspace slug ──"
+WS_SLUG=$(curl -sf "$BASE_URL/api/v1/workspaces" -H "$AUTH" | \
   python3 -c "
 import sys,json
-data=json.load(sys.stdin)
+data=json.load(sys.stdin).get('workspaces',[])
 for w in data:
   if w.get('name')=='$WORKSPACE':
     print(w.get('slug',''))
     break
-" || echo "")
+" 2>/dev/null || echo "")
 
 if [ -z "$WS_SLUG" ]; then
   echo "  ✗ Workspace '$WORKSPACE' not found — run 03-init-anythingllm.sh first"
   exit 1
 fi
+echo "  ✓ Found workspace: $WORKSPACE (slug: $WS_SLUG)"
 
-DOC_IDS=$(curl -f "$BASE_URL/api/documents" \
-  -H "Authorization: Bearer $API_KEY" | \
-  python3 -c "
-import sys,json
-data=json.load(sys.stdin)
-ids=[d.get('id') for d in data if not d.get('workspace_id')]
-print(' '.join(ids))
-" || echo "")
-
-for doc_id in $DOC_IDS; do
-  curl -f -X POST "$BASE_URL/api/workspace/$WS_SLUG/document" \
-    -H "Authorization: Bearer $API_KEY" \
-    -H "Content-Type: application/json" \
-    -d "{\"documents\":[\"$doc_id\"]}" \
-    && echo "  ✓ Moved document $doc_id" || echo "  ✗ Failed to move $doc_id"
+echo ""
+echo "── Uploading documents directly with workspace link ──"
+for doc in "$DOCUMENTS_DIR"/*; do
+  [ -f "$doc" ] || continue
+  echo "  Uploading: $(basename "$doc")"
+  RESP=$(curl -sf -X POST "$BASE_URL/api/v1/document/upload" \
+    -H "$AUTH" \
+    -F "file=@$doc" \
+    -F "addToWorkspaces=$WS_SLUG" 2>/dev/null)
+  if echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('success') else 1)" 2>/dev/null; then
+    echo "    ✓ Uploaded"
+  else
+    echo "    ✗ Failed"
+  fi
 done
 
 echo ""
 echo "── Triggering vector embedding ──"
-curl -f -X POST "$BASE_URL/api/workspace/$WS_SLUG/update-embeddings" \
-  -H "Authorization: Bearer $API_KEY" \
-  && echo "  ✓ Embedding triggered" || echo "  ✗ Embedding trigger failed"
+# v1 API doesn't have an embed trigger — embeddings happen automatically on upload
+echo "  ✓ Embedding handled automatically on upload"
 
 echo ""
 echo "── Verifying with test query ──"
-sleep 5
-RESULT=$(curl -f -X POST "$BASE_URL/api/workspace/$WS_SLUG/chat" \
-  -H "Authorization: Bearer $API_KEY" \
+sleep 3
+RESULT=$(curl -sf -X POST "$BASE_URL/api/v1/workspace/$WS_SLUG/chat" \
+  -H "$AUTH" \
   -H "Content-Type: application/json" \
   -d '{"message":"Summarize the key topics from my documents","mode":"query"}')
 
@@ -74,7 +62,7 @@ try:
   data=json.load(sys.stdin)
   print('  Response:', (data.get('textResponse','') or '')[:200])
 except: print('  (raw response)')
-"
+" 2>/dev/null
 else
   echo "  ⚠ Query returned empty — embeddings may still be processing"
 fi
