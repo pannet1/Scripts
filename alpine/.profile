@@ -6,7 +6,14 @@ fi
 # Scan media mount points for Scripts directory
 MEDIA_PATH=""
 for m in /media/*; do
-    [ -d "$m/Scripts/alpine" ] && MEDIA_PATH="$m/Scripts/alpine" && break
+    if [ -d "$m/Scripts/alpine" ]; then
+        MEDIA_PATH="$m/Scripts/alpine:$m"
+        break
+    fi
+done
+# Fallback: flat scripts on USB root
+[ -z "$MEDIA_PATH" ] && for m in /media/*; do
+    [ -f "$m/welcome.sh" ] && MEDIA_PATH="$m" && break
 done
 export PATH=$PATH:~/Scripts/client/:/root/Scripts/alpine/:${MEDIA_PATH}
 

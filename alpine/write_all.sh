@@ -1,9 +1,9 @@
 #!/bin/sh
 # Persist Scripts and config to USB
 
-# Find .profile source — try /root/Scripts first, then scan /media/*
+# Find .profile source — try /root/Scripts, /media/*/Scripts, flat on USB root
 PROFILE_SRC=""
-for d in /root/Scripts/alpine/.profile /media/*/Scripts/alpine/.profile; do
+for d in /root/Scripts/alpine/.profile /media/*/Scripts/alpine/.profile /media/*/.profile; do
     [ -f "$d" ] && PROFILE_SRC="$d" && break
 done
 
