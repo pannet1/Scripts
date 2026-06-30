@@ -16,6 +16,38 @@ done
 : "${DEVICE:?Usage: salvage_disk.sh /dev/sdX}"
 [ -b "$DEVICE" ] || { echo "Not a block device: $DEVICE"; exit 1; }
 
+# ── Safety: identify and exclude boot/system disks ──
+BOOT_DEV=$(df / | awk 'NR==2 {print $1}' | sed 's/[0-9]*p\?[0-9]*$//')
+USB_DEV=$(df /media/usb 2>/dev/null | awk 'NR==2 {print $1}' | sed 's/[0-9]*p\?[0-9]*$//')
+TGT_SHORT=$(basename "$DEVICE")
+REMOVABLE=$(cat "/sys/block/$TGT_SHORT/removable" 2>/dev/null || echo 0)
+
+echo "DEVICE: $DEVICE"
+echo "  Removable: $([ "$REMOVABLE" = "1" ] && echo 'YES (USB/eSATA)' || echo 'NO (internal bay)')"
+echo "  Boot disk: $BOOT_DEV"
+[ -n "$USB_DEV" ] && echo "  Alpine USB: $USB_DEV"
+
+# Refuse to touch the running system
+if echo "$DEVICE" | grep -q "^$BOOT_DEV" || [ "$DEVICE" = "$BOOT_DEV" ]; then
+    echo "FATAL: $DEVICE is the system boot disk. Refusing." | tee -a "$LOGFILE"; exit 1
+fi
+if [ -n "$USB_DEV" ] && ( echo "$DEVICE" | grep -q "^$USB_DEV" || [ "$DEVICE" = "$USB_DEV" ] ); then
+    echo "FATAL: $DEVICE is the Alpine Live USB. Refusing." | tee -a "$LOGFILE"; exit 1
+fi
+
+# Extra confirmation for internal/non-removable drives
+if [ "$REMOVABLE" = "0" ]; then
+    echo ""
+    echo "╔══════════════════════════════════════════════╗"
+    echo "║  WARNING: This looks like an INTERNAL drive  ║"
+    echo "║  Make sure this is the target salvage disk,  ║"
+    echo "║  not your main machine's storage.            ║"
+    echo "╚══════════════════════════════════════════════╝"
+    printf "Type YES to proceed with internal drive: "
+    read CONFIRM </dev/tty
+    [ "$CONFIRM" != "YES" ] && { echo "Aborted."; exit 1; }
+fi
+
 # ── Shared run_test (same pattern as test_new.sh) ──
 EXIT_PENDING=0
 trap 'EXIT_PENDING=1' INT
