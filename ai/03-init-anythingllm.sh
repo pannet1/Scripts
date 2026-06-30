@@ -29,8 +29,8 @@ curl -f -X POST "$BASE_URL/api/auth" \
 echo ""
 echo "── Creating default workspace ──"
 WS_EXISTS=$(curl -f "$BASE_URL/api/workspaces" \
-  -H "Authorization: Bearer $API_KEY" | \
-  python3 -c "import sys,json; data=json.load(sys.stdin); print(any(w.get('name')=='$WORKSPACE' for w in data))" || echo "false")
+  -H "Authorization: Bearer $API_KEY" 2>/dev/null | \
+  python3 -c "import sys,json; data=json.load(sys.stdin).get('workspaces',[]); print(any(w.get('name')=='$WORKSPACE' for w in data))" 2>/dev/null || echo "false")
 
 if [ "$WS_EXISTS" = "True" ]; then
   echo "  ✓ Workspace '$WORKSPACE' already exists"
@@ -43,24 +43,15 @@ else
 fi
 
 echo ""
-echo "── Verifying LLM connectivity through llama-swap ──"
-LLM_OK=$(curl -f "$BASE_URL/api/workspace/test-connection" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"provider":"openai"}' | \
-  python3 -c "import sys,json; print(json.load(sys.stdin).get('success',False))" || echo "false")
-
+echo "── Verifying llama-swap (LLM backend) ──"
+LLM_OK=$(curl -sf http://localhost:${LLAMA_SWAP_PORT:-8080}/v1/models | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[]))>0)" 2>/dev/null || echo "false")
 if [ "$LLM_OK" = "True" ]; then
-  echo "  ✓ LLM connection verified"
+  echo "  ✓ llama-swap running with models"
+  curl -sf http://localhost:${LLAMA_SWAP_PORT:-8080}/v1/models | python3 -m json.tool 2>/dev/null
 else
-  echo "  ⚠ LLM connection test failed — check that llama-swap is healthy"
+  echo "  ⚠ llama-swap not responding — run: systemctl --user start llama-swap"
 fi
-
-echo ""
-echo "── Current configuration ──"
-curl -f "$BASE_URL/api/system/env" \
-  -H "Authorization: Bearer $API_KEY" | \
-  python3 -m json.tool || echo "  (unable to fetch config)"
 
 echo ""
 echo "✓ Init complete. Open $BASE_URL in your browser."

@@ -15,14 +15,13 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ${DATA_DIR:-./data}/anythingllm:/app/server/storage
+      - ${DATA_DIR:-./data}/anythingllm:/app/storage
       - ${DATA_DIR:-./data}/lancedb:/app/lancedb
       - ${DOCUMENTS_DIR:-./documents}:/documents:ro
     environment:
       - SERVER_PORT=3001
-      - STORAGE_DIR=/app/server/storage
-      - UID=1000
-      - GID=1000
+      - STORAGE_DIR=/app/storage
+
 
       # LLM provider → local OpenAI-compatible via host llama-swap
       - LLM_PROVIDER=openai
