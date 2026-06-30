@@ -7,6 +7,23 @@
 
 SCRIPT_DIR=$(dirname "$0" 2>/dev/null)
 [ -z "$SCRIPT_DIR" ] && SCRIPT_DIR="/root/Scripts/alpine"
+export PATH=$SCRIPT_DIR:$PATH
+
+# ── Self-install: persist this menu to auto-start on login ──
+if [ ! -f /root/.profile ] || ! grep -q "welcome.sh" /root/.profile 2>/dev/null; then
+    echo "╔══════════════════════════════════════════════╗"
+    echo "║  First run — install menu to auto-start?     ║"
+    echo "║  (copies .profile → /root/, persists overlay) ║"
+    echo "╚══════════════════════════════════════════════╝"
+    printf "Install? (Y/n): "; read ANS </dev/tty
+    case "$ANS" in n|N|no|NO) echo "Skipped." ;; *)
+        mount -o remount,rw /media/usb 2>/dev/null
+        cp -f "$SCRIPT_DIR/.profile" /root/.profile 2>/dev/null
+        lbu add /root/.profile 2>/dev/null
+        lbu commit -d 2>/dev/null && echo "Installed! Reboot to auto-start menu." || echo "lbu failed — is USB writable? Use option 8 to remount."
+    esac
+    echo ""
+fi
 
 # ── Prerequisite helpers ──
 need_pkg() {
