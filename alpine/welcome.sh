@@ -126,7 +126,8 @@ while true; do
     printf "Choice: "; read CH </dev/tty; echo ""
 
     case "$CH" in
-        1) connect_network
+        1) for f in /media/usb/rescue_*.log; do [ "$f" != "$LOGFILE" ] && rm -f "$f"; done
+           connect_network
            has_net && HAS_NET=1 || HAS_NET=0
            echo; printf "Press Enter..."; read _ </dev/tty ;;
         2) need_git
