@@ -120,8 +120,12 @@ while true; do
     case "$CH" in
         1) need_pkg smartctl && "$SCRIPT_DIR/test_new.sh"
            echo; printf "Press Enter..."; read _ </dev/tty ;;
-        2) need_pkg smartctl badblocks
-           printf "  Device (e.g. /dev/sda): "; read DEV </dev/tty
+        2) DEV=$("$SCRIPT_DIR/detect_enclosure.sh" 2>&1 | tee /dev/stderr | tail -1)
+           STS=$?
+           echo ""
+           [ $STS -ne 0 ] && { printf "Press Enter..."; read _ </dev/tty; continue; }
+           need_pkg smartctl badblocks
+           echo "  Starting salvage triage on $DEV..."
            "$SCRIPT_DIR/salvage_disk.sh" "$DEV"
            echo; printf "Press Enter..."; read _ </dev/tty ;;
         3) "$SCRIPT_DIR/test_usb.sh"
