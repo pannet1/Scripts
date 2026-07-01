@@ -39,11 +39,13 @@ fi
 # ── Prerequisite helpers ──
 need_pkg() {
     for cmd in "$@"; do
-        command -v "$cmd" >/dev/null && return 0
+        command -v "$cmd" >/dev/null || {
+            echo "  Installing prerequisites..."
+            "$SCRIPT_DIR/install_test.sh"
+            for c in "$@"; do command -v "$c" >/dev/null || return 1; done
+            return 0
+        }
     done
-    echo "  Installing prerequisites..."
-    "$SCRIPT_DIR/install_test.sh"
-    command -v "$1" >/dev/null
 }
 need_git()    { command -v git >/dev/null || { "$SCRIPT_DIR/install_git.sh"; command -v git >/dev/null; }; }
 need_wifi()   { command -v wpa_supplicant >/dev/null || { "$SCRIPT_DIR/install_nm.sh"; command -v wpa_supplicant >/dev/null; }; }
@@ -142,7 +144,7 @@ while true; do
            STS=$?
            echo ""
            [ $STS -ne 0 ] && { printf "Press Enter..."; read _ </dev/tty; continue; }
-           need_pkg smartctl badblocks
+           need_pkg smartctl badblocks mkfs.ext4
            echo "  Starting salvage triage on $DEV..."
            "$SCRIPT_DIR/salvage_disk.sh" "$DEV"
            echo; printf "Press Enter..."; read _ </dev/tty ;;
