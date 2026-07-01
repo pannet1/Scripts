@@ -17,5 +17,4 @@ git config --list
 
 # 3. Always save if you install
 apk cache sync
-touch /media/usb/.boot_repository
 lbu commit -d

@@ -68,6 +68,7 @@ poetry.lock
 ai/models/
 ai/data/
 ai/documents/
+ai/cuda_*.run
 
 # Stow packages — per-user runtime dirs not managed by stow
 common/.config/opencode/common/.config/

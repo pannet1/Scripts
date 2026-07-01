@@ -3,6 +3,12 @@ set -e
 
 echo "--- STARTING TOOL INSTALLATION ---"
 
+# 0. Clean stale cache indexes and prep repos
+rm -f /media/usb/cache/APKINDEX.*.tar.gz
+rm -f /media/usb/cache/.boot_repository
+cp /etc/apk/repositories /etc/apk/repositories.bak 2>/dev/null
+true > /etc/apk/repositories
+
 # 1. Enable Community Repos
 setup-apkrepos -c
 apk update
@@ -19,7 +25,6 @@ rc-service alsa start
 
 # 4. Sync and Persist
 apk cache -v sync
-touch /media/usb/cache/.boot_repository
 lbu commit -d
 
 echo "--- ALL TOOLS INSTALLED & PERSISTED ---"
