@@ -38,13 +38,12 @@ echo "  [2/3] Loading $DRIVER driver..."
 if lsmod | grep -q "$DRIVER"; then
     echo "  ✓ $DRIVER already loaded"
 else
-    modprobe "$DRIVER" 2>/dev/null
-    sleep 1
+    modprobe "$DRIVER" 2>/dev/null && sleep 1
     if lsmod | grep -q "$DRIVER"; then
         echo "  ✓ $DRIVER loaded"
     else
-        echo "  ✗ Failed to load $DRIVER module"
-        exit 1
+        echo "  ! Could not load $DRIVER (may be built-in kernel driver)"
+        echo "  ! Device scan will still proceed"
     fi
 fi
 
