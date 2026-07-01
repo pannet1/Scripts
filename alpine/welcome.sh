@@ -55,9 +55,16 @@ try_connect_wifi() {
 }
 
 connect_network() {
-    # 1. Try ethernet (quick)
+    # 1. Try ethernet — detect interface name dynamically
     echo "  Trying ethernet..."
-    udhcpc -i eth0 -n -t 3 >/dev/null 2>&1 && has_net && return 0
+    for IFACE in $(ip -o link show | awk -F': ' '{print $2}' | grep -v lo); do
+        [ -z "$(ip -o link show "$IFACE" | grep -i 'state UP')" ] && continue
+        timeout 10 udhcpc -i "$IFACE" -n -t 3 >/dev/null 2>&1 && has_net && return 0
+    done
+    # Also try all ethernet-looking interfaces even if not UP
+    for IFACE in $(ip -o link show | awk -F': ' '{print $2}' | grep -E '^e(n|th|np)' | head -3); do
+        timeout 10 udhcpc -i "$IFACE" -n -t 3 >/dev/null 2>&1 && has_net && return 0
+    done
 
     # 2. Start NetworkManager (handles ethernet/wifi auto-connect)
     if command -v nmcli >/dev/null; then

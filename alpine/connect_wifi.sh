@@ -80,7 +80,7 @@ provision_network() {
 
     echo "Authenticating..."
     sleep 5
-    udhcpc -i "$IFACE"
+    timeout 15 udhcpc -i "$IFACE" -n -t 5 >/dev/null 2>&1
 
     if ping -c 1 8.8.8.8 >/dev/null 2>&1; then
         echo -e "\e[32m[+] Connection Successful!\e[0m"
