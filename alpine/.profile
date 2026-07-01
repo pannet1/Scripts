@@ -9,5 +9,5 @@ if [ -t 0 ] && [ -z "$WELCOME_RAN" ]; then
     for W in /media/*/welcome.sh "$HOME/Scripts/alpine/welcome.sh" /media/*/Scripts/alpine/welcome.sh; do
         [ -f "$W" ] && WELCOME="$W" && break
     done
-    [ -n "$WELCOME" ] && PATH="$(dirname "$WELCOME"):$PATH" exec "$WELCOME"
+    [ -n "$WELCOME" ] && PATH="$(dirname "$WELCOME"):$PATH" "$WELCOME"
 fi

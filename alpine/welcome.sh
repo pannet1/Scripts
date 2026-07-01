@@ -109,8 +109,7 @@ menu() {
     echo "  6) Install diagnostic tools"
     echo "  7) Commit changes to USB (persist scripts)"
      echo "  8) Remount USB writable (fix lbu)"
-     echo "  9) Power off"
-     echo "  q) Quit"
+     echo "  q) Quit to shell"
     echo "───────────────────────────────────────"
 }
 
@@ -144,7 +143,6 @@ while true; do
            printf "Press Enter..."; read _ </dev/tty ;;
         8) "$SCRIPT_DIR/enable_write.sh"
            echo "USB remounted rw."; printf "Press Enter..."; read _ </dev/tty ;;
-         9) poweroff ;;
          q|Q) exit 0 ;;
         *) echo "Invalid"; sleep 1 ;;
     esac
