@@ -44,10 +44,13 @@ run_test "DISK INFO" "
 # ── 3. BATTERY ──
 check_battery() {
     found=0
-    for bat in /sys/class/power_supply/BAT*; do
-        [ -d "$bat" ] || continue; found=1
+    for bat in /sys/class/power_supply/*; do
+        [ -d "$bat" ] || continue
+        [ "$(cat "$bat/type" 2>/dev/null)" = "Battery" ] || continue
+        found=1
         DESIGN=$(cat "$bat/energy_full_design" 2>/dev/null || cat "$bat/charge_full_design" 2>/dev/null)
         FULL=$(cat "$bat/energy_full" 2>/dev/null || cat "$bat/charge_full" 2>/dev/null)
+        [ -z "$DESIGN" ] || [ "$DESIGN" -eq 0 ] 2>/dev/null && DESIGN=1
         echo "Status: $(cat "$bat/status") | Health: $((FULL * 100 / DESIGN))%"
         echo "Cycles: $(cat "$bat/cycle_count" 2>/dev/null || echo 'N/A')"
     done
@@ -60,8 +63,11 @@ run_test "BATTERY REPORT" "check_battery"
 check_thermal() {
     OVERHEAT=0
     for zone in /sys/class/thermal/thermal_zone*; do
-        TEMP=$(($(cat "$zone/temp") / 1000 2>/dev/null))
-        echo "$(cat "$zone/type"): ${TEMP}°C"
+        [ -f "$zone/temp" ] || continue
+        raw=$(cat "$zone/temp" 2>/dev/null) || continue
+        [ -n "$raw" ] && [ "$raw" -eq "$raw" ] 2>/dev/null || continue
+        TEMP=$((raw / 1000))
+        echo "$(cat "$zone/type" 2>/dev/null || echo unknown): ${TEMP}°C"
         [ "$TEMP" -gt 85 ] && OVERHEAT=1
     done
     [ "$OVERHEAT" -eq 1 ] && return 1
