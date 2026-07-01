@@ -115,8 +115,8 @@ menu() {
      echo "  4) Test drive enclosure (salvage)"
      echo "  5) Test USB speed"
      echo "  6) Install diagnostic tools"
-     echo "  7) Commit changes to USB (persist scripts)"
-     echo "  8) Remount USB writable (fix lbu)"
+     echo "  7) Remount USB writable (fix lbu)"
+     echo "  8) Commit changes to USB (persist scripts)"
      echo "  q) Quit to shell"
     echo "───────────────────────────────────────"
 }
@@ -147,10 +147,10 @@ while true; do
            echo; printf "Press Enter..."; read _ </dev/tty ;;
         6) "$SCRIPT_DIR/install_test.sh"
            printf "Press Enter..."; read _ </dev/tty ;;
-        7) "$SCRIPT_DIR/write_all.sh"
-           printf "Press Enter..."; read _ </dev/tty ;;
-        8) "$SCRIPT_DIR/enable_write.sh"
+        7) "$SCRIPT_DIR/enable_write.sh"
            echo "USB remounted rw."; printf "Press Enter..."; read _ </dev/tty ;;
+        8) "$SCRIPT_DIR/write_all.sh"
+           printf "Press Enter..."; read _ </dev/tty ;;
         q|Q) exit 0 ;;
         *) echo "Invalid"; sleep 1 ;;
     esac
