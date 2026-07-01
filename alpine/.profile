@@ -6,7 +6,7 @@ fi
 # Find and run welcome menu on interactive login
 if [ -t 0 ] && [ -z "$WELCOME_RAN" ]; then
     export WELCOME_RAN=1
-    for W in "$HOME/Scripts/alpine/welcome.sh" /media/*/welcome.sh /media/*/Scripts/alpine/welcome.sh; do
+    for W in /media/*/welcome.sh "$HOME/Scripts/alpine/welcome.sh" /media/*/Scripts/alpine/welcome.sh; do
         [ -f "$W" ] && WELCOME="$W" && break
     done
     [ -n "$WELCOME" ] && PATH="$(dirname "$WELCOME"):$PATH" exec "$WELCOME"
