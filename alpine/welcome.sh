@@ -9,6 +9,14 @@ SCRIPT_DIR=$(dirname "$0" 2>/dev/null)
 [ -z "$SCRIPT_DIR" ] && SCRIPT_DIR="/root/Scripts/alpine"
 export PATH=$SCRIPT_DIR:$PATH
 
+# ── Session logging (POSIX FIFO — works in BusyBox ash) ──
+LOGFILE="/media/usb/rescue_$(date +%Y%m%d_%H%M).log"
+mkfifo /tmp/rescue_log.$$ 2>/dev/null
+tee -a "$LOGFILE" < /tmp/rescue_log.$$ &
+TEE_PID=$!
+trap 'kill $TEE_PID 2>/dev/null; rm -f /tmp/rescue_log.$$; echo "Log: $LOGFILE"' EXIT INT TERM
+exec > /tmp/rescue_log.$$ 2>&1
+
 # ── Self-install: persist this menu to auto-start on login ──
 if [ ! -f /root/.profile ] || ! grep -q "welcome.sh" /root/.profile 2>/dev/null; then
     echo "╔══════════════════════════════════════════════╗"
@@ -108,8 +116,8 @@ menu() {
     echo "  5) Update tools + pull latest code"
     echo "  6) Install diagnostic tools"
     echo "  7) Commit changes to USB (persist scripts)"
-     echo "  8) Remount USB writable (fix lbu)"
-     echo "  q) Quit to shell"
+    echo "  8) Remount USB writable (fix lbu)"
+    echo "  q) Quit to shell"
     echo "───────────────────────────────────────"
 }
 
@@ -143,7 +151,7 @@ while true; do
            printf "Press Enter..."; read _ </dev/tty ;;
         8) "$SCRIPT_DIR/enable_write.sh"
            echo "USB remounted rw."; printf "Press Enter..."; read _ </dev/tty ;;
-         q|Q) exit 0 ;;
+        q|Q) exit 0 ;;
         *) echo "Invalid"; sleep 1 ;;
     esac
 done
