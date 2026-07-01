@@ -108,16 +108,16 @@ menu() {
     else
         echo "  Network: no WiFi hardware detected"
     fi
-    echo "───────────────────────────────────────"
-    echo "  1) Test hardware (laptop diag)"
-    echo "  2) Test drive enclosure (salvage)"
-    echo "  3) Test USB speed"
-    echo "  4) Connect to network (eth → usb → wifi)"
-    echo "  5) Update tools + pull latest code"
-    echo "  6) Install diagnostic tools"
-    echo "  7) Commit changes to USB (persist scripts)"
-    echo "  8) Remount USB writable (fix lbu)"
-    echo "  q) Quit to shell"
+     echo "───────────────────────────────────────"
+     echo "  1) Connect to network (eth → usb → wifi)"
+     echo "  2) Update tools + pull latest code"
+     echo "  3) Test hardware (laptop diag)"
+     echo "  4) Test drive enclosure (salvage)"
+     echo "  5) Test USB speed"
+     echo "  6) Install diagnostic tools"
+     echo "  7) Commit changes to USB (persist scripts)"
+     echo "  8) Remount USB writable (fix lbu)"
+     echo "  q) Quit to shell"
     echo "───────────────────────────────────────"
 }
 
@@ -126,9 +126,16 @@ while true; do
     printf "Choice: "; read CH </dev/tty; echo ""
 
     case "$CH" in
-        1) need_pkg smartctl && "$SCRIPT_DIR/test_new.sh"
+        1) connect_network
+           has_net && HAS_NET=1 || HAS_NET=0
            echo; printf "Press Enter..."; read _ </dev/tty ;;
-        2) DEV=$("$SCRIPT_DIR/detect_enclosure.sh" 2>&1 | tee /dev/stderr | tail -1)
+        2) need_git
+           apk update && apk upgrade
+           cd /root/Scripts && git pull
+           echo "Done."; printf "Press Enter..."; read _ </dev/tty ;;
+        3) need_pkg smartctl && "$SCRIPT_DIR/test_new.sh"
+           echo; printf "Press Enter..."; read _ </dev/tty ;;
+        4) DEV=$("$SCRIPT_DIR/detect_enclosure.sh" 2>&1 | tee /dev/stderr | tail -1)
            STS=$?
            echo ""
            [ $STS -ne 0 ] && { printf "Press Enter..."; read _ </dev/tty; continue; }
@@ -136,15 +143,8 @@ while true; do
            echo "  Starting salvage triage on $DEV..."
            "$SCRIPT_DIR/salvage_disk.sh" "$DEV"
            echo; printf "Press Enter..."; read _ </dev/tty ;;
-        3) "$SCRIPT_DIR/test_usb.sh"
+        5) "$SCRIPT_DIR/test_usb.sh"
            echo; printf "Press Enter..."; read _ </dev/tty ;;
-        4) connect_network
-           has_net && HAS_NET=1 || HAS_NET=0
-           echo; printf "Press Enter..."; read _ </dev/tty ;;
-        5) need_git
-           apk update && apk upgrade
-           cd /root/Scripts && git pull
-           echo "Done."; printf "Press Enter..."; read _ </dev/tty ;;
         6) "$SCRIPT_DIR/install_test.sh"
            printf "Press Enter..."; read _ </dev/tty ;;
         7) "$SCRIPT_DIR/write_all.sh"
