@@ -119,7 +119,7 @@ menu() {
      echo "  3) Test hardware (laptop diag)"
      echo "  4) Test drive enclosure (salvage)"
      echo "  5) Test USB speed"
-     echo "  6) Install diagnostic tools"
+     echo "  6) Update system + install diagnostic tools"
      echo "  7) Remount USB writable (fix lbu)"
      echo "  8) Commit changes to USB (persist scripts)"
      echo "  q) Quit to shell"
@@ -149,7 +149,8 @@ while true; do
            echo; printf "Press Enter..."; read _ </dev/tty ;;
         5) "$SCRIPT_DIR/test_usb.sh"
            echo; printf "Press Enter..."; read _ </dev/tty ;;
-        6) "$SCRIPT_DIR/install_test.sh"
+        6) apk update && apk upgrade
+           "$SCRIPT_DIR/install_test.sh"
            printf "Press Enter..."; read _ </dev/tty ;;
         7) "$SCRIPT_DIR/enable_write.sh"
            echo "USB remounted rw."; printf "Press Enter..."; read _ </dev/tty ;;
