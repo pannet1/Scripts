@@ -135,9 +135,7 @@ while true; do
            echo; printf "Press Enter..."; read _ </dev/tty ;;
         5) need_git
            apk update && apk upgrade
-           cd /root/Scripts
-           git remote set-url origin https://github.com/pannet1/Scripts.git 2>/dev/null
-           git pull
+           cd /root/Scripts && git pull
            echo "Done."; printf "Press Enter..."; read _ </dev/tty ;;
         6) "$SCRIPT_DIR/install_test.sh"
            printf "Press Enter..."; read _ </dev/tty ;;
