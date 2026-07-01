@@ -4,7 +4,7 @@
 # Usage:  ./salvage_disk.sh /dev/sdX
 # Requires: smartmontools e2fsprogs util-linux (install_test.sh installs these)
 
-LOGFILE="salvage_$(basename "$1")_$(date +%Y%m%d_%H%M).log"
+LOGFILE="/media/usb/salvage_$(basename "$1")_$(date +%Y%m%d_%H%M).log"
 DEVICE="$1"
 
 # ── Tool check ──

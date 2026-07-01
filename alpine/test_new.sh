@@ -2,7 +2,7 @@
 
 # test_new.sh — full hardware diagnostic suite
 
-LOG_FILE="diag_report.txt"
+LOG_FILE="/media/usb/diag_report.txt"
 echo "--- DIAGNOSTIC REPORT: $(date) ---" >"$LOG_FILE"
 
 EXIT_PENDING=0
