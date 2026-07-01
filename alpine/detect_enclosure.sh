@@ -55,12 +55,17 @@ if [ ! -d /sys/block ]; then
     exit 1
 fi
 
+# Determine Alpine USB boot device so we can exclude it
+ALPINE_USB=$(df /media/usb 2>/dev/null | awk 'NR==2 {print $1}' | sed 's/[0-9]*p\?[0-9]*$//')
+
 ENCL_DEV=""
 for dev in /sys/block/sd*; do
     [ -d "$dev" ] || continue
     DEVNAME=$(basename "$dev")
-    [ "$DEVNAME" = "sda" ] && continue
     DEVPATH="/dev/$DEVNAME"
+    # Skip boot disk and Alpine USB
+    [ "$DEVNAME" = "sda" ] && continue
+    [ "$DEVPATH" = "$ALPINE_USB" ] && echo "  Skipping Alpine USB ($DEVPATH)" && continue
     # Check removable flag
     REMOVABLE=$(cat "$dev/removable" 2>/dev/null || echo 0)
     # Check if it's an external USB device via the driver
@@ -73,10 +78,11 @@ for dev in /sys/block/sd*; do
 done
 
 if [ -z "$ENCL_DEV" ]; then
-    # Fallback: just find any non-boot, non-USB removable block device
+    # Fallback: find any removable non-boot block device
     for dev in /dev/sd?; do
         [ -b "$dev" ] || continue
         [ "$dev" = "/dev/sda" ] && continue
+        [ "$dev" = "$ALPINE_USB" ] && continue
         ENCL_DEV="$dev"
         break
     done
