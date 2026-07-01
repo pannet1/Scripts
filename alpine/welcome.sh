@@ -9,6 +9,9 @@ SCRIPT_DIR=$(dirname "$0" 2>/dev/null)
 [ -z "$SCRIPT_DIR" ] && SCRIPT_DIR="/root/Scripts/alpine"
 export PATH=$SCRIPT_DIR:$PATH
 
+# ── Clean old session logs ──
+for f in /media/usb/rescue_*.log; do [ -f "$f" ] && rm -f "$f"; done
+
 # ── Session logging (POSIX FIFO — works in BusyBox ash) ──
 LOGFILE="/media/usb/rescue_$(date +%Y%m%d_%H%M).log"
 mkfifo /tmp/rescue_log.$$ 2>/dev/null
@@ -126,8 +129,7 @@ while true; do
     printf "Choice: "; read CH </dev/tty; echo ""
 
     case "$CH" in
-        1) for f in /media/usb/rescue_*.log; do [ "$f" != "$LOGFILE" ] && rm -f "$f"; done
-           connect_network
+        1) connect_network
            has_net && HAS_NET=1 || HAS_NET=0
            echo; printf "Press Enter..."; read _ </dev/tty ;;
         2) need_git

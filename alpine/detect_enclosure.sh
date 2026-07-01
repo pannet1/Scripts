@@ -47,63 +47,68 @@ else
     fi
 fi
 
-# ── 3. Detect enclosure block device ──
+# ── 3. List candidate devices ──
 echo ""
-echo "  [3/3] Scanning for enclosure block device..."
-if [ ! -d /sys/block ]; then
-    echo "  ✗ No block devices found"
-    exit 1
-fi
+echo "  [3/3] Scanning for candidate devices..."
 
-# Determine Alpine USB boot device so we can exclude it
 ALPINE_USB=$(df /media/usb 2>/dev/null | awk 'NR==2 {print $1}' | sed 's/[0-9]*p\?[0-9]*$//')
 
-ENCL_DEV=""
+devices=""
 for dev in /sys/block/sd*; do
     [ -d "$dev" ] || continue
     DEVNAME=$(basename "$dev")
     DEVPATH="/dev/$DEVNAME"
-    # Skip boot disk and Alpine USB
     [ "$DEVNAME" = "sda" ] && continue
-    [ "$DEVPATH" = "$ALPINE_USB" ] && echo "  Skipping Alpine USB ($DEVPATH)" && continue
-    # Check removable flag
+    [ "$DEVPATH" = "$ALPINE_USB" ] && continue
     REMOVABLE=$(cat "$dev/removable" 2>/dev/null || echo 0)
-    # Check if it's an external USB device via the driver
-    DRV=$(readlink "$dev/device/driver" 2>/dev/null || echo "")
-    case "$DRV" in
-        *jmicron*|*usb*|*uas*)
-            ENCL_DEV="$DEVPATH"
-            ;;
-    esac
+    MODEL=$(cat "$dev/device/model" 2>/dev/null | tr -d ' ')
+    [ -z "$MODEL" ] && MODEL="(unknown)"
+    devices="$devices $DEVPATH|$MODEL"
 done
 
-if [ -z "$ENCL_DEV" ]; then
-    # Fallback: find any removable non-boot block device
-    for dev in /dev/sd?; do
-        [ -b "$dev" ] || continue
-        [ "$dev" = "/dev/sda" ] && continue
-        [ "$dev" = "$ALPINE_USB" ] && continue
-        ENCL_DEV="$dev"
-        break
-    done
-fi
-
-if [ -z "$ENCL_DEV" ]; then
-    echo "  ✗ JD Micron enclosure not detected"
-    echo ""
-    echo "  Possible causes:"
-    echo "    • Enclosure not plugged in"
-    echo "    • USB cable faulty"
-    echo "    • Power supply insufficient"
-    echo "    • Driver mismatch"
+if [ -z "$devices" ]; then
+    echo "  ✗ No candidate devices found"
+    echo "  Plug in the enclosure and try again."
     exit 1
 fi
 
-echo "  ✓ Enclosure detected: $ENCL_DEV"
+echo ""
+echo "  Available devices:"
+idx=1
+for entry in $devices; do
+    dev=$(echo "$entry" | cut -d'|' -f1)
+    model=$(echo "$entry" | cut -d'|' -f2)
+    size=$(blockdev --getsize64 "$dev" 2>/dev/null | awk '{printf "%.0f GB", $1/1073741824}')
+    [ -z "$size" ] && size="? GB"
+    echo "    $idx) $dev  —  $model  ($size)"
+    idx=$((idx + 1))
+done
 
-MODEL=$(cat "/sys/block/$(basename "$ENCL_DEV")/device/model" 2>/dev/null | tr -d ' ')
-[ -n "$MODEL" ] && echo "  Model: $MODEL"
+echo ""
+printf "  Select device number: "; read SEL </dev/tty
 
+if ! echo "$SEL" | grep -q '^[0-9][0-9]*$'; then
+    echo "  Invalid selection."
+    exit 1
+fi
+
+idx=1
+ENCL_DEV=""
+for entry in $devices; do
+    if [ "$idx" = "$SEL" ]; then
+        ENCL_DEV=$(echo "$entry" | cut -d'|' -f1)
+        break
+    fi
+    idx=$((idx + 1))
+done
+
+if [ -z "$ENCL_DEV" ]; then
+    echo "  Invalid selection."
+    exit 1
+fi
+
+echo ""
+echo "  Selected: $ENCL_DEV"
 echo ""
 echo "═══════════════════════════════════════"
 echo "$ENCL_DEV"
