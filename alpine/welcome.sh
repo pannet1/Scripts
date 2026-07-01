@@ -135,7 +135,6 @@ while true; do
            has_net && HAS_NET=1 || HAS_NET=0
            echo; printf "Press Enter..."; read _ </dev/tty ;;
         2) need_git
-           apk update && apk upgrade
            cd /root/Scripts && git pull
            echo "Done."; printf "Press Enter..."; read _ </dev/tty ;;
         3) need_pkg smartctl && "$SCRIPT_DIR/test_new.sh"
