@@ -27,7 +27,7 @@ echo "  Debian Setup"
 echo "=============================================="
 
 # ── 1. apt sources (match installed release) ──
-step "1/10: apt sources"
+step "1/12: apt sources"
 RELEASE_CODENAME="$(. /etc/os-release && echo "$VERSION_CODENAME")"
 ACTIVE_DEB="$(grep -rhE '^deb ' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null || true)"
 if echo "$ACTIVE_DEB" | grep -qs "$RELEASE_CODENAME" && echo "$ACTIVE_DEB" | grep -qs non-free-firmware; then
@@ -45,22 +45,36 @@ EOF
 fi
 
 # ── 2. System update ──
-step "2/10: System update"
+step "2/12: System update"
 sudo apt update -y
 sudo apt --fix-broken install -y
 sudo apt dist-upgrade -y
 ok "system up to date"
 
-# ── 3. Core packages ──
-step "3/10: Core packages"
+# ── 3. OpenCode (early, so we can fix issues during install) ──
+step "3/12: OpenCode"
+ensure_pkg curl
+if check_cmd opencode; then
+    ok "opencode binary"
+else
+    fail "opencode"
+    fix "installing opencode"
+    curl -fsSL https://opencode.ai/install -o /tmp/opencode-install.sh
+    bash /tmp/opencode-install.sh
+    rm -f /tmp/opencode-install.sh
+    ok "opencode installed"
+fi
+
+# ── 4. Core packages ──
+step "4/12: Core packages"
 ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserver-utils xfonts-base xfonts-75dpi xfonts-100dpi \
     libpangocairo-1.0-0 build-essential pkg-config ripgrep fd-find tmux picom alacritty \
     rofi flameshot scrot xwallpaper pcmanfm firefox-esr network-manager-gnome ibus xfce4-power-manager \
     alsa-utils fonts-font-awesome fonts-jetbrains-mono libnotify-bin \
     p7zip-full p7zip-rar rar xdg-utils
 
-# ── 4. Networking ──
-step "4/10: Networking"
+# ── 5. Networking ──
+step "5/12: Networking"
 if check_cmd nmcli; then
     ok "NetworkManager"
 else
@@ -70,8 +84,8 @@ else
     ok "NetworkManager enabled"
 fi
 
-# ── 5. NVIDIA ──
-step "5/10: NVIDIA"
+# ── 6. NVIDIA ──
+step "6/12: NVIDIA"
 if lspci 2>/dev/null | grep -qi "VGA.*NVIDIA"; then
     if lsmod | grep -q "^nvidia "; then
         ok "nvidia module loaded"
@@ -104,8 +118,8 @@ else
     ok "no NVIDIA GPU"
 fi
 
-# ── 6. Neovim ──
-step "6/10: Neovim"
+# ── 7. Neovim ──
+step "7/12: Neovim"
 if check_cmd nvim; then
     ok "nvim binary"
 else
@@ -125,8 +139,8 @@ else
     ok "nvim installed"
 fi
 
-# ── 7. Node.js / npm (to ~/.local) ──
-step "7/11: Node.js / npm"
+# ── 8. Node.js / npm (to ~/.local) ──
+step "8/12: Node.js / npm"
 if check_cmd node && check_cmd npm; then
     ok "node $(node --version) / npm $(npm --version)"
 else
@@ -139,8 +153,8 @@ else
     ok "node $NODE_VERSION installed"
 fi
 
-# ── 8. Qtile (via uv) ──
-step "8/11: Qtile"
+# ── 9. Qtile (via uv) ──
+step "9/12: Qtile"
 if check_cmd uv; then
     ok "uv binary"
 else
@@ -168,8 +182,8 @@ EOF
     ok ".xinitrc written"
 fi
 
-# ── 9. WSL2 shell tools (emulated) ──
-step "9/11: WSL2 shell tools"
+# ── 10. WSL2 shell tools (emulated) ──
+step "10/12: WSL2 shell tools"
 ensure_pkg git-crypt adb
 if check_cmd starship; then
     ok "starship binary"
@@ -215,8 +229,8 @@ else
     fi
 fi
 
-# ── 10. Dotfiles (stow) ──
-step "10/11: Dotfiles (stow)"
+# ── 11. Dotfiles (stow) ──
+step "11/12: Dotfiles (stow)"
 cd "$SCRIPT_DIR"
 backup_dir="$HOME/.dotfiles-backup/$(date +%Y%m%d_%H%M%S)"
 backed_up=false
@@ -256,17 +270,17 @@ done
 
 [ "$backed_up" = true ] && echo "    → Backed up to $backup_dir"
 
-# ── 11. OpenCode ──
-step "11/11: OpenCode"
-if check_cmd opencode; then
-    ok "opencode binary"
+# ── 12. LazyVim (nvim config) ──
+step "12/12: LazyVim"
+if [ -d "$HOME/.config/nvim" ] && [ -n "$(ls -A "$HOME/.config/nvim" 2>/dev/null)" ]; then
+    ok "nvim config present"
 else
-    fail "opencode"
-    fix "installing opencode"
-    curl -fsSL https://opencode.ai/install -o /tmp/opencode-install.sh
-    bash /tmp/opencode-install.sh
-    rm -f /tmp/opencode-install.sh
-    ok "opencode installed"
+    fail "nvim config"
+    rm -rf "$HOME/.config/nvim"
+    fix "cloning LazyVim starter"
+    git clone --depth 1 https://github.com/LazyVim/starter "$HOME/.config/nvim"
+    rm -rf "$HOME/.config/nvim/.git"
+    ok "LazyVim starter cloned (plugins auto-install on first launch)"
 fi
 
 echo ""
