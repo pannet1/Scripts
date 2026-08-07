@@ -623,13 +623,55 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
             domain = feature_dir.parent.name if feature_dir.parent != FEATURES_DIR else ""
             register_feature_in_json(feature_dir.name, domain)
             print(f"\n{'='*60}\nALL TESTS PASSED.\n")
-            print("Run these commands to commit and push:\n")
-            print(f"  git add {feature_dir}")
-            print(f'  git commit -m "{commit_type}: {feature_dir.name}"')
-            print(f"  git push origin {branch}\n")
-            print("Then open a Pull Request on GitHub:")
-            print(f"  {_remote_pr_url(branch)}")
-            print("=" * 60)
+            print(f"[Orchestrator] Staging {feature_dir}...")
+            r1 = subprocess.run(["git", "add", str(feature_dir)], capture_output=True, text=True, cwd=str(REPO_ROOT))
+            if r1.returncode != 0:
+                print(f"[Orchestrator] git add failed: {r1.stderr.strip()}")
+                print("You may need to commit and merge manually.")
+                return
+            msg_body = f"{commit_type}: {feature_dir.name}"
+            print(f"[Orchestrator] Committing: {msg_body}")
+            r2 = subprocess.run(["git", "commit", "-m", msg_body], capture_output=True, text=True, cwd=str(REPO_ROOT))
+            if r2.returncode != 0:
+                combined = r2.stdout + r2.stderr
+                if "nothing to commit" in combined:
+                    print("[Orchestrator] Nothing to commit — already up to date.")
+                else:
+                    print(f"[Orchestrator] git commit failed: {r2.stderr.strip()}")
+                    print("You may need to commit and merge manually.")
+                    return
+            print(r2.stdout.strip())
+            print(f"[Orchestrator] Pushing {branch}...")
+            r3 = subprocess.run(["git", "push", "origin", branch], capture_output=True, text=True, cwd=str(REPO_ROOT))
+            if r3.returncode != 0:
+                print(f"[Orchestrator] git push failed: {r3.stderr.strip()}")
+                print("You may need to push and merge manually.")
+                return
+            print(r3.stdout.strip())
+            print(f"[Orchestrator] Merging {branch} into main...")
+            r4 = subprocess.run(["git", "checkout", "main"], capture_output=True, text=True, cwd=str(REPO_ROOT))
+            if r4.returncode != 0:
+                print(f"[Orchestrator] git checkout main failed: {r4.stderr.strip()}")
+                print("You may need to merge manually.")
+                return
+            r5 = subprocess.run(["git", "merge", branch], capture_output=True, text=True, cwd=str(REPO_ROOT))
+            if r5.returncode != 0:
+                print(f"[Orchestrator] git merge failed: {r5.stderr.strip()}")
+                print("You may need to resolve conflicts and merge manually.")
+                return
+            print(r5.stdout.strip())
+            r6 = subprocess.run(["git", "push", "origin", "main"], capture_output=True, text=True, cwd=str(REPO_ROOT))
+            if r6.returncode != 0:
+                print(f"[Orchestrator] git push main failed: {r6.stderr.strip()}")
+                print("You may need to push manually.")
+                return
+            print(f"[Orchestrator] Deleting remote branch {branch}...")
+            subprocess.run(["git", "push", "origin", "--delete", branch],
+                           capture_output=True, cwd=str(REPO_ROOT))
+            print(f"[Orchestrator] Deleting local branch {branch}...")
+            subprocess.run(["git", "branch", "-D", branch],
+                           capture_output=True, cwd=str(REPO_ROOT))
+            print(f"[Orchestrator] Done. {feature_dir.name} merged to main.")
         else:
             print(f"\n{'='*60}")
             print("IMPLEMENTATION FAILED. The auto-QA loop exhausted its attempts.")
@@ -637,7 +679,6 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
             print(f'  "The auto-QA loop failed for {feature_dir.name}. Here is the output: ..."')
             print("=" * 60)
         return
-
     if prefix in ("modify", "bugfix"):
         if not action:
             current_file = _resolve_current_file()

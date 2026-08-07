@@ -64,7 +64,7 @@ fi
 
 # ── 3. Check device (auto-starts ADB server) ──
 fix "checking for devices..."
-DEVICES=$(powershell.exe -Command "& '$ADB_WIN_PATH' devices" 2>/dev/null | grep -v 'List of devices attached' | grep -v '^[[:space:]]*$' | wc -l)
+DEVICES=$(powershell.exe -Command "& '$ADB_WIN_PATH' devices" 2>/dev/null | grep -v 'List of devices attached' | grep -v '^[[:space:]]*$' | wc -l) || true
 echo "  $DEVICES device(s) found"
 
 if [ "$DEVICES" -eq 0 ]; then
@@ -79,5 +79,6 @@ fi
 # ── 4. Launch scrcpy ──
 echo ""
 fix "launching scrcpy..."
-powershell.exe -Command "Start-Process -FilePath '$SCRCPY_PATH' -WindowStyle Normal" 2>/dev/null
+SCRCPY_ARGS="--capture-orientation=270"
+powershell.exe -Command "Start-Process -FilePath '$SCRCPY_PATH' -ArgumentList '$SCRCPY_ARGS' -WindowStyle Normal" 2>/dev/null
 ok "scrcpy launched"

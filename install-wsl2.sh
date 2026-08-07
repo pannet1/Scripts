@@ -372,8 +372,27 @@ if [ ! -d "$TPM_DIR" ]; then
     ok "TPM plugins installed"
 fi
 
-# ── 10. Git push ──
-step "10/10: Git push"
+# ── Windows Downloads symlink ──
+step "10/11: Windows Downloads Symlink"
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    if [ -e "$HOME/Downloads" ]; then
+        ok "Downloads already exists — skipping"
+    else
+        WIN_USERPROFILE=$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')
+        WIN_USERPROFILE=$(wslpath "$WIN_USERPROFILE" 2>/dev/null) || true
+        if [ -n "$WIN_USERPROFILE" ] && [ -d "$WIN_USERPROFILE/Downloads" ]; then
+            ln -sfn "$WIN_USERPROFILE/Downloads" "$HOME/Downloads"
+            ok "Downloads symlinked to Windows"
+        else
+            fail "Windows Downloads folder not found"
+        fi
+    fi
+else
+    fail "Not running under WSL"
+fi
+
+# ── 11. Git push ──
+step "11/11: Git push"
 git add -A
 if ! git diff --cached --quiet; then
     git commit -m "wsl2: update $(date +%Y-%m-%d)"

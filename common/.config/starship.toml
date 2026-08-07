@@ -1,4 +1,5 @@
 palette = "catppuccin_frappe"
+scan_timeout = 800
 
 [palettes.catppuccin_frappe]
 rosewater = "#f2d5cf"

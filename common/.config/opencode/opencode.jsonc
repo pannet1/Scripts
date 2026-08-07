@@ -19,6 +19,34 @@
     }
   },
   "provider": {
+    "omniroute": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "OmniRoute",
+      "options": {
+        "baseURL": "http://localhost:20128/v1",
+        "apiKey": "sk-7a132dd03fdeaea5-15670e-c5c89d58"
+      },
+      "models": {
+        "opencode-zen/deepseek-v4-flash-free": {
+          "name": "opencode-zen/deepseek-v4-flash-free"
+        },
+        "opencode-zen/minimax-m2.5-free": {
+          "name": "opencode-zen/minimax-m2.5-free"
+        },
+        "opencode-zen/nemotron-3-super-free": {
+          "name": "opencode-zen/nemotron-3-super-free"
+        },
+        "opencode-zen/qwen3.6-plus-free": {
+          "name": "opencode-zen/qwen3.6-plus-free"
+        },
+        "opencode-zen/big-pickle": {
+          "name": "opencode-zen/big-pickle"
+        },
+        "opencode-go/deepseek-v4-pro-high": {
+          "name": "opencode-go/deepseek-v4-pro-high"
+        }
+      }
+    },
     "local-ai": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "Local AI (llama-swap)",
@@ -37,3 +65,4 @@
     }
   }
 }
+
