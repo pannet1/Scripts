@@ -1,0 +1,16 @@
+{
+  "features_dir": "features",
+  "known_features": {},
+  "domain_keywords": {},
+  "stack": {
+    "python": {
+      "present": ""
+    },
+    "web": {
+      "framework": "fastapi"
+    },
+    "db": {
+      "engine": "sqlite"
+    }
+  }
+}

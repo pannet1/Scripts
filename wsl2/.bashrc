@@ -191,8 +191,6 @@ ffile() {
 # Added by Antigravity CLI installer
 export PATH="/home/pannet1/.local/bin:$PATH"
 
-# kilo
-export PATH=/home/pannet1/.kilo/bin:$PATH
 export PATH="$HOME/.local/node22/bin:$PATH"
 
 # pnpm
