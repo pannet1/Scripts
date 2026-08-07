@@ -31,6 +31,5 @@ alias explorer='explorer.exe .'
 alias open='explorer.exe'
 alias pbcopy='clip.exe'
 alias pbpaste='powershell.exe -Command Get-Clipboard'
-alias npm='bun'
-alias npx='bun'
+
 alias reload='exec bash'

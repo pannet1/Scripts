@@ -9,8 +9,11 @@ models:
       --host 127.0.0.1 --port 8081
       --model ./models/Qwen2.5-7B-Instruct-Q4_K_M.gguf
       --n-gpu-layers 99
-      --ctx-size 8192
+      --ctx-size 32768
+      --cache-type-k q8_0
+      --cache-type-v q8_0
       --flash-attn auto
+      --parallel 2
 
   "nomic-embed-text":
     proxy: "http://127.0.0.1:8082"

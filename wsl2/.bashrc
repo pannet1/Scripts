@@ -123,7 +123,6 @@ export GPG_TTY=$(tty)
 export PATH="$HOME/.bun/bin:$PATH"
 if grep -qi microsoft /proc/version 2>/dev/null; then
   export LD_LIBRARY_PATH=/usr/lib/wsl/lib:$LD_LIBRARY_PATH
-  export WSL_DISABLE_INTEROP=1
   alias usbread='sudo mkdir -p /mnt/d && sudo mount -t drvfs D: /mnt/d && echo "USB Updated Successfully"'
 fi
 alias mail='/usr/bin/aerc'
@@ -191,3 +190,15 @@ ffile() {
 
 # Added by Antigravity CLI installer
 export PATH="/home/pannet1/.local/bin:$PATH"
+
+# kilo
+export PATH=/home/pannet1/.kilo/bin:$PATH
+export PATH="$HOME/.local/node22/bin:$PATH"
+
+# pnpm
+export PNPM_HOME="/home/pannet1/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME/bin:"*) ;;
+  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
+esac
+# pnpm end
