@@ -1,4 +1,5 @@
 import os
+import random
 import json
 import subprocess
 from datetime import datetime
@@ -9,17 +10,44 @@ from libqtile.lazy import lazy
 from libqtile import qtile
 from libqtile import hook
 
+home = os.path.expanduser("~")
+
 with open("{}/.config/qtile/config/settings.json".format(os.getenv("HOME"))) as file:
     settings = json.load(file)
 
 looks: dict = settings["looks"]
 display: dict = settings["display"]
 
-with open("{}/.config/qtile/config/colors.json".format(os.getenv("HOME"))) as file:
+def random_wallpaper(wallpapers_dir: str, default_wallpaper: str) -> str:
+    image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg'}
+
+    image_files = []
+    for root, dirs, files in os.walk(wallpapers_dir):
+        for file in files:
+            if os.path.splitext(file)[1].lower() in image_extensions:
+                image_files.append(os.path.join(root, file))
+
+    if image_files:
+        return random.choice(image_files)
+    return default_wallpaper
+
+wallpaper = looks["wallpaper"]
+wallpaper_mode = looks.get("wallpaper_mode", "zoom")
+wallpapers_dir = os.path.expanduser(looks.get("wallpapers_dir", "{}/.config/qtile/wallpapers".format(home)))
+is_random = looks.get("is_random", 0) == 1
+
+final_wallpaper = random_wallpaper(wallpapers_dir, wallpaper) if is_random else wallpaper
+
+# Regenerate the color scheme from the chosen wallpaper (writes a template to ~/.cache/wallust).
+if subprocess.run(["which", "wallust"], capture_output=True).returncode == 0:
+    subprocess.call(["wallust", "run", "-q", final_wallpaper])
+
+# Prefer the wallust-generated scheme, fall back to the committed default colors.json.
+cache_colors = "{}/.cache/wallust/qtile-colors.json".format(home)
+with open(cache_colors if os.path.isfile(cache_colors) else "{}/.config/qtile/config/colors.json".format(os.getenv("HOME"))) as file:
     colors_json = json.load(file)
 
 colors = colors_json
-wallpaper = looks["wallpaper"]
 
 mod = "mod4"
 terminal = "alacritty"
@@ -57,8 +85,8 @@ keys = [
     Key([mod], "n", lazy.layout.normalize(), desc="Reset all window sizes"),
     Key([mod], "i", lazy.layout.grow()),
     Key([mod], "m", lazy.layout.shrink()),
-    Key([mod], "n", lazy.layout.normalize()),
     Key([mod], "o", lazy.layout.maximize()),
+    Key([mod], "w", lazy.restart(), desc="Re-roll random wallpaper + color theme"),
     # Toggle between split and unsplit sides of stack.
     # Split = all windows displayed
     # Unsplit = 1 window displayed, like Max layout, but still with
@@ -261,8 +289,8 @@ widgets_list: list = [
 bar_margin = 0
 
 screen = Screen(
-#     wallpaper=wallpaper,
-#     wallpaper_mode="fill",
+#     wallpaper=final_wallpaper,
+#     wallpaper_mode=wallpaper_mode,
     top=bar.Bar(
        widgets_list,
        int(looks["panel-size"]),
@@ -332,14 +360,12 @@ floating_layout = layout.Floating(
 
 @hook.subscribe.startup_once
 def start_once():
-    home = os.path.expanduser("~")
     subprocess.call([home + "/.config/qtile/autostart.sh"])
 
 @hook.subscribe.startup
 def runner():
-    home = os.path.expanduser("~")
     subprocess.Popen(["xsetroot", "-cursor_name", "left_ptr"])
-    subprocess.Popen(["xwallpaper", "--zoom", os.path.expanduser(wallpaper)])
+    subprocess.Popen(["xwallpaper", "--" + wallpaper_mode, os.path.expanduser(final_wallpaper)])
 
 floating_types = ["notification", "toolbar", "splash", "dialog", "dock"]
 

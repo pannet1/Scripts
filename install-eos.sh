@@ -24,7 +24,8 @@ fi
 step "2/4: Dotfiles (stow)"
 cd "$SCRIPTS_DIR"
 
-stow -R --target="$HOME" common 2>/dev/null || stow --target="$HOME" common
+stow -R --ignore='^\.config/(kilo|ZCode)$' --target="$HOME" common 2>/dev/null \
+    || stow --ignore='^\.config/(kilo|ZCode)$' --target="$HOME" common
 ok "common symlinked"
 
 stow -R --target="$HOME" eos 2>/dev/null || stow --target="$HOME" eos

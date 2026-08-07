@@ -1,0 +1,22 @@
+{
+  "bg": "{{background}}",
+  "fg": "{{foreground}}",
+  "active": "{{color5}}",
+  "inactive": "{{foreground}}",
+  "border_focus": "{{color5}}",
+  "border_normal": "{{background}}",
+  "groups_bg": "{{background}}",
+  "current_screen_tab": "{{color2}}",
+  "systray": "{{background}}",
+  "seperator": "{{background}}",
+  "color2fg": "{{color6}}",
+  "color2": "{{background}}",
+  "color1fg": "{{color1}}",
+  "color1": "{{background}}",
+  "color3fg": "{{color5}}",
+  "color3": "{{background}}",
+  "color4fg": "{{color3}}",
+  "color4": "{{background}}",
+  "color5fg": "{{color2}}",
+  "color5": "{{background}}"
+}
