@@ -125,8 +125,22 @@ else
     ok "nvim installed"
 fi
 
-# ── 7. Qtile (via uv) ──
-step "7/10: Qtile"
+# ── 7. Node.js / npm (to ~/.local) ──
+step "7/11: Node.js / npm"
+if check_cmd node && check_cmd npm; then
+    ok "node $(node --version) / npm $(npm --version)"
+else
+    fail "node/npm"
+    fix "installing latest Node.js LTS to ~/.local"
+    NODE_VERSION="$(curl -fsSL https://nodejs.org/dist/index.json | python3 -c "import json,sys; print(next(x['version'] for x in json.load(sys.stdin) if x.get('lts')))")"
+    curl -fsSL "https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-linux-x64.tar.xz" -o /tmp/node.tar.xz
+    tar -xJf /tmp/node.tar.xz -C "$HOME/.local" --strip-components=1
+    rm -f /tmp/node.tar.xz
+    ok "node $NODE_VERSION installed"
+fi
+
+# ── 8. Qtile (via uv) ──
+step "8/11: Qtile"
 if check_cmd uv; then
     ok "uv binary"
 else
@@ -154,8 +168,8 @@ EOF
     ok ".xinitrc written"
 fi
 
-# ── 8. WSL2 shell tools (emulated) ──
-step "8/10: WSL2 shell tools"
+# ── 9. WSL2 shell tools (emulated) ──
+step "9/11: WSL2 shell tools"
 ensure_pkg git-crypt adb
 if check_cmd starship; then
     ok "starship binary"
@@ -201,8 +215,8 @@ else
     fi
 fi
 
-# ── 9. Dotfiles (stow) ──
-step "9/10: Dotfiles (stow)"
+# ── 10. Dotfiles (stow) ──
+step "10/11: Dotfiles (stow)"
 cd "$SCRIPT_DIR"
 backup_dir="$HOME/.dotfiles-backup/$(date +%Y%m%d_%H%M%S)"
 backed_up=false
@@ -242,8 +256,8 @@ done
 
 [ "$backed_up" = true ] && echo "    → Backed up to $backup_dir"
 
-# ── 10. OpenCode ──
-step "10/10: OpenCode"
+# ── 11. OpenCode ──
+step "11/11: OpenCode"
 if check_cmd opencode; then
     ok "opencode binary"
 else
