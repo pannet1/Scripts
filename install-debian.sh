@@ -57,7 +57,7 @@ ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserve
     libpangocairo-1.0-0 build-essential pkg-config ripgrep fd-find tmux picom alacritty \
     rofi flameshot scrot xwallpaper pcmanfm firefox-esr network-manager-gnome ibus xfce4-power-manager \
     alsa-utils fonts-font-awesome fonts-jetbrains-mono libnotify-bin \
-    p7zip-full p7zip-rar rar
+    p7zip-full p7zip-rar rar xdg-utils
 
 # ── 4. Networking ──
 step "4/10: Networking"
