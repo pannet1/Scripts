@@ -1,0 +1,10 @@
+{
+  "looks": {
+    "wallpaper": "~/.config/qtile/config/1.png",
+    "caret_font_size": 49,
+    "caret_font": "FontAwesome",
+    "panel-opacity": 1.0,
+    "panel-size": 30
+  },
+  "display": { "screen-count": 1 }
+}

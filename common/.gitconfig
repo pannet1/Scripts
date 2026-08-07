@@ -1,8 +1,6 @@
 [user]
 	email = 12350276+pannet1@users.noreply.github.com
 	name = pannet1
-[credential]
-	helper = pass
 [url "git@github.com:"]
 	insteadOf = https://github.com/
 [pull]
