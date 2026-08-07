@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "agent-native-localhost": {
+      "type": "http",
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
