@@ -263,6 +263,8 @@ backup_conflicts() {
         -not -path "*/.git/*" \
         -not -path "*/__pycache__/*" \
         -not -path "*/target/*" \
+        -not -path "*/kilo/*" \
+        -not -path "*/ZCode/*" \
         -not -name "*.pyc")
 }
 
@@ -283,7 +285,9 @@ while read -r f; do
     fi
 done < <(find common wsl2 -type f -o -type l \
     -not -path "*/node_modules/*" \
-    -not -path "*/.git/*")
+    -not -path "*/.git/*" \
+    -not -path "*/kilo/*" \
+    -not -path "*/ZCode/*")
 backup_conflicts wsl2
 
 if $backed_up; then

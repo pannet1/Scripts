@@ -75,5 +75,12 @@ common/.config/opencode/common/.config/
 common/.config/gh/hosts.yml
 # Runtime data (gitignored, may contain secrets)
 data/
+
+# Wallpapers — large binary blobs, kept local per-machine
+common/.config/qtile/wallpapers
+
+# Editors no longer used — runtime dirs only
+common/.config/kilo/
+common/.config/ZCode/
 *.pyc
 .python-version

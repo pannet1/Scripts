@@ -1,0 +1,7 @@
+# wallust v3.5
+backend = "fastresize"
+color_space = "salience"
+palette = "saliencedark"
+
+[templates]
+qtile_colors = { template = 'qtile-colors.json', target = '~/.cache/wallust/qtile-colors.json' }

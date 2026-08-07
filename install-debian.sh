@@ -26,8 +26,32 @@ echo "=============================================="
 echo "  Debian Setup"
 echo "=============================================="
 
+# ── 0. Self-bootstrap: ensure we run from a full repo checkout ──
+step "0/13: Repo checkout"
+REPO_DIR="$HOME/programs/shell/github.com/pannet1/Scripts"
+if [ -d "$SCRIPT_DIR/common" ] && [ -d "$SCRIPT_DIR/debian" ]; then
+    ok "running from checkout: $SCRIPT_DIR"
+else
+    fail "running from checkout (script was piped via curl?)"
+    if ! command -v git &>/dev/null; then
+        fix "installing git"
+        sudo apt update -y
+        sudo apt install -y git
+    fi
+    if [ -d "$REPO_DIR/.git" ]; then
+        fix "updating existing checkout at $REPO_DIR"
+        git -C "$REPO_DIR" pull --ff-only -q || true
+    else
+        fix "cloning repo to $REPO_DIR"
+        mkdir -p "$(dirname "$REPO_DIR")"
+        git clone --depth 1 https://github.com/pannet1/Scripts.git "$REPO_DIR"
+    fi
+    ok "re-executing installer from $REPO_DIR"
+    exec bash "$REPO_DIR/install-debian.sh"
+fi
+
 # ── 1. apt sources (match installed release) ──
-step "1/12: apt sources"
+step "1/13: apt sources"
 RELEASE_CODENAME="$(. /etc/os-release && echo "$VERSION_CODENAME")"
 ACTIVE_DEB="$(grep -rhE '^deb ' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null || true)"
 if echo "$ACTIVE_DEB" | grep -qs "$RELEASE_CODENAME" && echo "$ACTIVE_DEB" | grep -qs non-free-firmware; then
@@ -45,14 +69,14 @@ EOF
 fi
 
 # ── 2. System update ──
-step "2/12: System update"
+step "2/13: System update"
 sudo apt update -y
 sudo apt --fix-broken install -y
 sudo apt dist-upgrade -y
 ok "system up to date"
 
 # ── 3. OpenCode (early, so we can fix issues during install) ──
-step "3/12: OpenCode"
+step "3/13: OpenCode"
 ensure_pkg curl
 if check_cmd opencode; then
     ok "opencode binary"
@@ -66,15 +90,17 @@ else
 fi
 
 # ── 4. Core packages ──
-step "4/12: Core packages"
+step "4/13: Core packages"
 ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserver-utils xfonts-base xfonts-75dpi xfonts-100dpi \
     libpangocairo-1.0-0 build-essential pkg-config ripgrep fd-find tmux picom alacritty \
-    rofi flameshot scrot xwallpaper pcmanfm firefox-esr network-manager-gnome ibus xfce4-power-manager \
+    rofi flameshot scrot xwallpaper pcmanfm network-manager-gnome ibus xfce4-power-manager \
     alsa-utils fonts-font-awesome fonts-jetbrains-mono libnotify-bin \
-    p7zip-full p7zip-rar rar xdg-utils
+    fonts-noto-core fonts-samyak-taml fonts-lohit-taml fonts-taml \
+    p7zip-full p7zip-rar rar xdg-utils \
+    firefox-esr
 
 # ── 5. Networking ──
-step "5/12: Networking"
+step "5/13: Networking"
 if check_cmd nmcli; then
     ok "NetworkManager"
 else
@@ -85,7 +111,7 @@ else
 fi
 
 # ── 6. NVIDIA ──
-step "6/12: NVIDIA"
+step "6/13: NVIDIA"
 if lspci 2>/dev/null | grep -qi "VGA.*NVIDIA"; then
     if lsmod | grep -q "^nvidia "; then
         ok "nvidia module loaded"
@@ -119,7 +145,7 @@ else
 fi
 
 # ── 7. Neovim ──
-step "7/12: Neovim"
+step "7/13: Neovim"
 if check_cmd nvim; then
     ok "nvim binary"
 else
@@ -140,12 +166,13 @@ else
 fi
 
 # ── 8. Node.js / npm (to ~/.local) ──
-step "8/12: Node.js / npm"
+step "8/13: Node.js / npm"
 if check_cmd node && check_cmd npm; then
     ok "node $(node --version) / npm $(npm --version)"
 else
     fail "node/npm"
     fix "installing latest Node.js LTS to ~/.local"
+    mkdir -p "$HOME/.local/bin"
     NODE_VERSION="$(curl -fsSL https://nodejs.org/dist/index.json | python3 -c "import json,sys; print(next(x['version'] for x in json.load(sys.stdin) if x.get('lts')))")"
     curl -fsSL "https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-linux-x64.tar.xz" -o /tmp/node.tar.xz
     tar -xJf /tmp/node.tar.xz -C "$HOME/.local" --strip-components=1
@@ -154,7 +181,7 @@ else
 fi
 
 # ── 9. Qtile (via uv) ──
-step "9/12: Qtile"
+step "9/13: Qtile"
 if check_cmd uv; then
     ok "uv binary"
 else
@@ -182,8 +209,8 @@ EOF
     ok ".xinitrc written"
 fi
 
-# ── 10. WSL2 shell tools (emulated) ──
-step "10/12: WSL2 shell tools"
+# ── 10. Shell tools ──
+step "10/13: Shell tools"
 ensure_pkg git-crypt adb
 if check_cmd starship; then
     ok "starship binary"
@@ -209,6 +236,17 @@ else
     curl -fsSL https://bun.sh/install | bash 2>/dev/null || true
     ok "bun installed"
 fi
+if check_cmd wallust; then
+    ok "wallust binary"
+else
+    fail "wallust"
+    fix "installing wallust (prebuilt binary — not a Python package, so uv can't install it)"
+    mkdir -p "$HOME/.local/bin"
+    curl -fsSL -o /tmp/wallust.tar.gz "https://codeberg.org/explosion-mental/wallust/releases/download/3.5.2/wallust-3.5.2-x86_64-unknown-linux-musl.tar.gz"
+    tar -xzf /tmp/wallust.tar.gz -C "$HOME/.local/bin" wallust
+    rm -f /tmp/wallust.tar.gz
+    ok "wallust installed"
+fi
 
 FONT_DIR="$HOME/.local/share/fonts"
 if ls "$FONT_DIR"/FiraCode*.ttf &>/dev/null; then
@@ -230,18 +268,15 @@ else
 fi
 
 # ── 11. Dotfiles (stow) ──
-step "11/12: Dotfiles (stow)"
+step "11/13: Dotfiles (stow)"
 cd "$SCRIPT_DIR"
 backup_dir="$HOME/.dotfiles-backup/$(date +%Y%m%d_%H%M%S)"
 backed_up=false
 
-for pkg in common debian wsl2; do
+for pkg in common debian; do
     [ -d "$pkg" ] || continue
-    ignore=""
-    [ "$pkg" = "wsl2" ] && ignore="--ignore=^\.bash_profile$"
     while read -r f; do
         rel="${f#"$pkg/"}"
-        [ "$pkg" = "wsl2" ] && [ "$rel" = ".bash_profile" ] && continue
         target="$HOME/$rel"
         # Skip if target already resolves to this package's own file
         # (stow-managed dir, e.g. ~/.config/qtile/config -> package dir).
@@ -259,8 +294,8 @@ for pkg in common debian wsl2; do
         elif [ -L "$target" ]; then
             rm "$target"
         fi
-    done < <(find "$pkg" -type f -not -path "*/node_modules/*" -not -path "*/.git/*")
-    if stow -R --target="$HOME" $ignore "$pkg"; then
+    done < <(find "$pkg" -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/kilo/*" -not -path "*/ZCode/*")
+    if stow -R --target="$HOME" "$pkg"; then
         ok "$pkg symlinked"
     else
         fail "$pkg stow"
@@ -271,7 +306,7 @@ done
 [ "$backed_up" = true ] && echo "    → Backed up to $backup_dir"
 
 # ── 12. LazyVim (nvim config) ──
-step "12/12: LazyVim"
+step "12/13: LazyVim"
 if [ -d "$HOME/.config/nvim" ] && [ -n "$(ls -A "$HOME/.config/nvim" 2>/dev/null)" ]; then
     ok "nvim config present"
 else

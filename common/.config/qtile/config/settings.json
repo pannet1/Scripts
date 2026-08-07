@@ -1,6 +1,9 @@
 {
   "looks": {
-    "wallpaper": "~/.config/qtile/config/1.png",
+    "wallpaper": "~/.config/qtile/wallpapers/test-single.jpg",
+    "wallpapers_dir": "~/.config/qtile/wallpapers",
+    "is_random": 1,
+    "wallpaper_mode": "zoom",
     "caret_font_size": 49,
     "caret_font": "FontAwesome",
     "panel-opacity": 1.0,
