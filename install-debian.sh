@@ -96,7 +96,7 @@ ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserve
     rofi flameshot scrot xwallpaper pcmanfm network-manager-gnome ibus xfce4-power-manager \
     alsa-utils fonts-font-awesome fonts-jetbrains-mono libnotify-bin \
     fonts-noto-core fonts-samyak-taml fonts-lohit-taml fonts-taml \
-    p7zip-full p7zip-rar rar xdg-utils \
+    p7zip-full p7zip-rar rar xdg-utils bind9-dnsutils \
     libavcodec-extra61 \
     firefox-esr
 
