@@ -306,8 +306,20 @@ done
 
 [ "$backed_up" = true ] && echo "    → Backed up to $backup_dir"
 
-# ── 12. LazyVim (nvim config) ──
-step "12/13: LazyVim"
+# ── 12. User systemd services ──
+step "12/13: User systemd services"
+systemctl --user daemon-reload
+for svc in picom; do
+    if systemctl --user enable "$svc.service" 2>/dev/null; then
+        ok "$svc.service enabled"
+    else
+        fail "$svc.service enable"
+        fix "check unit exists after stow"
+    fi
+done
+
+# ── 13. LazyVim (nvim config) ──
+step "13/13: LazyVim"
 if [ -d "$HOME/.config/nvim" ] && [ -n "$(ls -A "$HOME/.config/nvim" 2>/dev/null)" ]; then
     ok "nvim config present"
 else
