@@ -321,5 +321,5 @@ class TestInitHandler:
 class TestKnownPrefixes:
 
     def test_includes_all_commands(self) -> None:
-        expected = {"new", "do", "modify", "delete", "move", "merge", "undo", "deploy", "init", "scan"}
+        expected = {"new", "do", "modify", "delete", "move", "merge", "undo", "init", "scan"}
         assert _KNOWN_PREFIXES == expected

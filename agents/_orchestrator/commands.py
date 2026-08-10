@@ -35,7 +35,7 @@ class CommandResult:
 
 
 _KNOWN_PREFIXES = frozenset({
-    "new", "modify", "do", "delete", "move", "merge", "undo", "deploy", "init", "scan",
+    "new", "modify", "do", "delete", "move", "merge", "undo", "init", "scan",
 })
 
 
