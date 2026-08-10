@@ -1,0 +1,94 @@
+import json
+from pathlib import Path
+
+from .config import MODEL_CONFIG
+from .llm import llm_complete
+
+
+MAX_SPEC_QA_ATTEMPTS = 3
+
+
+def _validate_spec(spec: str, original_prompt: str) -> tuple[bool, str]:
+    """Validate spec against the original prompt, returning (is_valid, corrected_spec)."""
+    model = "deepseek-v4-flash"
+    if MODEL_CONFIG.exists():
+        try:
+            cfg = json.loads(MODEL_CONFIG.read_text())
+            model = cfg.get("model", model)
+        except Exception:
+            pass
+
+    system = (
+        "You are a spec QA validator. Compare the provided spec against the original prompt. "
+        "List every discrepancy you find (wrong method signatures, missing sections, incorrect terminology, "
+        "wrong response fields, wrong storage model, missing dependencies, wrong routes). "
+        "Be pedantic. If the spec is fully correct, reply with exactly: VALID\n\n"
+        "If there are issues, reply with ISSUES (one per line prefixed with -), "
+        "then a blank line, then the COMPLETE corrected spec in markdown format."
+    )
+
+    result = llm_complete(
+        f"## Original Prompt\n\n{original_prompt}\n\n## Generated Spec\n\n{spec}",
+        system=system,
+        model=model,
+    )
+    if result is None:
+        return True, spec
+    result = result.strip()
+    if result.startswith("VALID"):
+        return True, spec
+    lines = result.split("\n")
+    corrected = []
+    in_spec = False
+    for line in lines:
+        if line.startswith("#") and not line.startswith("-") and not in_spec:
+            in_spec = True
+        if in_spec:
+            corrected.append(line)
+    if corrected:
+        new_spec = "\n".join(corrected).strip()
+        return False, new_spec
+    return False, spec
+
+
+def _qa_spec(spec_path: Path, original_prompt: str, label: str) -> None:
+    """Run quality assurance loop on a spec file against the original prompt."""
+    for attempt in range(1, MAX_SPEC_QA_ATTEMPTS + 1):
+        spec = spec_path.read_text()
+        is_valid, corrected = _validate_spec(spec, original_prompt)
+        if is_valid:
+            print(f"[Orchestrator] Spec QA passed ({label})")
+            return
+        print(f"[Orchestrator] Spec QA issue found ({label}), attempt {attempt}/{MAX_SPEC_QA_ATTEMPTS}")
+        spec_path.write_text(corrected)
+    print(f"[Orchestrator] Spec QA exhausted {MAX_SPEC_QA_ATTEMPTS} attempts — spec may still have issues ({label})")
+
+
+def rewrite_spec_with_ai(feature_dir: Path, change_prompt: str, section: str) -> bool:
+    spec_path = feature_dir / "spec.md"
+    existing = spec_path.read_text() if spec_path.exists() else ""
+    heading = section.replace(" Request", "").replace(" Resolution", "")
+
+    amendment = (
+        f"\n## {heading}\n\n"
+        f"{change_prompt}\n\n"
+        "### Constraints\n"
+        "* <!-- added by modification -->\n"
+    )
+    if existing:
+        spec_path.write_text(existing + amendment)
+    else:
+        spec_path.write_text(amendment)
+    print(f"[Orchestrator] spec.md amended with structured '{heading}' section")
+
+    _qa_spec(spec_path, change_prompt, f"amend:{heading}")
+
+    return True
+
+
+def amend_spec(feature_dir: Path, heading: str, branch_prefix: str, feature_name: str = "") -> None:
+    display = feature_name or feature_dir.name
+    print(f"\n{'='*60}\n{heading} for {display}")
+    print(f"Spec amended. Run do when ready:\n")
+    print(f"  ./.agents/orchestrator.py do {display}")
+    print("=" * 60)
