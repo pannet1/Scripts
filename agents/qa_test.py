@@ -21,7 +21,7 @@ _FEATURES_JSON = REPO / ".features.json"
 def _load_json(path: Path) -> dict[str, Any]:
     try:
         return json.loads(path.read_text())
-    except Exception:
+    except (json.JSONDecodeError, OSError):
         return {}
 
 
@@ -34,7 +34,7 @@ def _get_all_features() -> list[tuple[str, str, Path]]:
         result.append((name, domain, features_dir))
 
     apps: dict[str, Any] = root.get("apps", {})
-    for _app_name, app_cfg in apps.items():
+    for app_cfg in apps.values():
         app_config_path = app_cfg.get("config", "")
         if app_config_path:
             app_features = _load_json(REPO / app_config_path).get("known_features", {})
@@ -134,7 +134,7 @@ def main() -> int:
             ["uv", "run", "pytest", str(test_file), "-v"],
             capture_output=True, text=True,
             cwd=str(REPO), timeout=120,
-        )
+        check=False)
         for line in result.stdout.splitlines():
             if " PASSED" in line:
                 t = line.split("::")[-1].replace(" PASSED", "").strip()

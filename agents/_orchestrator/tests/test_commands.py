@@ -1,14 +1,12 @@
 import json
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
-from _orchestrator.commands import dispatch
-from _orchestrator.commands import _KNOWN_PREFIXES, _parse_request
-from _orchestrator.feature import ProjectFeatures, feature_from_branch, load_project
-from _orchestrator.scaffold import scaffold_new_feature
+from _orchestrator.commands import _KNOWN_PREFIXES, _parse_request, dispatch
+from _orchestrator.feature import ProjectFeatures, feature_from_branch
 from _orchestrator.git_ops import check_branch
+from _orchestrator.scaffold import scaffold_new_feature
 
 
 class FakeProject:
@@ -89,18 +87,18 @@ class TestFeatureFromBranch:
 
 class TestDoDeleteInferFromBranch:
 
-    def test_do_without_target_on_feature_branch(self, capsys: object, monkeypatch: object) -> None:
+    def test_do_without_target_on_feature_branch(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "feature/Payment")
         monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
         dispatch("do")
         assert "Feature not found: Payment" in capsys.readouterr().out
 
-    def test_do_without_target_on_main(self, capsys: object, monkeypatch: object) -> None:
+    def test_do_without_target_on_main(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
         dispatch("do")
         assert "cannot infer from current branch" in capsys.readouterr().out
 
-    def test_delete_without_target_on_modify_branch(self, capsys: object, monkeypatch: object) -> None:
+    def test_delete_without_target_on_modify_branch(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "shared/Payment")
         monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
         monkeypatch.setattr("_orchestrator.commands.branch_exists", lambda name: False)
@@ -119,7 +117,7 @@ class TestDoDeleteInferFromBranch:
 
 class TestMoveHandler:
 
-    def _patch_env(self, tmp_path: Path, monkeypatch: object, known: dict[str, str]) -> None:
+    def _patch_env(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, known: dict[str, str]) -> None:
         (tmp_path / "features" / "shared" / "Payment").mkdir(parents=True)
         (tmp_path / "features" / "shared" / "Payment" / "spec.md").touch()
         cfg = tmp_path / ".features.json"
@@ -132,7 +130,7 @@ class TestMoveHandler:
         monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
 
-    def test_move_within_domain(self, tmp_path: Path, capsys: object, monkeypatch: object) -> None:
+    def test_move_within_domain(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         self._patch_env(tmp_path, monkeypatch, {"Payment": "shared"})
         dispatch("move Payment Payments")
         out = capsys.readouterr().out
@@ -142,7 +140,7 @@ class TestMoveHandler:
         data = json.loads((tmp_path / ".features.json").read_text())
         assert data["known_features"] == {"Payments": "shared"}
 
-    def test_move_across_domains(self, tmp_path: Path, capsys: object, monkeypatch: object) -> None:
+    def test_move_across_domains(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         self._patch_env(tmp_path, monkeypatch, {"Payment": "shared"})
         dispatch("move Payment vps/Payments")
         out = capsys.readouterr().out
@@ -152,7 +150,7 @@ class TestMoveHandler:
         data = json.loads((tmp_path / ".features.json").read_text())
         assert data["known_features"] == {"Payments": "vps"}
 
-    def test_move_missing_target_usage(self, capsys: object, monkeypatch: object) -> None:
+    def test_move_missing_target_usage(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
         dispatch("move Payment")
         assert "Usage: move <OldDomain/OldFeature> <NewDomain/NewFeature>" in capsys.readouterr().out
@@ -185,7 +183,7 @@ class TestDomainOf:
 
 class TestCheckBranchNaming:
 
-    def _fake_git(self, monkeypatch: object) -> list[list[str]]:
+    def _fake_git(self, monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
         calls: list[list[str]] = []
 
         def fake_run(cmd: list[str], **kwargs: object) -> object:
@@ -195,33 +193,33 @@ class TestCheckBranchNaming:
         monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
         return calls
 
-    def test_branch_uses_domain_slash_feature(self, monkeypatch: object) -> None:
+    def test_branch_uses_domain_slash_feature(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
-        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", lambda: [])
+        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", list)
         monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
         calls = self._fake_git(monkeypatch)
         check_branch("Payment", "shared")
         assert ["git", "checkout", "-b", "shared/Payment"] in calls
 
-    def test_branch_without_domain_is_bare_feature(self, monkeypatch: object) -> None:
+    def test_branch_without_domain_is_bare_feature(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
-        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", lambda: [])
+        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", list)
         monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
         calls = self._fake_git(monkeypatch)
         check_branch("Payments", "")
         assert ["git", "checkout", "-b", "Payments"] in calls
 
-    def test_branch_for_bare_feature_uses_nodomain(self, monkeypatch: object) -> None:
+    def test_branch_for_bare_feature_uses_nodomain(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
-        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", lambda: [])
+        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", list)
         monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
         calls = self._fake_git(monkeypatch)
         check_branch("Payments", "nodomain")
         assert ["git", "checkout", "-b", "nodomain/Payments"] in calls
 
-    def test_no_operation_prefix_in_branch_name(self, monkeypatch: object) -> None:
+    def test_no_operation_prefix_in_branch_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
-        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", lambda: [])
+        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", list)
         monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
         calls = self._fake_git(monkeypatch)
         check_branch("Payment", "shared")
@@ -231,7 +229,7 @@ class TestCheckBranchNaming:
             for name in c[3:]:
                 assert not name.startswith(("feature/", "modify/"))
 
-    def test_already_on_any_branch_blocks(self, monkeypatch: object) -> None:
+    def test_already_on_any_branch_blocks(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "shared/Payment")
         with pytest.raises(SystemExit):
             check_branch("Other", "vps")
@@ -239,23 +237,23 @@ class TestCheckBranchNaming:
 
 class TestMergeGuard:
 
-    def test_merge_on_main_aborts(self, capsys: object, monkeypatch: object) -> None:
+    def test_merge_on_main_aborts(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
         dispatch("merge")
         out = capsys.readouterr().out
         assert "Checkout a feature branch before running merge" in out
 
-    def test_merge_main_variant_aborts(self, capsys: object, monkeypatch: object) -> None:
+    def test_merge_main_variant_aborts(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main*")
         dispatch("merge")
         assert "Checkout a feature branch before running merge" in capsys.readouterr().out
 
-    def test_merge_detached_head_aborts(self, capsys: object, monkeypatch: object) -> None:
+    def test_merge_detached_head_aborts(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "")
         dispatch("merge")
         assert "Detached HEAD" in capsys.readouterr().out
 
-    def test_merge_with_target_on_feature_branch_aborts(self, capsys: object, monkeypatch: object) -> None:
+    def test_merge_with_target_on_feature_branch_aborts(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "modify/Payment")
         dispatch("merge shared/Payment")
         assert "merge takes no target" in capsys.readouterr().out
@@ -263,22 +261,22 @@ class TestMergeGuard:
 
 class TestUndoHandler:
 
-    def test_undo_on_main_aborts(self, capsys: object, monkeypatch: object) -> None:
+    def test_undo_on_main_aborts(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
         dispatch("undo")
         assert "Checkout a feature branch before running undo" in capsys.readouterr().out
 
-    def test_undo_detached_head_aborts(self, capsys: object, monkeypatch: object) -> None:
+    def test_undo_detached_head_aborts(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "")
         dispatch("undo")
         assert "Detached HEAD" in capsys.readouterr().out
 
-    def test_undo_with_target_rejected(self, capsys: object, monkeypatch: object) -> None:
+    def test_undo_with_target_rejected(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "shared/Payment")
         dispatch("undo shared/Payment")
         assert "undo takes no target" in capsys.readouterr().out
 
-    def test_undo_resets_branch_to_main(self, capsys: object, monkeypatch: object) -> None:
+    def test_undo_resets_branch_to_main(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "shared/Payment")
         calls: list[list[str]] = []
 

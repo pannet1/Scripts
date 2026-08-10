@@ -1,6 +1,5 @@
 import subprocess
 from dataclasses import dataclass
-from typing import Optional
 
 from .config import REPO_ROOT
 from .feature import (
@@ -12,9 +11,19 @@ from .feature import (
     register_target,
     unregister_feature,
 )
-from .git_ops import branch_exists, check_branch, current_branch, merge_branch, unmerged_branches
+from .git_ops import (
+    branch_exists,
+    check_branch,
+    current_branch,
+    merge_branch,
+    unmerged_branches,
+)
 from .launcher import run_runner
-from .prompts import resolve_change_prompt, resolve_current_file, resolve_prompt_for_implicit
+from .prompts import (
+    resolve_change_prompt,
+    resolve_current_file,
+    resolve_prompt_for_implicit,
+)
 from .scaffold import init_project, scaffold_new_feature
 from .specs import amend_spec, rewrite_spec_with_ai
 
@@ -117,7 +126,7 @@ def _cmd_feature(target: FeatureTarget, rest: str, prompt_content: str, no_contr
     return CommandResult(success=False)
 
 
-def _cmd_do(target: Optional[FeatureTarget], raw: str) -> CommandResult:
+def _cmd_do(target: FeatureTarget | None, raw: str) -> CommandResult:
     if not raw:
         print("[Orchestrator] No feature name given and cannot infer from current branch.")
         return CommandResult(next_action='checkout or create a feature branch first — new <domain/Feature> "prompt"')
@@ -143,7 +152,7 @@ def _cmd_do(target: Optional[FeatureTarget], raw: str) -> CommandResult:
             return CommandResult(next_action="merge the listed branches first")
         target_branch = f"{target.domain}/{display}"
         print(f"[Orchestrator] On main with clean slate. Auto-creating branch: {target_branch}")
-        subprocess.run(["git", "checkout", "-b", target_branch], cwd=str(REPO_ROOT))
+        subprocess.run(["git", "checkout", "-b", target_branch], cwd=str(REPO_ROOT), check=False)
         branch = target_branch
 
     spec_text = (feature_dir / "spec.md").read_text() if (feature_dir / "spec.md").exists() else ""
@@ -159,14 +168,14 @@ def _cmd_do(target: Optional[FeatureTarget], raw: str) -> CommandResult:
         register_target(target)
         print(f"\n{'='*60}\nALL TESTS PASSED.\n")
         print(f"[Orchestrator] Staging {feature_dir}...")
-        r1 = subprocess.run(["git", "add", str(feature_dir)], capture_output=True, text=True, cwd=str(REPO_ROOT))
+        r1 = subprocess.run(["git", "add", str(feature_dir)], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
         if r1.returncode != 0:
             print(f"[Orchestrator] git add failed: {r1.stderr.strip()}")
             print("You may need to commit and merge manually.")
             return CommandResult(success=False, next_action="resolve the git error above, then commit and merge manually")
         msg_body = f"{commit_type}: {display}"
         print(f"[Orchestrator] Committing: {msg_body}")
-        r2 = subprocess.run(["git", "commit", "-m", msg_body], capture_output=True, text=True, cwd=str(REPO_ROOT))
+        r2 = subprocess.run(["git", "commit", "-m", msg_body], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
         if r2.returncode != 0:
             combined = r2.stdout + r2.stderr
             if "nothing to commit" in combined:
@@ -192,7 +201,7 @@ def _cmd_do(target: Optional[FeatureTarget], raw: str) -> CommandResult:
     return CommandResult(success=False, next_action="fix the failing tests above, then run do again — or undo to discard this branch")
 
 
-def _cmd_modify(res: Optional[ModifyResolution], raw: str, rest: str, prompt_content: str, implicit: bool) -> CommandResult:
+def _cmd_modify(res: ModifyResolution | None, raw: str, rest: str, prompt_content: str, implicit: bool) -> CommandResult:
     if res is None:
         print("[Orchestrator] No feature name given (modify expects a domain/Feature target, inline prompt, prompt file, or nvim context).")
         return CommandResult(next_action='pass a domain/Feature target with an inline prompt')
@@ -222,7 +231,7 @@ def _cmd_modify(res: Optional[ModifyResolution], raw: str, rest: str, prompt_con
     return CommandResult(next_action=f'./.agents/orchestrator.py do {res.name} to implement the amended spec')
 
 
-def _cmd_delete(target: Optional[FeatureTarget], raw: str) -> CommandResult:
+def _cmd_delete(target: FeatureTarget | None, raw: str) -> CommandResult:
     if not raw:
         print("[Orchestrator] No feature name given and cannot infer from current branch.")
         return CommandResult(next_action='checkout a feature branch first, or pass a feature name')
@@ -240,14 +249,14 @@ def _cmd_delete(target: Optional[FeatureTarget], raw: str) -> CommandResult:
     unregister_feature(raw, target.dir if target else None, target.config_path if target else None)
 
     if on_target:
-        subprocess.run(["git", "checkout", "main"], cwd=str(REPO_ROOT))
-        subprocess.run(["git", "branch", "-D", branch], cwd=str(REPO_ROOT))
+        subprocess.run(["git", "checkout", "main"], cwd=str(REPO_ROOT), check=False)
+        subprocess.run(["git", "branch", "-D", branch], cwd=str(REPO_ROOT), check=False)
         print(f"[Orchestrator] Deleted branch: {branch}")
         found_any = True
     else:
         for tb in target_branches:
             if branch_exists(tb):
-                subprocess.run(["git", "branch", "-D", tb], cwd=str(REPO_ROOT))
+                subprocess.run(["git", "branch", "-D", tb], cwd=str(REPO_ROOT), check=False)
                 print(f"[Orchestrator] Deleted branch: {tb}")
                 found_any = True
 
@@ -256,7 +265,7 @@ def _cmd_delete(target: Optional[FeatureTarget], raw: str) -> CommandResult:
     return CommandResult(next_action='scan to list remaining features, or new <domain/Feature> "prompt" to start one')
 
 
-def _cmd_merge(branch: str, name: str, target: Optional[FeatureTarget], action: str, rest: str) -> CommandResult:
+def _cmd_merge(branch: str, name: str, target: FeatureTarget | None, action: str, rest: str) -> CommandResult:
     if branch == "main" or branch.startswith("main"):
         print("[Orchestrator] You are on main. Checkout a feature branch before running merge.")
         return CommandResult(next_action='checkout a feature branch, then run merge')
@@ -269,13 +278,13 @@ def _cmd_merge(branch: str, name: str, target: Optional[FeatureTarget], action: 
     if target and target.dir.exists():
         commit_type = "feat"
         print(f"[Orchestrator] Staging {target.dir}...")
-        r1 = subprocess.run(["git", "add", str(target.dir)], capture_output=True, text=True, cwd=str(REPO_ROOT))
+        r1 = subprocess.run(["git", "add", str(target.dir)], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
         if r1.returncode != 0:
             print(f"[Orchestrator] git add failed: {r1.stderr.strip()}")
             return CommandResult(success=False, next_action="resolve the git error above, then merge manually")
         msg_body = f"{commit_type}: {name}"
         print(f"[Orchestrator] Committing: {msg_body}")
-        r2 = subprocess.run(["git", "commit", "-m", msg_body], capture_output=True, text=True, cwd=str(REPO_ROOT))
+        r2 = subprocess.run(["git", "commit", "-m", msg_body], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
         if r2.returncode != 0:
             combined = r2.stdout + r2.stderr
             if "nothing to commit" in combined:
@@ -308,23 +317,23 @@ def _cmd_undo(action: str, rest: str) -> CommandResult:
         print("[Orchestrator] undo takes no target — it discards the current branch and resets to main.")
         return CommandResult()
     print(f"[Orchestrator] Undoing {branch}: discarding commits and resetting to main...")
-    subprocess.run(["git", "fetch", "origin"], capture_output=True, text=True, cwd=str(REPO_ROOT))
-    r1 = subprocess.run(["git", "checkout", "main"], capture_output=True, text=True, cwd=str(REPO_ROOT))
+    subprocess.run(["git", "fetch", "origin"], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
+    r1 = subprocess.run(["git", "checkout", "main"], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
     if r1.returncode != 0:
         print(f"[Orchestrator] git checkout main failed: {r1.stderr.strip()}")
         return CommandResult(success=False)
-    r2 = subprocess.run(["git", "reset", "--hard", "origin/main"], capture_output=True, text=True, cwd=str(REPO_ROOT))
+    r2 = subprocess.run(["git", "reset", "--hard", "origin/main"], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
     if r2.returncode != 0:
         print(f"[Orchestrator] git reset failed: {r2.stderr.strip()}")
         return CommandResult(success=False)
-    subprocess.run(["git", "clean", "-fd"], capture_output=True, text=True, cwd=str(REPO_ROOT))
-    subprocess.run(["git", "branch", "-D", branch], capture_output=True, text=True, cwd=str(REPO_ROOT))
-    subprocess.run(["git", "push", "origin", "--delete", branch], capture_output=True, text=True, cwd=str(REPO_ROOT))
+    subprocess.run(["git", "clean", "-fd"], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
+    subprocess.run(["git", "branch", "-D", branch], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
+    subprocess.run(["git", "push", "origin", "--delete", branch], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
     print(f"[Orchestrator] Done. {branch} removed; working tree matches main exactly.")
     return CommandResult(next_action='new <domain/Feature> "prompt" to start fresh, or scan to list features')
 
 
-def _cmd_move(old_target: Optional[FeatureTarget], new_target: Optional[FeatureTarget], rest: str) -> CommandResult:
+def _cmd_move(old_target: FeatureTarget | None, new_target: FeatureTarget | None, rest: str) -> CommandResult:
     if not old_target or not new_target:
         print("[Orchestrator] Usage: move <OldDomain/OldFeature> <NewDomain/NewFeature>")
         return CommandResult()
@@ -339,11 +348,11 @@ def _cmd_move(old_target: Optional[FeatureTarget], new_target: Optional[FeatureT
     old_dir.rename(new_dir)
     unregister_feature(old_target.name, old_dir, old_target.config_path)
     register_target(new_target)
-    print(f"[Orchestrator] Running tests...")
+    print("[Orchestrator] Running tests...")
     result = subprocess.run(
         ["uv", "run", "pytest", "tests/", "--ignore=tests/test_session_lifecycle.py", "--ignore=tests/test_links.py", "-q"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
-    )
+    check=False)
     test_ok = result.returncode == 0
     if test_ok:
         last = [l for l in result.stdout.strip().split("\n") if l][-3:]
@@ -358,14 +367,14 @@ def _cmd_move(old_target: Optional[FeatureTarget], new_target: Optional[FeatureT
     new_branch = f"{new_target.domain}/{new_target.name}"
     if old_branch == current:
         print(f"[Orchestrator] Renaming branch {old_branch} -> {new_branch}...")
-        subprocess.run(["git", "branch", "-m", new_branch], cwd=str(REPO_ROOT))
-        subprocess.run(["git", "add", str(new_dir)], cwd=str(REPO_ROOT))
-        subprocess.run(["git", "commit", "-m", f"move: {old_name_disk} -> {new_target.name}"], capture_output=True, cwd=str(REPO_ROOT))
+        subprocess.run(["git", "branch", "-m", new_branch], cwd=str(REPO_ROOT), check=False)
+        subprocess.run(["git", "add", str(new_dir)], cwd=str(REPO_ROOT), check=False)
+        subprocess.run(["git", "commit", "-m", f"move: {old_name_disk} -> {new_target.name}"], capture_output=True, cwd=str(REPO_ROOT), check=False)
         if test_ok:
             print(f"[Orchestrator] Merging {new_branch} to main...")
             ok_merge, merge_err = merge_branch(new_branch)
             if ok_merge:
-                print(f"[Orchestrator] Merged to main. Done.")
+                print("[Orchestrator] Merged to main. Done.")
                 merged = True
             else:
                 print(f"[Orchestrator] {merge_err}")
@@ -386,7 +395,7 @@ def _split_move_target(target_str: str) -> tuple[str, str]:
     return "", t.strip()
 
 
-def _resolve_do(project: ProjectFeatures, action: str, rest: str, app: str) -> tuple[Optional[FeatureTarget], str]:
+def _resolve_do(project: ProjectFeatures, action: str, rest: str, app: str) -> tuple[FeatureTarget | None, str]:
     raw = action or rest
     if not raw:
         raw = feature_from_branch(current_branch())
@@ -395,7 +404,7 @@ def _resolve_do(project: ProjectFeatures, action: str, rest: str, app: str) -> t
     return project.resolve(raw, app=app), raw
 
 
-def _resolve_delete(project: ProjectFeatures, action: str, rest: str, app: str) -> tuple[Optional[FeatureTarget], str]:
+def _resolve_delete(project: ProjectFeatures, action: str, rest: str, app: str) -> tuple[FeatureTarget | None, str]:
     raw = action or rest
     if not raw:
         raw = feature_from_branch(current_branch())
@@ -429,8 +438,8 @@ def dispatch(request: str, prompt_content: str = "", no_controller: bool = False
         return _cmd_scan(project)
 
     if prefix == "feature":
-        target = project.target_for_new(action, domain, app)
-        return _cmd_feature(target, rest, prompt_content, no_controller, display_prefix)
+        feature_target = project.target_for_new(action, domain, app)
+        return _cmd_feature(feature_target, rest, prompt_content, no_controller, display_prefix)
 
     if prefix == "do":
         target, raw = _resolve_do(project, action, rest, app)

@@ -12,7 +12,6 @@ sys.path.insert(0, str(_AGENTS))
 
 import scaffold_project as sp
 
-
 # ── parse_tech_stack ───────────────────────────────────────────────
 
 class TestParseTechStack:
@@ -197,7 +196,7 @@ class TestScaffoldIntegration:
         """Run the full scaffold() function in a temp git repo."""
         monkeypatch.chdir(tmp_path)
         import subprocess
-        subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
+        subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True, check=False)
 
         stack = {
             "python": {"present": ""},
@@ -229,7 +228,7 @@ class TestScaffoldIntegration:
     def test_scaffold_refuses_existing(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
         import subprocess
-        subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
+        subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True, check=False)
 
         (tmp_path / ".features.json").write_text("{}")
         stack = {"python": {"present": ""}}

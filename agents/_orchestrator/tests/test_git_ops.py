@@ -1,9 +1,15 @@
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from _orchestrator.git_ops import read_prompt_file, current_branch, branch_exists, merge_branch
+from _orchestrator.git_ops import (
+    branch_exists,
+    current_branch,
+    merge_branch,
+    read_prompt_file,
+)
 
 
 class TestReadPromptFile:
@@ -23,9 +29,8 @@ class TestReadPromptFile:
         assert result == "implement this feature"
 
     def test_exits_on_missing_file(self, tmp_path: Path) -> None:
-        with patch("_orchestrator.git_ops.REPO_ROOT", tmp_path):
-            with pytest.raises(SystemExit):
-                read_prompt_file("nonexistent.md")
+        with patch("_orchestrator.git_ops.REPO_ROOT", tmp_path), pytest.raises(SystemExit):
+            read_prompt_file("nonexistent.md")
 
 
 class TestCurrentBranch:
@@ -37,7 +42,7 @@ class TestCurrentBranch:
 
     def test_returns_unknown_on_error(self) -> None:
         with patch("subprocess.run") as mock_run:
-            mock_run.side_effect = Exception("git not found")
+            mock_run.side_effect = subprocess.SubprocessError("git not found")
             result = current_branch()
         assert result == "(unknown)"
 
@@ -53,7 +58,7 @@ class TestBranchExists:
 
 class TestMergeBranch:
 
-    def _fake_run(self, monkeypatch: object, failures: set[int] | None = None) -> list[list[str]]:
+    def _fake_run(self, monkeypatch: pytest.MonkeyPatch, failures: set[int] | None = None) -> list[list[str]]:
         failures = failures or set()
         calls: list[list[str]] = []
 
@@ -66,7 +71,7 @@ class TestMergeBranch:
         monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
         return calls
 
-    def test_runs_full_pipeline_and_deletes_branch(self, monkeypatch: object) -> None:
+    def test_runs_full_pipeline_and_deletes_branch(self, monkeypatch: pytest.MonkeyPatch) -> None:
         calls = self._fake_run(monkeypatch)
         ok, err = merge_branch("shared/Payment")
         assert ok is True
@@ -80,21 +85,21 @@ class TestMergeBranch:
             ["git", "branch", "-D", "shared/Payment"],
         ]
 
-    def test_short_circuits_on_push_failure(self, monkeypatch: object) -> None:
+    def test_short_circuits_on_push_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         calls = self._fake_run(monkeypatch, failures={0})
         ok, err = merge_branch("shared/Payment")
         assert ok is False
         assert "git push failed" in err
         assert len(calls) == 1
 
-    def test_short_circuits_on_merge_failure(self, monkeypatch: object) -> None:
+    def test_short_circuits_on_merge_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         calls = self._fake_run(monkeypatch, failures={2})
         ok, err = merge_branch("shared/Payment")
         assert ok is False
         assert "git merge failed" in err
         assert [c[:2] for c in calls] == [["git", "push"], ["git", "checkout"], ["git", "merge"]]
 
-    def test_still_deletes_branch_when_merge_succeeds_after_retry(self, monkeypatch: object) -> None:
+    def test_still_deletes_branch_when_merge_succeeds_after_retry(self, monkeypatch: pytest.MonkeyPatch) -> None:
         calls = self._fake_run(monkeypatch, failures={3})
         ok, err = merge_branch("shared/Payment")
         assert ok is False

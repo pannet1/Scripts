@@ -111,7 +111,7 @@ def init_project() -> None:
     result = subprocess.run(
         ["uv", "run", "pytest", "tests/test_compliance.py", "-v", "--tb=no"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
-    )
+    check=False)
     print(result.stdout, end="")
     if result.returncode == 0:
         print("[Orchestrator] Project is compliant.")

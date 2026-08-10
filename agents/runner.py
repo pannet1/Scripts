@@ -26,9 +26,8 @@ import re
 import subprocess
 import sys
 import time
-import uuid
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 REPO_ROOT = Path.cwd()
 AGENTS_DIR = Path(__file__).resolve().parent
@@ -93,7 +92,7 @@ def build_prompt(persona: str, target: Path, target_files: dict, task: str, erro
 def call_llm(prompt: str, persona: str = "") -> str:
     response = _complete(prompt, persona=persona)
     if response is None:
-        print(f"[Runner] LLM call failed.", file=sys.stderr)
+        print("[Runner] LLM call failed.", file=sys.stderr)
         sys.exit(1)
     return response
 
@@ -175,7 +174,7 @@ def write_code_blocks(files: dict[str, str], target: Path, protect: set[str] | N
         written.append(path)
         produced.add(fname)
 
-    for fname in list(expected):
+    for fname in expected:
         if fname not in produced and fname not in protect:
             path = target / fname
             if path.exists():
@@ -184,7 +183,7 @@ def write_code_blocks(files: dict[str, str], target: Path, protect: set[str] | N
                 print(f"[Runner] Deleted {fname} (absent from AI output)")
 
     all_on_disk = {p.name for p in target.iterdir() if p.suffix == ".py"}
-    unexpected = all_on_disk - produced - set(p.name for p in deleted) - protect
+    unexpected = all_on_disk - produced - {p.name for p in deleted} - protect
     for fname in unexpected:
         path = target / fname
         path.unlink()
@@ -444,7 +443,7 @@ def validate_pep8(repo_root: Path, target: Path) -> list[str]:
     if not py_files:
         return issues
     cmd = ["uv", "run", "pycodestyle", "--select=E302,E501", "--first"] + [str(f) for f in py_files]
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(repo_root), timeout=30)
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(repo_root), timeout=30, check=False)
     if result.returncode != 0:
         for line in result.stdout.strip().split("\n"):
             line = line.strip()
@@ -557,6 +556,8 @@ def run_pytest(test_path: Path) -> tuple[bool, str]:
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, cwd=str(REPO_ROOT), env=env,
     ) as proc:
+        if proc.stdout is None:
+            return False, ""
         output = ""
         for line in proc.stdout:
             print(line, end="", file=sys.stderr)
@@ -594,7 +595,7 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False, persona: str 
             last_error = "No code blocks found in LLM response."
             print(f"[Runner] {last_error} Retrying...", file=sys.stderr)
             continue
-        written, deleted = write_code_blocks(files, target, protect=set(p.name for p in written))
+        written, _ = write_code_blocks(files, target, protect={p.name for p in written})
         for w in written:
             print(f"[Runner] Wrote {w}")
         bad = truncated_files(written)
@@ -637,7 +638,7 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False, persona: str 
         return True
 
     print(f"[Runner] Running tests for {target.name}...")
-    passed, output = run_pytest(test_file)
+    passed, _ = run_pytest(test_file)
     total = time.time() - t_total
     if passed:
         print(f"[Runner] All Tests Passed ({total:.1f}s total).")
@@ -653,7 +654,7 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False, persona: str 
                 print(f"{'='*60}\n")
         return True
 
-    print(f"[Runner] Tests failed. Generated code does not pass. ESCALATE to human.")
+    print("[Runner] Tests failed. Generated code does not pass. ESCALATE to human.")
     return False
 
 
