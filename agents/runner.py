@@ -69,6 +69,13 @@ def _zen_model() -> str:
 
 
 def _zen_chat(prompt: str, persona: str = "") -> str | None:
+    from _orchestrator.llm import llm_complete
+
+    result = llm_complete(prompt, system=persona)
+    if result is not None:
+        return result
+    print("[Runner] omp transport unavailable/failed — falling back to Zen HTTP.", file=sys.stderr)
+
     fallbacks = ZEN_FALLBACKS[:]
     selected = _zen_model()
     if selected in fallbacks:
