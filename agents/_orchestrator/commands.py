@@ -76,9 +76,9 @@ def scaffold_new_feature(domain: str, action: str, overview: str = "", no_contro
     fdir = app_features_dir(app) if app else FEATURES_DIR
     if domain:
         base = fdir / domain
-        slice_dir = base / action
     else:
-        slice_dir = fdir / action
+        base = fdir / "nodomain"
+    slice_dir = base / action
     slice_dir.mkdir(parents=True, exist_ok=True)
 
     if overview:
@@ -111,7 +111,7 @@ def scaffold_new_feature(domain: str, action: str, overview: str = "", no_contro
 
     (slice_dir / "__init__.py").touch()
 
-    label = f"{domain}/{action}" if domain else action
+    label = f"{domain}/{action}" if domain else f"nodomain/{action}"
     note = " (no controller)" if no_controller else ""
     print(f"\nScaffolded new feature: {label}{note}\n")
     return slice_dir
@@ -506,7 +506,7 @@ def _feature_from_branch(branch: str) -> str:
 def _domain_of(feature_dir: Optional[Path]) -> str:
     if not feature_dir:
         return ""
-    return feature_dir.parent.name if feature_dir.parent != FEATURES_DIR else ""
+    return feature_dir.parent.name if feature_dir.parent != FEATURES_DIR else "nodomain"
 
 
 def _parse_request(request: str) -> tuple[str, str, str, str]:
@@ -587,9 +587,8 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                         break
         feature_dir = scaffold_new_feature(domain, action, description, no_controller=no_controller, app=app)
         if feature_dir and feature_dir.is_dir():
-            check_branch(action, domain)
-            if domain:
-                register_feature_in_json(action, domain, app=app)
+            check_branch(action, domain or "nodomain")
+            register_feature_in_json(action, domain or "nodomain", app=app)
             print("=" * 60)
             print("THEN RUN:")
             suffix = f"do {domain}/{action}" if domain else f"do {action}"
@@ -644,7 +643,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         print(f"[Orchestrator] Generating code for {display}...")
         ok = run_runner("backend", feature_dir, task)
         if ok:
-            domain = feature_dir.parent.name if feature_dir.parent != FEATURES_DIR else ""
+            domain = _domain_of(feature_dir)
             register_feature_in_json(feature_dir.name, domain)
             print(f"\n{'='*60}\nALL TESTS PASSED.\n")
             print(f"[Orchestrator] Staging {feature_dir}...")
@@ -726,10 +725,10 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                     amend_spec(fuzzy, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
                     return
                 scaffold_new_feature("", derived, "", no_controller=True)
-                feature_dir = FEATURES_DIR / derived
+                feature_dir = FEATURES_DIR / "nodomain" / derived
                 if feature_dir.is_dir():
-                    check_branch(derived, "")
-                    register_feature_in_json(derived, "")
+                    check_branch(derived, "nodomain")
+                    register_feature_in_json(derived, "nodomain")
                     _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
                     amend_spec(feature_dir, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
                     return
@@ -746,19 +745,19 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                 if real_feature:
                     check_branch(derived, _domain_of(real_feature))
                     scaffold_new_feature("", derived, f"Modify {current_file}", no_controller=True)
-                    feature_dir = FEATURES_DIR / derived
+                    feature_dir = FEATURES_DIR / "nodomain" / derived
                     if feature_dir.is_dir():
-                        register_feature_in_json(derived, "")
+                        register_feature_in_json(derived, "nodomain")
                         _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
                         amend_spec(feature_dir, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
                         return
                 fuzzy = resolve_feature(derived)
                 if fuzzy:
-                    check_branch(derived, _domain_of(real_feature))
+                    check_branch(derived, _domain_of(fuzzy))
                     scaffold_new_feature("", derived, f"Modify {current_file}", no_controller=True)
-                    feature_dir = FEATURES_DIR / derived
+                    feature_dir = FEATURES_DIR / "nodomain" / derived
                     if feature_dir.is_dir():
-                        register_feature_in_json(derived, "")
+                        register_feature_in_json(derived, "nodomain")
                         _rewrite_spec_with_ai(fuzzy, change_prompt, heading)
                         amend_spec(fuzzy, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
                         return
@@ -774,12 +773,12 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                 change_prompt = resolve_change_prompt(rest, prompt_content, derived, prefix)
                 real_feature = find_feature_dir(derived)
                 if real_feature:
-                    check_branch(derived, prefix)
+                    check_branch(derived, _domain_of(real_feature))
                     heading = "Modification Request"
                     scaffold_new_feature("", derived, f"Modify {action}", no_controller=True)
-                    feature_dir = FEATURES_DIR / derived
+                    feature_dir = FEATURES_DIR / "nodomain" / derived
                     if feature_dir.is_dir():
-                        register_feature_in_json(derived, "")
+                        register_feature_in_json(derived, "nodomain")
                         _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
                         amend_spec(feature_dir, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
                         return
