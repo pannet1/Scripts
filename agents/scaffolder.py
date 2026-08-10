@@ -85,10 +85,15 @@ def _is_feature_dir(path: Path) -> bool:
     files = {f.name for f in path.iterdir() if f.is_file()}
     if EXPECTED_FILES.issubset(files):
         return True
+    if "Handler.py" in files:
+        return True
     has_test = any(f.startswith("test_") and f.endswith(".py") for f in files)
     if has_test:
         required = EXPECTED_FILES - {"Tests.py"}
-        return required.issubset(files)
+        if required.issubset(files):
+            return True
+        if f"test_{path.name}.py" in files:
+            return True
     return False
 
 
@@ -115,6 +120,29 @@ def cmd_init() -> int:
     return 0
 
 
+def _scan_dir(root: Path, discovered: dict[str, str], label: str = "") -> None:
+    if not root.is_dir():
+        return
+    for entry in sorted(root.iterdir()):
+        if not entry.is_dir() or entry.name.startswith("_"):
+            continue
+        rel = entry.name
+        if _is_feature_dir(entry):
+            shown = f"{label}/{rel}" if label else rel
+            if shown.startswith(f"{label}/{label}/"):
+                shown = shown[len(f"{label}/"):]
+            discovered[rel] = rel
+            print(f"  [feature] {shown}/")
+        else:
+            for sub in sorted(entry.iterdir()):
+                if sub.is_dir() and not sub.name.startswith("_") and _is_feature_dir(sub):
+                    shown = f"{label}/{rel}/{sub.name}" if label else f"{rel}/{sub.name}"
+                    if shown.startswith(f"{label}/{label}/"):
+                        shown = shown[len(f"{label}/"):]
+                    discovered[sub.name] = rel
+                    print(f"  [feature] {shown}/")
+
+
 def cmd_scan() -> int:
     features_dir = _get_features_dir()
     if not features_dir.is_dir():
@@ -123,17 +151,12 @@ def cmd_scan() -> int:
         return 1
 
     discovered: dict[str, str] = {}
-    for entry in sorted(features_dir.iterdir()):
-        if not entry.is_dir() or entry.name.startswith("_"):
-            continue
-        if _is_feature_dir(entry):
-            discovered[entry.name] = entry.name
-            print(f"  [feature] {entry.name}/")
-        else:
-            for sub in sorted(entry.iterdir()):
-                if sub.is_dir() and not sub.name.startswith("_") and _is_feature_dir(sub):
-                    discovered[sub.name] = entry.name
-                    print(f"  [feature] {entry.name}/{sub.name}/")
+    _scan_dir(features_dir, discovered)
+    cfg = _read_config()
+    for app_name, app_cfg in cfg.get("apps", {}).items():
+        app_dir = REPO / app_cfg.get("features_dir", "")
+        if app_dir.resolve() != features_dir.resolve():
+            _scan_dir(app_dir, discovered, label=app_name)
 
     if not discovered:
         print("[Scaffolder] No compliant feature directories found.")
