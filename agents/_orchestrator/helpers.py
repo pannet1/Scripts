@@ -3,7 +3,6 @@ import os
 import re
 import subprocess
 import sys
-import uuid
 from pathlib import Path
 from typing import Any, Optional
 
@@ -12,6 +11,7 @@ from .config import (
     FEATURES_CONFIG,
     FEATURES_DIR,
     KNOWN_FEATURES,
+    MODEL_CONFIG,
     PERSONAS_DIR,
     REPO_ROOT,
     RUNNER,
@@ -19,8 +19,8 @@ from .config import (
     app_features_dir,
 )
 from .features import find_feature_dir, resolve_feature
+from .llm import generate_spec_with_ai, llm_complete
 from .templates import CODE_TEMPLATES, DEFAULT_OVERVIEW, SPEC_TEMPLATE
-from .zen_api import generate_spec_with_ai
 
 
 def format_spec_overview(overview: str) -> str:
@@ -102,20 +102,6 @@ MAX_SPEC_QA_ATTEMPTS = 3
 
 def _validate_spec(spec: str, original_prompt: str) -> tuple[bool, str]:
     """Validate spec against the original prompt, returning (is_valid, corrected_spec)."""
-    from .zen_api import _zen_chat, _zen_session_id, _zen_api_key
-
-    api_key = _zen_api_key()
-    project_id = str(uuid.uuid4())
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}",
-        "x-opencode-project": project_id,
-        "x-opencode-session": _zen_session_id(),
-        "x-opencode-request": str(uuid.uuid4()),
-        "x-opencode-client": "python-script",
-        "User-Agent": "opencode/1.15.4",
-    }
-    from .config import MODEL_CONFIG
     model = "deepseek-v4-flash"
     if MODEL_CONFIG.exists():
         try:
@@ -133,16 +119,11 @@ def _validate_spec(spec: str, original_prompt: str) -> tuple[bool, str]:
         "then a blank line, then the COMPLETE corrected spec in markdown format."
     )
 
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": f"## Original Prompt\n\n{original_prompt}\n\n## Generated Spec\n\n{spec}"},
-        ],
-        "max_tokens": 4096,
-        "temperature": 0.2,
-    }
-    result = _zen_chat(headers, payload)
+    result = llm_complete(
+        f"## Original Prompt\n\n{original_prompt}\n\n## Generated Spec\n\n{spec}",
+        system=system,
+        model=model,
+    )
     if result is None:
         return True, spec
     result = result.strip()

@@ -8,9 +8,21 @@ import tempfile
 import uuid
 from pathlib import Path
 
+from .config import MODEL_CONFIG, REPO_ROOT
+
 TOOL_CALL_MARKERS = ("<tool_calls>", "<invoke", "tool_call", '"name":"bash"', '"name":"read"')
 
 SCRATCH_DIR = Path(tempfile.gettempdir()) / "omp-completions"
+
+
+def default_model() -> str:
+    if MODEL_CONFIG.exists():
+        try:
+            cfg = json.loads(MODEL_CONFIG.read_text())
+            return cfg.get("model", "")
+        except Exception:
+            pass
+    return ""
 
 
 def _omp_binary() -> str | None:
@@ -101,3 +113,40 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
             break
     print("[LLM] verification never passed — giving up.", file=sys.stderr)
     return None
+
+
+def generate_spec_with_ai(domain: str, action: str, prompt: str) -> str | None:
+    root_spec = REPO_ROOT / "SPEC.md"
+    arch_blueprint = root_spec.read_text() if root_spec.exists() else ""
+
+    system_prompt = (
+        "You are a spec writer for a software project. "
+        "Generate a structured feature specification in markdown.\n\n"
+        "Here is the project's architectural blueprint:\n"
+        + arch_blueprint +
+        "\n\nUse this exact format for the feature spec:\n"
+        "  # <Action> — <Domain> Feature\n"
+        "  ## Overview\n"
+        "  <description>\n"
+        "  ## Input / Output\n"
+        "  | Direction | Format | Description |\n"
+        "  |-----------|--------|-------------|\n"
+        "  | Input | <...> | <...> |\n"
+        "  | Output | <...> | <...> |\n"
+        "  ## Business Logic Constraints\n"
+        "  * <rules>\n"
+        "  ## Error Cases\n"
+        "  | Condition | Error | Message |\n"
+        "  |-----------|-------|-------------|\n"
+        "  | <when> | <type> | <message> |\n"
+        "  ## Dependencies\n"
+        "  * <libraries, config>\n"
+        "  ## Code Standards\n"
+        "  All code must use type annotations per PEP 484.\n\n"
+        "Output ONLY the markdown spec — no preamble, no explanation."
+    )
+    return llm_complete(
+        f"Feature: {action}\nDomain: {domain or '(none)'}\n\nDescription:\n{prompt}",
+        system=system_prompt,
+        model=default_model(),
+    )

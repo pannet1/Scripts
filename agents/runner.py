@@ -22,14 +22,10 @@ Usage:
 import argparse
 import json
 import os
-import random
 import re
-import string
 import subprocess
 import sys
-import threading
 import time
-import urllib.request
 import uuid
 from pathlib import Path
 from typing import Any, Optional
@@ -40,128 +36,11 @@ MODEL_CONFIG = AGENTS_DIR / "model_config.json"
 FEW_SHOT_COUNT = 2
 VERBOSE = False
 
-ZEN_URL = "https://opencode.ai/zen/v1/chat/completions"
 
-ZEN_FALLBACKS = [
-    "deepseek-v4-flash-free",
-    "mimo-v2.5-free",
-    "qwen3.6-plus-free",
-]
-
-
-def _zen_api_key() -> str:
-    return os.environ.get("OPENCODE_ZEN_KEY", "public")
-
-
-def _zen_session_id() -> str:
-    alphabet = string.ascii_uppercase + string.ascii_lowercase + string.digits + "-_"
-    return "ses_" + "".join(random.choices(alphabet, k=26))
-
-
-def _zen_model() -> str:
-    if MODEL_CONFIG.exists():
-        try:
-            cfg = json.loads(MODEL_CONFIG.read_text())
-            return cfg.get("model", ZEN_FALLBACKS[0])
-        except Exception:
-            pass
-    return ZEN_FALLBACKS[0]
-
-
-def _zen_chat(prompt: str, persona: str = "") -> str | None:
+def _complete(prompt: str, persona: str = "") -> str | None:
     from _orchestrator.llm import llm_complete
 
-    result = llm_complete(prompt, system=persona)
-    if result is not None:
-        return result
-    print("[Runner] omp transport unavailable/failed — falling back to Zen HTTP.", file=sys.stderr)
-
-    fallbacks = ZEN_FALLBACKS[:]
-    selected = _zen_model()
-    if selected in fallbacks:
-        fallbacks.remove(selected)
-    fallbacks.insert(0, selected)
-
-    project_id = str(uuid.uuid4())
-    api_key = _zen_api_key()
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}",
-        "x-opencode-project": project_id,
-        "x-opencode-session": _zen_session_id(),
-        "x-opencode-request": str(uuid.uuid4()),
-        "x-opencode-client": "python-script",
-        "User-Agent": "opencode/1.15.4",
-    }
-
-    messages = []
-    if persona:
-        messages.append({"role": "system", "content": persona})
-    messages.append({"role": "user", "content": prompt})
-
-    for model in fallbacks:
-        payload = {
-            "model": model,
-            "messages": messages,
-            "max_tokens": 8192,
-            "temperature": 0.3,
-        }
-        data = json.dumps(payload).encode()
-        req = urllib.request.Request(ZEN_URL, data=data, headers=headers, method="POST")
-
-        prompt_preview = prompt[:500] + "..." if len(prompt) > 500 else prompt
-        safe_headers = {k: v for k, v in headers.items() if k.lower() != "authorization"}
-        print(f"[Runner] POST {ZEN_URL}", file=sys.stderr)
-        print(f"[Runner]   model={model}  chars={len(prompt)}  max_tokens=8192  temp=0.3", file=sys.stderr)
-        print(f"[Runner]   headers={json.dumps(safe_headers)}", file=sys.stderr)
-        print(f"[Runner]   --- prompt (first 500) ---\n{prompt_preview}\n   --- end prompt ---", file=sys.stderr)
-
-        try:
-            done = False
-            def _tick():
-                while not done:
-                    time.sleep(10)
-                    sys.stderr.write(".")
-                    sys.stderr.flush()
-            ticker = threading.Thread(target=_tick, daemon=True)
-            ticker.start()
-            t0 = time.time()
-            try:
-                with urllib.request.urlopen(req, timeout=300) as resp:
-                    body = json.loads(resp.read())
-            finally:
-                elapsed = time.time() - t0
-                done = True
-            print(f" {elapsed:.1f}s", file=sys.stderr)
-        except urllib.error.HTTPError as e:
-            if e.code == 401:
-                print(f"[Runner] Model '{model}' unavailable (free tier ended). Trying next...", file=sys.stderr)
-                continue
-            print(f"[Runner] Zen API error ({model}): {e}", file=sys.stderr)
-            continue
-        except Exception as e:
-            print(f"[Runner] Zen API error ({model}): {e}", file=sys.stderr)
-            continue
-
-        try:
-            msg = body["choices"][0]["message"]
-        except (KeyError, IndexError, TypeError) as e:
-            print(f"[Runner] Model '{model}' returned unexpected response: {e}", file=sys.stderr)
-            continue
-        content = (msg.get("content") or msg.get("reasoning_content") or "").strip()
-        resp_preview = content[:1000] + "..." if len(content) > 1000 else content
-        print(f"[Runner]   --- response ({len(content)} chars) ---\n{resp_preview}\n   --- end response ---", file=sys.stderr)
-
-        if not content and model != fallbacks[-1]:
-            print(f"[Runner] Model '{model}' returned empty response. Trying next...", file=sys.stderr)
-            continue
-        if model != selected:
-            MODEL_CONFIG.write_text(json.dumps({"model": model}) + "\n")
-            print(f"[Runner] Fallback: model config updated to '{model}'", file=sys.stderr)
-        return content
-
-    print("[Runner] No working model found. Run ./.agents/select_model.py to pick one.", file=sys.stderr)
-    return None
+    return llm_complete(prompt, system=persona)
 
 
 def read_file(path: Path) -> str:
@@ -212,7 +91,7 @@ def build_prompt(persona: str, target: Path, target_files: dict, task: str, erro
 
 
 def call_llm(prompt: str, persona: str = "") -> str:
-    response = _zen_chat(prompt, persona=persona)
+    response = _complete(prompt, persona=persona)
     if response is None:
         print(f"[Runner] LLM call failed.", file=sys.stderr)
         sys.exit(1)
