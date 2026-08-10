@@ -299,5 +299,5 @@ class TestUndoHandler:
 class TestKnownPrefixes:
 
     def test_includes_all_commands(self) -> None:
-        expected = {"new", "feature", "do", "modify", "delete", "move", "merge", "undo", "deploy", "scaffold", "scan"}
+        expected = {"new", "feature", "do", "modify", "delete", "move", "merge", "undo", "deploy", "init", "scan"}
         assert _KNOWN_PREFIXES == expected
