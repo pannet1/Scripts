@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from _orchestrator.commands import orchestrate
+from _orchestrator.commands import dispatch
 from _orchestrator.config import MODEL_CONFIG
 
 
@@ -74,7 +74,7 @@ if __name__ == "__main__":
             prompt_content = path.read_text().strip()
         else:
             prompt_content = args.prompt.strip()
-    result = orchestrate(request, prompt_content, no_controller=args.no_controller, app=args.app)
+    result = dispatch(request, prompt_content, no_controller=args.no_controller, app=args.app)
     if result.next_action:
         print()
         print(f"Next: {result.next_action}")
