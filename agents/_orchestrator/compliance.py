@@ -5,13 +5,51 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .config import REPO_ROOT
-from .compliance_scanner import _py_files, PERSONA as SCANNER_PERSONA
+from .config import REPO_ROOT, AGENTS_DIR
 from .llm import default_model, llm_complete
 
+PERSONA_PATH = AGENTS_DIR / "personas" / "compliance_agent.md"
+PERSONA = PERSONA_PATH.read_text() if PERSONA_PATH.exists() else ""
 
-def _ai_fix_file(persona: str, rel: Path, content: str) -> dict:
-    """Like compliance_scanner._fix_file but with higher token limit."""
+EXCLUDE_DIRS: frozenset[str] = frozenset({
+    ".venv", "venv", "env", ".env", "node_modules",
+    "__pycache__", ".git", ".agents", ".tmp",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache",
+})
+
+
+def _py_files(root: Path) -> list[Path]:
+    files: list[Path] = []
+    for p in root.rglob("*.py"):
+        if any(part in EXCLUDE_DIRS for part in p.parts):
+            continue
+        files.append(p)
+    return sorted(files)
+
+
+def _is_python_code(text: str) -> bool:
+    stripped = text.strip()
+    return any(stripped.startswith(p) for p in (
+        "import ", "from ", "def ", "class ", "async def ",
+        "\"\"\"", "'''", "#!/usr", "from __future__",
+        "print", "if __name__", "@",
+    ))
+
+
+def _extract_code(text: str) -> str | None:
+    m = re.search(r"```python\s*\n(.*?)```", text, re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r"```\s*\n(.*?)```", text, re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    cleaned = text.strip().strip("`").strip()
+    if _is_python_code(cleaned):
+        return cleaned
+    return None
+
+
+def _ai_fix_file(persona: str, rel: Path, content: str) -> dict[str, Any]:
     result = llm_complete(
         f"Scan and fix this file for compliance violations.\n"
         f"File: {rel}\n\n```python\n{content}\n```\n\n"
@@ -20,29 +58,56 @@ def _ai_fix_file(persona: str, rel: Path, content: str) -> dict:
         model=default_model(),
     )
     if not result:
-        return {"path": str(rel), "error": True}
+        return {"path": str(rel), "error": True, "fixed": "", "changed": False}
 
-    # Extract code block (same logic as compliance_scanner._extract_code)
-    text = result.strip()
-    m = re.search(r"```python\s*\n(.*?)```", text, re.DOTALL)
-    if m:
-        fixed = m.group(1).strip()
-    else:
-        m = re.search(r"```\s*\n(.*?)```", text, re.DOTALL)
-        if m:
-            fixed = m.group(1).strip()
-        else:
-            cleaned = text.strip().strip("`").strip()
-            if any(cleaned.startswith(p) for p in (
-                "import ", "from ", "def ", "class ", "async def ",
-                "\"\"\"", "'''", "#!/usr", "from __future__",
-            )):
-                fixed = cleaned
-            else:
-                return {"path": str(rel), "error": True}
+    fixed = _extract_code(result.strip())
+    if fixed is None:
+        return {"path": str(rel), "error": True, "fixed": "", "changed": False}
 
     changed = fixed != content.strip()
     return {"path": str(rel), "error": False, "fixed": fixed, "changed": changed}
+
+
+BATCH_SIZE = 5
+
+
+def run_compliance_scan() -> None:
+    if not PERSONA:
+        print("[Compliance] Missing compliance_agent.md persona")
+        return
+
+    files = _py_files(REPO_ROOT)
+    if not files:
+        print("[Compliance] No .py files found")
+        return
+
+    print(f"[Compliance] Scanning {len(files)} files (batch size {BATCH_SIZE})...")
+    changed = 0
+    errors = 0
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=BATCH_SIZE) as executor:
+        futures = []
+        for fp in files:
+            rel = fp.relative_to(REPO_ROOT)
+            content = fp.read_text()
+            if not content.strip():
+                continue
+            futures.append(executor.submit(_ai_fix_file, PERSONA, rel, content))
+
+        for i, future in enumerate(concurrent.futures.as_completed(futures), 1):
+            result = future.result()
+            rel = result["path"]
+            status = "ERROR" if result["error"] else ("FIXED" if result["changed"] else "ok")
+            print(f"[Compliance] [{i}/{len(files)}] {rel} ... {status}", flush=True)
+            if result["changed"]:
+                fp = REPO_ROOT / rel
+                fp.write_text(result["fixed"] + "\n")
+                changed += 1
+            if result["error"]:
+                errors += 1
+
+    print(f"\n[Compliance] Done: {changed} fixed, {errors} errors")
+
 
 EMOJI_PATTERN = re.compile(
     "[\U0001F600-\U0001F64F"
@@ -59,12 +124,6 @@ EMOJI_PATTERN = re.compile(
     "\U0000200D"
     "]"
 )
-
-EXCLUDE_DIRS: frozenset[str] = frozenset({
-    ".venv", "venv", "env", ".env", "node_modules",
-    "__pycache__", ".git", ".agents", ".tmp",
-    ".pytest_cache", ".mypy_cache", ".ruff_cache",
-})
 
 
 def _check_has_violations(fp: Path) -> bool:
@@ -178,7 +237,7 @@ def run_mechanical_phase() -> tuple[int, int]:
     for fp in files:
         if _mechanical_fix(fp):
             fixed += 1
-    print(f"[Fixer] Phase-1 (mechanical): {fixed}/{len(files)} files fixed")
+    print(f"[Compliance] Phase-1 (mechanical): {fixed}/{len(files)} files fixed")
     return fixed, len(files)
 
 
@@ -199,8 +258,8 @@ def _validate_syntax(text: str, original_lines: int) -> bool:
 
 def run_ai_phase() -> tuple[int, int, int]:
     """Phase-2: AI-fix only files that still have violations after mechanical phase."""
-    if not SCANNER_PERSONA:
-        print("[Fixer] Missing compliance_agent.md persona -- skipping AI phase")
+    if not PERSONA:
+        print("[Compliance] Missing compliance_agent.md persona -- skipping AI phase")
         return 0, 0, 0
 
     files = _py_files(REPO_ROOT)
@@ -208,21 +267,19 @@ def run_ai_phase() -> tuple[int, int, int]:
     clean = len(files) - len(violators)
 
     if not violators:
-        print(f"[Fixer] Phase-2 (AI): all {len(files)} files already clean, skipping")
+        print(f"[Compliance] Phase-2 (AI): all {len(files)} files already clean, skipping")
         return 0, 0, 0
 
-    headers = None
     fixed = 0
     failures: list[str] = []
-    skipped = len(files) - len(violators)
 
-    print(f"[Fixer] Phase-2 (AI): {len(violators)} violators of {len(files)} files (skipping {skipped} clean)...")
+    print(f"[Compliance] Phase-2 (AI): {len(violators)} violators of {len(files)} files (skipping {clean} clean)...")
 
-    def _process(fp: Path) -> dict:
+    def _process(fp: Path) -> dict[str, Any]:
         rel = fp.relative_to(REPO_ROOT)
         content = fp.read_text()
         original_lines = content.count("\n") + 1
-        result = _ai_fix_file(SCANNER_PERSONA, rel, content)
+        result = _ai_fix_file(PERSONA, rel, content)
         if result.get("error"):
             return {"path": str(rel), "status": "FAILED (API error)"}
         if not result.get("changed"):
@@ -245,10 +302,10 @@ def run_ai_phase() -> tuple[int, int, int]:
             print(f"  [AI] {out['path']} {status}")
 
     if failures:
-        print(f"[Fixer] AI failures ({len(failures)}):")
+        print(f"[Compliance] AI failures ({len(failures)}):")
         for f in failures:
             print(f"  - {f}")
-    print(f"[Fixer] Phase-2: {fixed} fixed, {len(failures)} failures, {clean} clean")
+    print(f"[Compliance] Phase-2: {fixed} fixed, {len(failures)} failures, {clean} clean")
     return fixed, len(failures), clean
 
 
@@ -258,11 +315,11 @@ def run_ai_phase() -> tuple[int, int, int]:
 
 def fix_all() -> dict[str, Any]:
     """Full two-phase compliance fix. Report at end."""
-    print("[Fixer] === Phase 1: Mechanical transforms ===")
+    print("[Compliance] === Phase 1: Mechanical transforms ===")
     mech_fixed, mech_total = run_mechanical_phase()
 
     print()
-    print("[Fixer] === Phase 2: AI fixes (violators only) ===")
+    print("[Compliance] === Phase 2: AI fixes (violators only) ===")
     ai_fixed, ai_failures, ai_clean = run_ai_phase()
 
     report = {
@@ -273,5 +330,9 @@ def fix_all() -> dict[str, Any]:
         "ai_clean": ai_clean,
         "total_unresolved": ai_failures,
     }
-    print(f"\n[Fixer] Result: {mech_fixed} mechanical, {ai_fixed} AI-fixed, {ai_failures} unresolved, {ai_clean} clean")
+    print(f"\n[Compliance] Result: {mech_fixed} mechanical, {ai_fixed} AI-fixed, {ai_failures} unresolved, {ai_clean} clean")
     return report
+
+
+if __name__ == "__main__":
+    run_compliance_scan()
