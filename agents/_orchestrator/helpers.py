@@ -362,7 +362,7 @@ def do_scaffold() -> None:
 
     print()
     print("[Orchestrator] === Compliance Fix ===")
-    from .compliance_fixer import fix_all
+    from .compliance import fix_all
     fix_all()
 
     print()
