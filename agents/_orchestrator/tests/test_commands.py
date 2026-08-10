@@ -5,16 +5,23 @@ from unittest.mock import patch
 import pytest
 
 from _orchestrator.commands import dispatch
+from _orchestrator.feature import ProjectFeatures, feature_from_branch, load_project
 from _orchestrator.helpers import (
     _KNOWN_PREFIXES,
-    _domain_of,
-    _extract_feature_from_path,
-    _feature_from_branch,
     _parse_request,
-    _resolve_input_to_feature,
     scaffold_new_feature,
 )
 from _orchestrator.git_ops import check_branch
+
+
+class FakeProject:
+    """Stands in for ProjectFeatures when a test wants resolution to fail."""
+
+    def resolve(self, raw: str, app: str = "") -> object:
+        return None
+
+    def app_for_domain(self, domain: str) -> str:
+        return ""
 
 
 class TestParseRequest:
@@ -68,26 +75,26 @@ class TestParseRequest:
 class TestFeatureFromBranch:
 
     def test_feature_prefix(self) -> None:
-        assert _feature_from_branch("feature/Payment") == "Payment"
+        assert feature_from_branch("feature/Payment") == "Payment"
 
     def test_modify_prefix(self) -> None:
-        assert _feature_from_branch("modify/Payment") == "Payment"
+        assert feature_from_branch("modify/Payment") == "Payment"
 
     def test_domain_slash_feature_branch(self) -> None:
-        assert _feature_from_branch("shared/Payment") == "Payment"
+        assert feature_from_branch("shared/Payment") == "Payment"
 
     def test_main_returns_empty(self) -> None:
-        assert _feature_from_branch("main") == ""
+        assert feature_from_branch("main") == ""
 
     def test_plain_branch_returns_branch_name(self) -> None:
-        assert _feature_from_branch("dev") == "dev"
+        assert feature_from_branch("dev") == "dev"
 
 
 class TestDoDeleteInferFromBranch:
 
     def test_do_without_target_on_feature_branch(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "feature/Payment")
-        monkeypatch.setattr("_orchestrator.commands._find_feature_or_resolve", lambda raw, app="": None)
+        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
         dispatch("do")
         assert "Feature not found: Payment" in capsys.readouterr().out
 
@@ -98,7 +105,7 @@ class TestDoDeleteInferFromBranch:
 
     def test_delete_without_target_on_modify_branch(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "shared/Payment")
-        monkeypatch.setattr("_orchestrator.commands.resolve_feature", lambda raw, app="": None)
+        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
         monkeypatch.setattr("_orchestrator.commands.branch_exists", lambda name: False)
         calls: list[list[str]] = []
 
@@ -120,10 +127,7 @@ class TestMoveHandler:
         (tmp_path / "features" / "shared" / "Payment" / "spec.md").touch()
         cfg = tmp_path / ".features.json"
         cfg.write_text(json.dumps({"known_features": known}))
-        monkeypatch.setattr("_orchestrator.commands.FEATURES_DIR", tmp_path / "features")
-        monkeypatch.setattr("_orchestrator.commands.FEATURES_CONFIG", cfg)
-        monkeypatch.setattr("_orchestrator.commands.load_features_config", lambda: json.loads(cfg.read_text()))
-        monkeypatch.setattr("_orchestrator.features.FEATURES_DIR", tmp_path / "features")
+        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: ProjectFeatures.load(tmp_path))
 
         def fake_run(cmd: list[str], **kwargs: object) -> object:
             return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
@@ -152,16 +156,16 @@ class TestMoveHandler:
         assert data["known_features"] == {"Payments": "vps"}
 
     def test_move_missing_target_usage(self, capsys: object, monkeypatch: object) -> None:
-        monkeypatch.setattr("_orchestrator.commands.resolve_feature", lambda raw, app="": None)
+        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
         dispatch("move Payment")
         assert "Usage: move <OldDomain/OldFeature> <NewDomain/NewFeature>" in capsys.readouterr().out
 
 
 class TestScaffoldBareFeature:
 
-    def test_bare_feature_lands_in_nodomain(self, tmp_path: Path, monkeypatch: object) -> None:
-        monkeypatch.setattr("_orchestrator.helpers.FEATURES_DIR", tmp_path / "features")
-        result = scaffold_new_feature("", "Payments", "")
+    def test_bare_feature_lands_in_nodomain(self, tmp_path: Path) -> None:
+        target = ProjectFeatures.load(tmp_path).target_for_new("Payments", "")
+        result = scaffold_new_feature(target, "")
         assert result == tmp_path / "features" / "nodomain" / "Payments"
         assert (tmp_path / "features" / "nodomain" / "Payments" / "spec.md").exists()
         assert not (tmp_path / "features" / "Payments").exists()
@@ -169,16 +173,17 @@ class TestScaffoldBareFeature:
 
 class TestDomainOf:
 
-    def test_domain_from_feature_dir(self, tmp_path: Path, monkeypatch: object) -> None:
-        monkeypatch.setattr("_orchestrator.helpers.FEATURES_DIR", tmp_path / "features")
-        assert _domain_of(tmp_path / "features" / "shared" / "Payment") == "shared"
+    def test_domain_from_feature_dir(self, tmp_path: Path) -> None:
+        project = ProjectFeatures.load(tmp_path)
+        assert project.domain_of(tmp_path / "features" / "shared" / "Payment") == "shared"
 
-    def test_root_level_feature_assumes_nodomain(self, tmp_path: Path, monkeypatch: object) -> None:
-        monkeypatch.setattr("_orchestrator.helpers.FEATURES_DIR", tmp_path / "features")
-        assert _domain_of(tmp_path / "features" / "Payment") == "nodomain"
+    def test_root_level_feature_assumes_nodomain(self, tmp_path: Path) -> None:
+        project = ProjectFeatures.load(tmp_path)
+        assert project.domain_of(tmp_path / "features" / "Payment") == "nodomain"
 
-    def test_none_returns_empty(self) -> None:
-        assert _domain_of(None) == ""
+    def test_none_returns_empty(self, tmp_path: Path) -> None:
+        project = ProjectFeatures.load(tmp_path)
+        assert project.domain_of(None) == ""
 
 
 class TestCheckBranchNaming:
@@ -301,70 +306,3 @@ class TestKnownPrefixes:
     def test_includes_all_commands(self) -> None:
         expected = {"new", "feature", "do", "modify", "delete", "move", "merge", "undo", "deploy", "scaffold", "scan"}
         assert _KNOWN_PREFIXES == expected
-
-
-class TestResolveInputToFeature:
-
-    def test_known_feature_by_name(self, tmp_path: Path) -> None:
-        (tmp_path / "strategy" / "RunRatchetStrategy").mkdir(parents=True)
-        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
-            result = _resolve_input_to_feature("RunRatchetStrategy")
-        assert result == "RunRatchetStrategy"
-
-    def test_domain_slash_feature(self, tmp_path: Path) -> None:
-        (tmp_path / "strategy" / "RunRatchetStrategy").mkdir(parents=True)
-        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
-            result = _resolve_input_to_feature("strategy/RunRatchetStrategy")
-        assert result == "RunRatchetStrategy"
-
-    def test_full_path(self, tmp_path: Path) -> None:
-        feature_dir = tmp_path / "strategy" / "RunRatchetStrategy"
-        feature_dir.mkdir(parents=True)
-        (feature_dir / "Handler.py").touch()
-        file_path = str(tmp_path / "strategy" / "RunRatchetStrategy" / "Handler.py")
-        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path), \
-             patch("_orchestrator.features.FEATURES_DIR", tmp_path), \
-             patch("_orchestrator.helpers.REPO_ROOT", tmp_path.parent):
-            result = _resolve_input_to_feature(file_path)
-        assert result == "RunRatchetStrategy"
-
-    def test_new_feature_name_returns_as_is(self, tmp_path: Path) -> None:
-        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
-            result = _resolve_input_to_feature("BrandNewFeature")
-        assert result == "BrandNewFeature"
-
-    def test_empty_input(self, tmp_path: Path) -> None:
-        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
-            result = _resolve_input_to_feature("")
-        assert result == ""
-
-    def test_case_insensitive_match(self, tmp_path: Path) -> None:
-        (tmp_path / "strategy" / "RunRatchetStrategy").mkdir(parents=True)
-        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
-            result = _resolve_input_to_feature("runratchetstrategy")
-        assert result == "RunRatchetStrategy"
-
-    def test_nonexistent_path_returns_basename(self, tmp_path: Path) -> None:
-        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
-            result = _resolve_input_to_feature("/nonexistent/path/MyFeature")
-        assert result == "MyFeature"
-
-
-
-
-class TestExtractFeatureFromPath:
-
-    def test_extracts_from_features_subpath(self, tmp_path: Path) -> None:
-        feature_dir = tmp_path / "strategy" / "RunRatchetStrategy"
-        feature_dir.mkdir(parents=True)
-        file_path = feature_dir / "Handler.py"
-        file_path.touch()
-        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
-            with patch("_orchestrator.helpers.REPO_ROOT", tmp_path.parent):
-                result = _extract_feature_from_path(str(file_path))
-        assert result == "RunRatchetStrategy"
-
-    def test_returns_none_for_nonexistent_path(self, tmp_path: Path) -> None:
-        with patch("_orchestrator.helpers.REPO_ROOT", tmp_path.parent):
-            result = _extract_feature_from_path("/nonexistent/path")
-        assert result is None
