@@ -37,16 +37,15 @@ def branch_exists(name: str) -> bool:
     return result.returncode == 0
 
 
-def check_branch(action: str, prefix: str = "feature") -> str:
+def check_branch(action: str, domain: str = "") -> str:
     branch = current_branch()
 
-    for p in ("feature/", "modify/", "bugfix/"):
-        if branch.startswith(p):
-            print("=" * 60)
-            print(f"You are already on branch '{branch}'.")
-            print("Complete and merge this branch first, then try again.")
-            print("=" * 60)
-            sys.exit(1)
+    if branch and branch != "main" and not branch.startswith("main"):
+        print("=" * 60)
+        print(f"You are already on branch '{branch}'.")
+        print("Complete and merge this branch first, then try again.")
+        print("=" * 60)
+        sys.exit(1)
 
     if branch == "main" or branch.startswith("main"):
         pending = unmerged_branches()
@@ -57,7 +56,7 @@ def check_branch(action: str, prefix: str = "feature") -> str:
                 print(f"  {b}")
             print("=" * 60)
             sys.exit(1)
-        target = f"{prefix}/{action}"
+        target = f"{domain}/{action}" if domain else action
         if branch_exists(target):
             print(f"[Orchestrator] Branch '{target}' exists. Switching to it.")
             subprocess.run(["git", "checkout", target], cwd=str(REPO_ROOT))

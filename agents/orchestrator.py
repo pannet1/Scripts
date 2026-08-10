@@ -45,7 +45,6 @@ def parse_args() -> argparse.Namespace:
         print("Prompt commands (expect an inline prompt):")
         print("  new      <domain/Feature> \"prompt\"   scaffold new feature")
         print("  modify   <domain/Feature> \"prompt\"   amend existing spec")
-        print("  bugfix   <domain/Feature> \"prompt\"   document defect")
         print()
         print("Branch commands (run from the feature branch):")
         print("  do                                     run backend agent")
@@ -53,7 +52,7 @@ def parse_args() -> argparse.Namespace:
         print("  merge                                  merge current branch to main")
         print()
         print("Other:")
-        print("  move     <OldName> <NewName>         move feature (optionally cross-domain)")
+        print("  move     <OldDomain/OldFeature> <NewDomain/NewFeature>")
         print("  scaffold                               init project")
         print("  scan                                   discover existing features")
 
