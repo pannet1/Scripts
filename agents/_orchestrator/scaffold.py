@@ -56,31 +56,16 @@ def scaffold_new_feature(target, overview: str = "", no_controller: bool = False
     return slice_dir
 
 
-def init_new_project(project_dir: Path, prompt: str) -> bool:
-    """Create a new project: structure, .agents symlink, .features.json — then cd into it."""
+def init_new_project(project_dir: Path) -> bool:
+    """Create a new project folder with a .agents symlink, then cd into it."""
     project_dir = project_dir.resolve()
     project_dir.mkdir(parents=True, exist_ok=True)
     os.chdir(project_dir)
 
-    sys.path.insert(0, str(AGENTS_DIR))
-    import scaffold_project as sp
-    sp.REPO_ROOT = project_dir
-
-    stack = sp.parse_tech_stack(prompt)
-    if not stack:
-        print("[Orchestrator] Could not identify any technologies from the prompt.")
-        print("  Try: 'Python 3.13, FastAPI, SQLite' or similar.")
-        return False
-    if sp.scaffold(stack) != 0:
-        return False
-
-    agents_link = project_dir / "agents"
-    if agents_link.is_symlink() or agents_link.exists():
-        agents_link.unlink()
     dot_link = project_dir / ".agents"
     if not dot_link.is_symlink() and not dot_link.exists():
         rel = os.path.relpath(str(AGENTS_DIR), str(project_dir))
         dot_link.symlink_to(rel)
         print(f"  .agents/ -> {rel}")
-    print(f"[Orchestrator] Project created at {project_dir}")
+    print(f"[Orchestrator] Project ready at {project_dir}")
     return True

@@ -62,7 +62,7 @@ def _parse_request(request: str) -> tuple[str, str, str, str]:
 _HELP_TEXT = """Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]
 
 Prompt commands (expect an inline prompt):
-  init     <path>/<project-name> "prompt"  create new project
+  init     <path>/<project-name>           create new project
   new      <domain/Feature> "prompt"       scaffold new feature
   modify   <domain/Feature> "prompt"       amend existing spec
 
@@ -96,21 +96,18 @@ def _prompt_required_result(prefix: str, name: str) -> CommandResult:
 
 
 def _cmd_init(domain: str, action: str, rest: str, prompt_content: str) -> CommandResult:
+    # The prompt argument is ignored: init only creates the folder + .agents symlink.
     if not action:
-        print("[Orchestrator] init requires a project target: init <path>/<project-name> <prompt>")
+        print("[Orchestrator] init requires a project target: init <path>/<project-name>")
         return CommandResult(success=False)
     if domain:
         project_dir = Path(domain) / action
     elif "/" in action:
         project_dir = Path("/") / action  # absolute path — leading "/" was consumed by parsing
     else:
-        print("[Orchestrator] init requires a project target: init <path>/<project-name> <prompt>")
+        print("[Orchestrator] init requires a project target: init <path>/<project-name>")
         return CommandResult(success=False)
-    target = f"{domain}/{action}" if domain else str(project_dir)
-    description = resolve_change_prompt(rest, prompt_content, action, "init")
-    if description is None:
-        return _prompt_required_result("init", target)
-    if init_new_project(project_dir, description):
+    if init_new_project(project_dir):
         return CommandResult(next_action=f'cd {project_dir} && ./.agents/orchestrator.py new <domain/Feature> "prompt"')
     return CommandResult(success=False)
 
