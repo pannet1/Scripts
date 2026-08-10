@@ -4,14 +4,14 @@ from unittest.mock import patch
 
 import pytest
 
-from _orchestrator.commands import (
+from _orchestrator.commands import orchestrate
+from _orchestrator.helpers import (
     _KNOWN_PREFIXES,
     _domain_of,
     _extract_feature_from_path,
     _feature_from_branch,
     _parse_request,
     _resolve_input_to_feature,
-    orchestrate,
     scaffold_new_feature,
 )
 from _orchestrator.git_ops import check_branch
@@ -160,7 +160,7 @@ class TestMoveHandler:
 class TestScaffoldBareFeature:
 
     def test_bare_feature_lands_in_nodomain(self, tmp_path: Path, monkeypatch: object) -> None:
-        monkeypatch.setattr("_orchestrator.commands.FEATURES_DIR", tmp_path / "features")
+        monkeypatch.setattr("_orchestrator.helpers.FEATURES_DIR", tmp_path / "features")
         result = scaffold_new_feature("", "Payments", "")
         assert result == tmp_path / "features" / "nodomain" / "Payments"
         assert (tmp_path / "features" / "nodomain" / "Payments" / "spec.md").exists()
@@ -170,11 +170,11 @@ class TestScaffoldBareFeature:
 class TestDomainOf:
 
     def test_domain_from_feature_dir(self, tmp_path: Path, monkeypatch: object) -> None:
-        monkeypatch.setattr("_orchestrator.commands.FEATURES_DIR", tmp_path / "features")
+        monkeypatch.setattr("_orchestrator.helpers.FEATURES_DIR", tmp_path / "features")
         assert _domain_of(tmp_path / "features" / "shared" / "Payment") == "shared"
 
     def test_root_level_feature_assumes_nodomain(self, tmp_path: Path, monkeypatch: object) -> None:
-        monkeypatch.setattr("_orchestrator.commands.FEATURES_DIR", tmp_path / "features")
+        monkeypatch.setattr("_orchestrator.helpers.FEATURES_DIR", tmp_path / "features")
         assert _domain_of(tmp_path / "features" / "Payment") == "nodomain"
 
     def test_none_returns_empty(self) -> None:
@@ -307,13 +307,13 @@ class TestResolveInputToFeature:
 
     def test_known_feature_by_name(self, tmp_path: Path) -> None:
         (tmp_path / "strategy" / "RunRatchetStrategy").mkdir(parents=True)
-        with patch("_orchestrator.commands.FEATURES_DIR", tmp_path):
+        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
             result = _resolve_input_to_feature("RunRatchetStrategy")
         assert result == "RunRatchetStrategy"
 
     def test_domain_slash_feature(self, tmp_path: Path) -> None:
         (tmp_path / "strategy" / "RunRatchetStrategy").mkdir(parents=True)
-        with patch("_orchestrator.commands.FEATURES_DIR", tmp_path):
+        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
             result = _resolve_input_to_feature("strategy/RunRatchetStrategy")
         assert result == "RunRatchetStrategy"
 
@@ -322,30 +322,30 @@ class TestResolveInputToFeature:
         feature_dir.mkdir(parents=True)
         (feature_dir / "Handler.py").touch()
         file_path = str(tmp_path / "strategy" / "RunRatchetStrategy" / "Handler.py")
-        with patch("_orchestrator.commands.FEATURES_DIR", tmp_path), \
+        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path), \
              patch("_orchestrator.features.FEATURES_DIR", tmp_path), \
-             patch("_orchestrator.commands.REPO_ROOT", tmp_path.parent):
+             patch("_orchestrator.helpers.REPO_ROOT", tmp_path.parent):
             result = _resolve_input_to_feature(file_path)
         assert result == "RunRatchetStrategy"
 
     def test_new_feature_name_returns_as_is(self, tmp_path: Path) -> None:
-        with patch("_orchestrator.commands.FEATURES_DIR", tmp_path):
+        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
             result = _resolve_input_to_feature("BrandNewFeature")
         assert result == "BrandNewFeature"
 
     def test_empty_input(self, tmp_path: Path) -> None:
-        with patch("_orchestrator.commands.FEATURES_DIR", tmp_path):
+        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
             result = _resolve_input_to_feature("")
         assert result == ""
 
     def test_case_insensitive_match(self, tmp_path: Path) -> None:
         (tmp_path / "strategy" / "RunRatchetStrategy").mkdir(parents=True)
-        with patch("_orchestrator.commands.FEATURES_DIR", tmp_path):
+        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
             result = _resolve_input_to_feature("runratchetstrategy")
         assert result == "RunRatchetStrategy"
 
     def test_nonexistent_path_returns_basename(self, tmp_path: Path) -> None:
-        with patch("_orchestrator.commands.FEATURES_DIR", tmp_path):
+        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
             result = _resolve_input_to_feature("/nonexistent/path/MyFeature")
         assert result == "MyFeature"
 
@@ -359,12 +359,12 @@ class TestExtractFeatureFromPath:
         feature_dir.mkdir(parents=True)
         file_path = feature_dir / "Handler.py"
         file_path.touch()
-        with patch("_orchestrator.commands.FEATURES_DIR", tmp_path):
-            with patch("_orchestrator.commands.REPO_ROOT", tmp_path.parent):
+        with patch("_orchestrator.helpers.FEATURES_DIR", tmp_path):
+            with patch("_orchestrator.helpers.REPO_ROOT", tmp_path.parent):
                 result = _extract_feature_from_path(str(file_path))
         assert result == "RunRatchetStrategy"
 
     def test_returns_none_for_nonexistent_path(self, tmp_path: Path) -> None:
-        with patch("_orchestrator.commands.REPO_ROOT", tmp_path.parent):
+        with patch("_orchestrator.helpers.REPO_ROOT", tmp_path.parent):
             result = _extract_feature_from_path("/nonexistent/path")
         assert result is None
