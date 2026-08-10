@@ -1,12 +1,10 @@
 import concurrent.futures
-import json
 import re
-import uuid
 from pathlib import Path
 from typing import Any
 
 from .config import REPO_ROOT, AGENTS_DIR
-from .zen_api import _zen_chat, _zen_model, _zen_session_id, _zen_api_key
+from .llm import default_model, llm_complete
 
 PERSONA_PATH = AGENTS_DIR / "personas" / "compliance_agent.md"
 PERSONA = PERSONA_PATH.read_text() if PERSONA_PATH.exists() else ""
@@ -17,18 +15,6 @@ EXCLUDE_DIRS: frozenset[str] = frozenset({
     ".agents", ".tmp", ".pytest_cache",
     ".mypy_cache", ".ruff_cache",
 })
-
-
-def _headers() -> dict[str, str]:
-    return {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {_zen_api_key()}",
-        "x-opencode-project": str(uuid.uuid4()),
-        "x-opencode-session": _zen_session_id(),
-        "x-opencode-request": str(uuid.uuid4()),
-        "x-opencode-client": "python-script",
-        "User-Agent": "opencode/1.15.4",
-    }
 
 
 def _is_python_code(text: str) -> bool:
@@ -53,21 +39,14 @@ def _extract_code(text: str) -> str | None:
     return None
 
 
-def _fix_file(headers: dict, persona: str, filepath: Path, rel: Path, content: str) -> dict:
-    payload: dict[str, Any] = {
-        "model": _zen_model(),
-        "messages": [
-            {"role": "system", "content": persona},
-            {"role": "user", "content": (
-                f"Scan and fix this file for compliance violations.\n"
-                f"File: {rel}\n\n```python\n{content}\n```\n\n"
-                f"Return the COMPLETE fixed file content inside a single ```python code block. No explanations."
-            )},
-        ],
-        "max_tokens": 4096,
-        "temperature": 0.1,
-    }
-    result = _zen_chat(headers, payload)
+def _fix_file(persona: str, filepath: Path, rel: Path, content: str) -> dict:
+    result = llm_complete(
+        f"Scan and fix this file for compliance violations.\n"
+        f"File: {rel}\n\n```python\n{content}\n```\n\n"
+        f"Return the COMPLETE fixed file content inside a single ```python code block. No explanations.",
+        system=persona,
+        model=default_model(),
+    )
     if not result:
         return {"path": str(rel), "error": True, "fixed": "", "changed": False}
 
@@ -102,7 +81,6 @@ def run_compliance_scan() -> None:
         return
 
     print(f"[Compliance] Scanning {len(files)} files (batch size {BATCH_SIZE})...")
-    headers = _headers()
     changed = 0
     errors = 0
 
@@ -113,7 +91,7 @@ def run_compliance_scan() -> None:
             content = fp.read_text()
             if not content.strip():
                 continue
-            futures.append(executor.submit(_fix_file, headers, PERSONA, fp, rel, content))
+            futures.append(executor.submit(_fix_file, PERSONA, fp, rel, content))
 
         for i, future in enumerate(concurrent.futures.as_completed(futures), 1):
             result = future.result()

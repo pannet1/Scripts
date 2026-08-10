@@ -2,44 +2,23 @@
 import ast
 import concurrent.futures
 import re
-import uuid
 from pathlib import Path
 from typing import Any
 
 from .config import REPO_ROOT
 from .compliance_scanner import _py_files, PERSONA as SCANNER_PERSONA
-from .zen_api import _zen_api_key, _zen_model, _zen_session_id, _zen_chat
+from .llm import default_model, llm_complete
 
 
-def _fresh_headers() -> dict[str, str]:
-    return {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + _zen_api_key(),
-        "x-opencode-project": str(uuid.uuid4()),
-        "x-opencode-session": _zen_session_id(),
-        "x-opencode-request": str(uuid.uuid4()),
-        "x-opencode-client": "python-script",
-        "User-Agent": "opencode/1.15.4",
-    }
-
-
-def _ai_fix_file(headers: dict, persona: str, rel: Path, content: str) -> dict:
+def _ai_fix_file(persona: str, rel: Path, content: str) -> dict:
     """Like compliance_scanner._fix_file but with higher token limit."""
-    import json
-    payload = {
-        "model": _zen_model(),
-        "messages": [
-            {"role": "system", "content": persona},
-            {"role": "user", "content": (
-                f"Scan and fix this file for compliance violations.\n"
-                f"File: {rel}\n\n```python\n{content}\n```\n\n"
-                f"Return the COMPLETE fixed file content inside a single ```python code block. No explanations."
-            )},
-        ],
-        "max_tokens": 16384,
-        "temperature": 0.1,
-    }
-    result = _zen_chat(headers, payload)
+    result = llm_complete(
+        f"Scan and fix this file for compliance violations.\n"
+        f"File: {rel}\n\n```python\n{content}\n```\n\n"
+        f"Return the COMPLETE fixed file content inside a single ```python code block. No explanations.",
+        system=persona,
+        model=default_model(),
+    )
     if not result:
         return {"path": str(rel), "error": True}
 
@@ -243,8 +222,7 @@ def run_ai_phase() -> tuple[int, int, int]:
         rel = fp.relative_to(REPO_ROOT)
         content = fp.read_text()
         original_lines = content.count("\n") + 1
-        headers = _fresh_headers()
-        result = _ai_fix_file(headers, SCANNER_PERSONA, rel, content)
+        result = _ai_fix_file(SCANNER_PERSONA, rel, content)
         if result.get("error"):
             return {"path": str(rel), "status": "FAILED (API error)"}
         if not result.get("changed"):
