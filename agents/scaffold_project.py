@@ -10,11 +10,9 @@ Usage:
 import argparse
 import json
 import os
-import re
-import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 REPO_ROOT = Path.cwd()
 AGENTS_DIR = Path(__file__).resolve().parent
@@ -36,7 +34,6 @@ STACK_HINTS: dict[str, dict[str, str]] = {
     "sqlite3":                        {"category": "db", "key": "engine", "value": "sqlite"},
     "postgres":                        {"category": "db", "key": "engine", "value": "postgres"},
     "postgresql":                     {"category": "db", "key": "engine", "value": "postgres"},
-    "postgres":                       {"category": "db", "key": "engine", "value": "postgres"},
     "cockroach":                      {"category": "db", "key": "engine", "value": "postgres"},
     "mysql":                          {"category": "db", "key": "engine", "value": "mysql"},
     "mariadb":                        {"category": "db", "key": "engine", "value": "mysql"},
@@ -480,7 +477,7 @@ def ensure_agents_symlink() -> None:
     if agents_link.is_symlink():
         return
     if agents_link.exists():
-        print(f"  [WARN] agents/ exists but is not a symlink — skipping")
+        print("  [WARN] agents/ exists but is not a symlink — skipping")
         return
     # Compute relative symlink from repo root to the Scripts agents dir
     try:
@@ -519,24 +516,24 @@ def scaffold(stack: dict, force: bool = False) -> int:
     pyproject_path = REPO_ROOT / "pyproject.toml"
     if not pyproject_path.exists():
         pyproject_path.write_text(create_pyproject_toml(stack))
-        print(f"  pyproject.toml")
+        print("  pyproject.toml")
 
     # 4. main.py
     main_py_path = REPO_ROOT / "main.py"
     if not main_py_path.exists():
         main_py_path.write_text(create_main_py(stack))
-        print(f"  main.py")
+        print("  main.py")
 
     # 5. shared/__init__.py
     init_file = REPO_ROOT / "shared" / "__init__.py"
     init_file.touch(exist_ok=True)
-    print(f"  shared/__init__.py")
+    print("  shared/__init__.py")
 
     # 6. shared/logger.py
     logger_py = REPO_ROOT / "shared" / "logger.py"
     if not logger_py.exists():
         logger_py.write_text(create_shared_logger(stack))
-        print(f"  shared/logger.py")
+        print("  shared/logger.py")
 
     # 7. SPEC.md
     spec_path = REPO_ROOT / "SPEC.md"
@@ -555,10 +552,10 @@ def scaffold(stack: dict, force: bool = False) -> int:
         need = [l for l in new_entries.splitlines() if l.strip() and l not in existing_lines]
         if need:
             gitignore_path.write_text(existing + "\n" + "\n".join(need) + "\n")
-            print(f"  .gitignore (updated)")
+            print("  .gitignore (updated)")
     else:
         gitignore_path.write_text(new_entries)
-        print(f"  .gitignore")
+        print("  .gitignore")
 
     # 9. .python-version
     py_ver_path = REPO_ROOT / ".python-version"
@@ -576,7 +573,7 @@ def scaffold(stack: dict, force: bool = False) -> int:
     for cat, choices in stack.items():
         used_categories.add(cat)
         cat_map = TECH_FILE_MAP.get(cat, {})
-        val = choices.get(list(choices.keys())[0]) if choices else ""
+        val = choices.get(next(iter(choices))) if choices else ""
         tech_file = cat_map.get(val)
         if tech_file:
             print(f"  Load tech/{tech_file}  ({cat}: {val})")
@@ -593,7 +590,7 @@ def scaffold(stack: dict, force: bool = False) -> int:
 
     print()
     print("Done. Project scaffolded.")
-    print(f"  Next: write prompt.md, then run: python3 agents/orchestrator.py new YourFeature --prompt prompt.md")
+    print("  Next: write prompt.md, then run: python3 agents/orchestrator.py new YourFeature --prompt prompt.md")
     return 0
 
 
@@ -642,7 +639,7 @@ def main() -> int:
         print("  Try: 'Python 3.13, FastAPI, SQLite' or similar.")
         return 1
 
-    print(f"Detected stack:")
+    print("Detected stack:")
     for cat, choices in stack.items():
         items = []
         for k, v in choices.items():

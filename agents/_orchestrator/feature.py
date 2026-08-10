@@ -14,7 +14,7 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .config import REPO_ROOT
 
@@ -42,7 +42,7 @@ class FeatureTarget:
 class ModifyResolution:
     """Modify's resolution: where to amend, which domain governs the branch."""
     name: str
-    amend: Optional[FeatureTarget]
+    amend: FeatureTarget | None
     branch_domain: str = ""
     scaffold_overview: str = ""
 
@@ -71,7 +71,7 @@ class ProjectFeatures:
         if config_path.exists():
             try:
                 cfg = json.loads(config_path.read_text())
-            except Exception:
+            except (json.JSONDecodeError, OSError):
                 cfg = {}
         default_dir_name = str(cfg.get("features_dir", "features"))
         features_root = repo_root / default_dir_name
@@ -99,7 +99,7 @@ class ProjectFeatures:
                 continue
             try:
                 data = json.loads(app_cfg.config_path.read_text())
-            except Exception:
+            except (json.JSONDecodeError, OSError):
                 data = {}
             known.update(data.get("known_features", {}))
             for k, v in data.get("domain_keywords", {}).items():
@@ -203,15 +203,18 @@ class ProjectFeatures:
             app=app,
         )
 
-    def resolve(self, raw: str, app: str = "") -> Optional[FeatureTarget]:
+    def resolve(self, raw: str, app: str = "") -> FeatureTarget | None:
         if not raw:
             return None
         found = self._find_dir(raw, app=app)
         if found:
             return self._target_for_dir(found)
-        return self._fuzzy_suggest(raw, app=app)
+        suggested = self._fuzzy_suggest(raw, app=app)
+        if suggested:
+            return self._target_for_dir(suggested)
+        return None
 
-    def resolve_exact(self, raw: str, app: str = "") -> Optional[FeatureTarget]:
+    def resolve_exact(self, raw: str, app: str = "") -> FeatureTarget | None:
         if not raw:
             return None
         found = self._find_dir(raw, app=app)
@@ -219,7 +222,7 @@ class ProjectFeatures:
             return self._target_for_dir(found)
         return None
 
-    def _find_dir(self, raw: str, app: str = "") -> Optional[Path]:
+    def _find_dir(self, raw: str, app: str = "") -> Path | None:
         lower = raw.lower()
         if raw in self.known_features:
             found = self._dir_for_known(raw, self.known_features[raw], app=app)
@@ -231,7 +234,7 @@ class ProjectFeatures:
                 return result
         return None
 
-    def _dir_for_known(self, name: str, domain: str, app: str = "") -> Optional[Path]:
+    def _dir_for_known(self, name: str, domain: str, app: str = "") -> Path | None:
         if app and app in self.apps:
             fdir = self.apps[app].features_dir
         else:
@@ -248,7 +251,7 @@ class ProjectFeatures:
             return flat_dir
         return None
 
-    def _find_in_dir(self, base_dir: Path, lower: str) -> Optional[Path]:
+    def _find_in_dir(self, base_dir: Path, lower: str) -> Path | None:
         if not base_dir.is_dir():
             return None
         for domain_dir in base_dir.iterdir():
@@ -257,12 +260,11 @@ class ProjectFeatures:
             if domain_dir.name.lower() == lower and (domain_dir / "Handler.py").exists():
                 return domain_dir
             for entry in domain_dir.iterdir():
-                if entry.is_dir() and not entry.name.startswith("_"):
-                    if entry.name.lower() == lower:
-                        return entry
+                if entry.is_dir() and not entry.name.startswith("_") and entry.name.lower() == lower:
+                    return entry
         return None
 
-    def _fuzzy_suggest(self, raw: str, app: str = "") -> Optional[Path]:
+    def _fuzzy_suggest(self, raw: str, app: str = "") -> Path | None:
         candidates: dict[str, Path] = {}
         for base_dir in self.roots(app=app):
             if not base_dir.is_dir():
@@ -296,7 +298,7 @@ class ProjectFeatures:
         print(f"[Orchestrator] No exact match for '{raw}'. Did you mean:")
         for i, m in enumerate(matches, 1):
             print(f"  {i}. {m}")
-        print(f"  n. No, cancel")
+        print("  n. No, cancel")
         try:
             choice = input(f"Enter choice [1-{len(matches)} or n]: ").strip().lower()
         except EOFError:
@@ -332,12 +334,11 @@ class ProjectFeatures:
                 if not domain_dir.is_dir() or domain_dir.name.startswith("_"):
                     continue
                 for entry in domain_dir.iterdir():
-                    if entry.is_dir() and not entry.name.startswith("_"):
-                        if entry.name.lower() == cleaned.lower():
-                            return entry.name
+                    if entry.is_dir() and not entry.name.startswith("_") and entry.name.lower() == cleaned.lower():
+                        return entry.name
         return Path(cleaned).name if "/" in cleaned else cleaned
 
-    def name_from_path(self, path_str: str) -> Optional[str]:
+    def name_from_path(self, path_str: str) -> str | None:
         resolved = self.repo_root / path_str
         if not resolved.exists():
             return None
@@ -360,7 +361,7 @@ class ProjectFeatures:
             return candidate
         return None
 
-    def resolve_modify(self, raw: str, app: str = "", implicit: bool = False) -> Optional[ModifyResolution]:
+    def resolve_modify(self, raw: str, app: str = "", implicit: bool = False) -> ModifyResolution | None:
         """Map modify's input to a ModifyResolution.
 
         implicit=True: input is a file the user is editing — an existing feature
@@ -404,7 +405,7 @@ class ProjectFeatures:
         name = self.name_from_input(raw)
         return ModifyResolution(name=name, amend=None)
 
-    def domain_of(self, feature_dir: Optional[Path]) -> str:
+    def domain_of(self, feature_dir: Path | None) -> str:
         if not feature_dir:
             return ""
         for r in self.roots():
@@ -499,7 +500,7 @@ def register_target(target: FeatureTarget) -> None:
         print(f"[Orchestrator] Registered '{target.name}' -> '{target.domain}' in {cfg_path.name}")
 
 
-def unregister_feature(name: str, feature_dir: Optional[Path] = None, config_path: Optional[Path] = None) -> bool:
+def unregister_feature(name: str, feature_dir: Path | None = None, config_path: Path | None = None) -> bool:
     cfg_path = config_path or load_project().config_path
     if not cfg_path.exists():
         return False

@@ -2,8 +2,6 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from _orchestrator.feature import (
     ProjectFeatures,
     discover_config,

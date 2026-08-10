@@ -16,13 +16,13 @@ SCRATCH_DIR = Path(tempfile.gettempdir()) / "omp-completions"
 
 
 def default_model() -> str:
-    if MODEL_CONFIG.exists():
-        try:
-            cfg = json.loads(MODEL_CONFIG.read_text())
-            return cfg.get("model", "")
-        except Exception:
-            pass
-    return ""
+    if not MODEL_CONFIG.exists():
+        return ""
+    try:
+        cfg = json.loads(MODEL_CONFIG.read_text())
+    except (json.JSONDecodeError, OSError):
+        return ""
+    return cfg.get("model", "")
 
 
 def _omp_binary() -> str | None:
@@ -85,7 +85,7 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
                 cmd += ["--model", m]
             print(f"[LLM] omp -p attempt {attempt} (model={m or '<harness default>'})", file=sys.stderr)
             try:
-                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 60, cwd=str(SCRATCH_DIR))
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 60, cwd=str(SCRATCH_DIR), check=False)
             except subprocess.TimeoutExpired:
                 print(f"[LLM] omp timed out after {timeout}s", file=sys.stderr)
                 return None

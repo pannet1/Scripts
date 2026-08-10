@@ -1,7 +1,5 @@
 import subprocess
 import sys
-from pathlib import Path
-from typing import Optional
 
 from .config import REPO_ROOT
 
@@ -11,9 +9,9 @@ def current_branch() -> str:
         result = subprocess.run(
             ["git", "branch", "--show-current"],
             capture_output=True, text=True, cwd=str(REPO_ROOT),
-        )
+        check=False)
         return result.stdout.strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return "(unknown)"
 
 
@@ -22,10 +20,10 @@ def unmerged_branches() -> list[str]:
         result = subprocess.run(
             ["git", "branch", "--no-merged", "main"],
             capture_output=True, text=True, cwd=str(REPO_ROOT),
-        )
+        check=False)
         lines = [l.strip() for l in result.stdout.split("\n") if l.strip() and not l.strip().startswith("*")]
         return [l for l in lines if l != "main"]
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return []
 
 
@@ -33,7 +31,7 @@ def branch_exists(name: str) -> bool:
     result = subprocess.run(
         ["git", "rev-parse", "--verify", name],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
-    )
+    check=False)
     return result.returncode == 0
 
 
@@ -49,15 +47,15 @@ def merge_branch(branch: str) -> tuple[bool, str]:
         ("push main", ["git", "push", "origin", "main"]),
     )
     for label, cmd in steps:
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
         if result.returncode != 0:
             return False, f"git {label} failed: {result.stderr.strip()}"
         if result.stdout.strip():
             print(result.stdout.strip())
     subprocess.run(["git", "push", "origin", "--delete", branch],
-                   capture_output=True, text=True, cwd=str(REPO_ROOT))
+                   capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
     subprocess.run(["git", "branch", "-D", branch],
-                   capture_output=True, text=True, cwd=str(REPO_ROOT))
+                   capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
     return True, ""
 
 
@@ -83,7 +81,7 @@ def check_branch(action: str, domain: str = "") -> str:
         target = f"{domain}/{action}" if domain else action
         if branch_exists(target):
             print(f"[Orchestrator] Branch '{target}' exists. Switching to it.")
-            subprocess.run(["git", "checkout", target], cwd=str(REPO_ROOT))
+            subprocess.run(["git", "checkout", target], cwd=str(REPO_ROOT), check=False)
         else:
             print(f"[Orchestrator] Creating branch: {target}")
             subprocess.run(["git", "checkout", "-b", target], cwd=str(REPO_ROOT), check=True)

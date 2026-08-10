@@ -1,11 +1,13 @@
 import json
 from pathlib import Path
 
-from .config import MODEL_CONFIG
+from .config import AGENTS_DIR, MODEL_CONFIG
 from .llm import llm_complete
 
-
 MAX_SPEC_QA_ATTEMPTS = 3
+
+SPEC_QA_PERSONA_PATH = AGENTS_DIR / "personas" / "spec_qa_agent.md"
+SPEC_QA_PERSONA = SPEC_QA_PERSONA_PATH.read_text() if SPEC_QA_PERSONA_PATH.exists() else ""
 
 
 def _validate_spec(spec: str, original_prompt: str) -> tuple[bool, str]:
@@ -14,22 +16,13 @@ def _validate_spec(spec: str, original_prompt: str) -> tuple[bool, str]:
     if MODEL_CONFIG.exists():
         try:
             cfg = json.loads(MODEL_CONFIG.read_text())
-            model = cfg.get("model", model)
-        except Exception:
-            pass
-
-    system = (
-        "You are a spec QA validator. Compare the provided spec against the original prompt. "
-        "List every discrepancy you find (wrong method signatures, missing sections, incorrect terminology, "
-        "wrong response fields, wrong storage model, missing dependencies, wrong routes). "
-        "Be pedantic. If the spec is fully correct, reply with exactly: VALID\n\n"
-        "If there are issues, reply with ISSUES (one per line prefixed with -), "
-        "then a blank line, then the COMPLETE corrected spec in markdown format."
-    )
+        except (json.JSONDecodeError, OSError):
+            cfg = {}
+        model = cfg.get("model", model)
 
     result = llm_complete(
         f"## Original Prompt\n\n{original_prompt}\n\n## Generated Spec\n\n{spec}",
-        system=system,
+        system=SPEC_QA_PERSONA,
         model=model,
     )
     if result is None:
@@ -89,6 +82,6 @@ def rewrite_spec_with_ai(feature_dir: Path, change_prompt: str, section: str) ->
 def amend_spec(feature_dir: Path, heading: str, branch_prefix: str, feature_name: str = "") -> None:
     display = feature_name or feature_dir.name
     print(f"\n{'='*60}\n{heading} for {display}")
-    print(f"Spec amended. Run do when ready:\n")
+    print("Spec amended. Run do when ready:\n")
     print(f"  ./.agents/orchestrator.py do {display}")
     print("=" * 60)

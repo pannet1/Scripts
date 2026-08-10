@@ -1,12 +1,11 @@
 import os
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 from .config import REPO_ROOT
 
 
-def resolve_change_prompt(rest: str, prompt_content: str, feature_name: str, prefix: str) -> Optional[str]:
+def resolve_change_prompt(rest: str, prompt_content: str, feature_name: str, prefix: str) -> str | None:
     """Resolve the prompt for a prompt-command from inline text or a prompt file.
 
     Returns None when no usable prompt is available; the caller reports the error.
@@ -25,7 +24,7 @@ def resolve_change_prompt(rest: str, prompt_content: str, feature_name: str, pre
     return rest.strip()
 
 
-def resolve_prompt_for_implicit(rest: str, prompt_content: str) -> Optional[str]:
+def resolve_prompt_for_implicit(rest: str, prompt_content: str) -> str | None:
     if prompt_content:
         return prompt_content
     if not rest:
@@ -38,14 +37,14 @@ def resolve_prompt_for_implicit(rest: str, prompt_content: str) -> Optional[str]
     return rest.strip()
 
 
-def resolve_current_file() -> Optional[str]:
+def resolve_current_file() -> str | None:
     nvim_addr = os.environ.get("NVIM") or os.environ.get("NVIM_LISTEN_ADDRESS") or ""
     if nvim_addr:
         try:
             result = subprocess.run(
                 ["nvim", "--headless", "--server", nvim_addr, "--remote-expr", "expand('%:p')"],
                 capture_output=True, text=True, timeout=3,
-            )
+            check=False)
             if result.returncode == 0:
                 path = result.stdout.strip().strip('"')
                 if path:

@@ -1,4 +1,4 @@
-from _orchestrator.templates import SPEC_TEMPLATE, DEFAULT_OVERVIEW, CODE_TEMPLATES
+from _orchestrator.templates import CODE_TEMPLATES, DEFAULT_OVERVIEW, SPEC_TEMPLATE
 
 
 class TestSpecTemplate:
@@ -60,7 +60,5 @@ class TestCodeTemplates:
         for name, template in CODE_TEMPLATES.items():
             if name == "Schema.py":
                 assert "{action}Schema" in template
-            elif name in ("Handler.py", "Controller.py"):
-                assert "{action}" in template
-            elif name == "Tests.py":
+            elif name in ("Handler.py", "Controller.py") or name == "Tests.py":
                 assert "{action}" in template

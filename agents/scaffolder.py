@@ -14,7 +14,7 @@ Reads/writes .features.json at project root.
 import json
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 REPO = Path.cwd()
 AGENTS = Path(__file__).resolve().parent
@@ -115,8 +115,8 @@ def cmd_init() -> int:
         print(f"[Scaffolder] Created features directory: {features_dir}/")
     print()
     print("Edit .features.json to change features_dir, then run:")
-    print(f"  ./.agents/scaffolder.py scan")
-    print(f"  ./.agents/orchestrator.py new YourFeature")
+    print("  ./.agents/scaffolder.py scan")
+    print("  ./.agents/orchestrator.py new YourFeature")
     return 0
 
 

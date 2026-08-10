@@ -71,7 +71,7 @@ def pick_model(models: list[dict]) -> dict:
 def main():
     try:
         models = fetch_models()
-    except Exception as e:
+    except (OSError, json.JSONDecodeError) as e:
         print(f"Failed to fetch models: {e}", file=sys.stderr)
         sys.exit(1)
 

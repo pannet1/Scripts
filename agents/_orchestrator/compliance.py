@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .config import REPO_ROOT, AGENTS_DIR
+from .config import AGENTS_DIR, REPO_ROOT
 from .llm import default_model, llm_complete
 
 PERSONA_PATH = AGENTS_DIR / "personas" / "compliance_agent.md"
@@ -251,9 +251,7 @@ def _validate_syntax(text: str, original_lines: int) -> bool:
     except SyntaxError:
         return False
     current_lines = text.count("\n") + 1
-    if current_lines < original_lines * 0.5:
-        return False
-    return True
+    return current_lines >= original_lines * 0.5
 
 
 def run_ai_phase() -> tuple[int, int, int]:
