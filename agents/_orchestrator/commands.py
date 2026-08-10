@@ -831,8 +831,8 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
             return
         branch = current_branch()
         if branch == "main":
-            for br_prefix in ("feature/", "modify/", "bugfix/"):
-                candidate = br_prefix + feature_name
+            candidates = [br_prefix + feature_name for br_prefix in ("feature/", "modify/", "bugfix/")]
+            for candidate in candidates:
                 if branch_exists(candidate):
                     branch = candidate
                     print(f"[Orchestrator] Checking out {branch}...")
@@ -840,7 +840,19 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                                    capture_output=True, cwd=str(REPO_ROOT))
                     break
             if branch == "main":
-                print(f"[Orchestrator] No branch found for '{feature_name}'.")
+                searched = ", ".join(candidates)
+                print(f"[Orchestrator] No branch found for '{feature_name}' (searched: {searched}).")
+                already = subprocess.run(
+                    ["git", "log", "main", "--oneline", "-3", "--", str(feature_dir)],
+                    capture_output=True, text=True, cwd=str(REPO_ROOT),
+                ).stdout.strip()
+                if already:
+                    print("[Orchestrator] The feature's changes are already on main:")
+                    for line in already.splitlines():
+                        print(f"  {line}")
+                    print("[Orchestrator] Nothing to merge. Recreate the branch with 'git branch <candidate> <hash>' only if you need to redo the merge.")
+                else:
+                    print(f"[Orchestrator] Create it with modify/{feature_name}, or checkout the feature branch and run merge.")
                 return
         if branch.startswith("bugfix/"):
             commit_type = "fix"
