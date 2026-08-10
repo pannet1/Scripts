@@ -497,15 +497,13 @@ def _find_feature_or_resolve(raw: str, app: str = "") -> Optional[Path]:
     return feature_dir
 
 
-def orchestrate(request: str, prompt_content: str = "", no_controller: bool = False, app: str = "") -> None:
+def _parse_request(request: str) -> tuple[str, str, str, str]:
     cmd = request.strip().split(None, 1)
     verb = cmd[0] if cmd else ""
     rest = cmd[1] if len(cmd) > 1 else ""
-
     domain = ""
     prefix = verb.lower()
     action = rest.strip()
-
     if prefix in _KNOWN_PREFIXES and rest:
         target, _, tail = rest.partition(" ")
         target = target.strip()
@@ -515,6 +513,11 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         else:
             action = target
         rest = tail.strip()
+    return prefix, domain, action, rest
+
+
+def orchestrate(request: str, prompt_content: str = "", no_controller: bool = False, app: str = "") -> None:
+    prefix, domain, action, rest = _parse_request(request)
 
     if domain and not app:
         _cfg = load_features_config()
