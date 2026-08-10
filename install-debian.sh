@@ -93,10 +93,10 @@ fi
 step "4/13: Core packages"
 ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserver-utils xfonts-base xfonts-75dpi xfonts-100dpi \
     libpangocairo-1.0-0 build-essential pkg-config ripgrep fd-find tmux picom alacritty \
-    rofi flameshot scrot xwallpaper pcmanfm network-manager-gnome ibus xfce4-power-manager \
+    rofi flameshot scrot xwallpaper pcmanfm udisks2 network-manager-gnome ibus xfce4-power-manager \
     alsa-utils fonts-font-awesome fonts-jetbrains-mono libnotify-bin \
     fonts-noto-core fonts-samyak-taml fonts-lohit-taml fonts-taml \
-    p7zip-full p7zip-rar rar xdg-utils bind9-dnsutils \
+    p7zip-full p7zip-rar rar xdg-utils bind9-dnsutils smartmontools \
     libavcodec-extra61 \
     firefox-esr
 
@@ -147,6 +147,10 @@ fi
 
 # ── 7. Neovim ──
 step "7/13: Neovim"
+# luarocks (lua-language-server workspace check) + lazygit (LazyVim git UI)
+# must be present before nvim: missing them makes nvim saves block for seconds.
+# xclip provides the X11 clipboard for nvim's "+ register.
+ensure_pkg luarocks lazygit xclip
 if check_cmd nvim; then
     ok "nvim binary"
 else

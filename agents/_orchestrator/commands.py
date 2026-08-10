@@ -1,5 +1,6 @@
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 
 from .config import REPO_ROOT
 from .feature import (
@@ -24,7 +25,7 @@ from .prompts import (
     resolve_current_file,
     resolve_prompt_for_implicit,
 )
-from .scaffold import init_project, scaffold_new_feature
+from .scaffold import init_new_project, scaffold_new_feature
 from .specs import amend_spec, rewrite_spec_with_ai
 
 
@@ -61,8 +62,9 @@ def _parse_request(request: str) -> tuple[str, str, str, str]:
 _HELP_TEXT = """Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]
 
 Prompt commands (expect an inline prompt):
-  new      <domain/Feature> "prompt"     scaffold new feature
-  modify   <domain/Feature> "prompt"     amend existing spec
+  init     <path>/<project-name> "prompt"  create new project
+  new      <domain/Feature> "prompt"       scaffold new feature
+  modify   <domain/Feature> "prompt"       amend existing spec
 
 Branch commands (run from the feature branch):
   do                                     run backend agent
@@ -72,7 +74,6 @@ Branch commands (run from the feature branch):
 
 Other:
   move     <OldDomain/OldFeature> <NewDomain/NewFeature>
-  init                                   create new project
   scan                                   discover existing features
 
 Examples:
@@ -94,12 +95,24 @@ def _prompt_required_result(prefix: str, name: str) -> CommandResult:
     return CommandResult(success=False)
 
 
-def _cmd_init(action: str = "", rest: str = "") -> CommandResult:
-    if action or rest:
-        print("[Orchestrator] init takes no target — it creates a new project.")
-        return CommandResult()
-    init_project()
-    return CommandResult(next_action='./.agents/orchestrator.py new YourFeature')
+def _cmd_init(domain: str, action: str, rest: str, prompt_content: str) -> CommandResult:
+    if not action:
+        print("[Orchestrator] init requires a project target: init <path>/<project-name> <prompt>")
+        return CommandResult(success=False)
+    if domain:
+        project_dir = Path(domain) / action
+    elif "/" in action:
+        project_dir = Path("/") / action  # absolute path — leading "/" was consumed by parsing
+    else:
+        print("[Orchestrator] init requires a project target: init <path>/<project-name> <prompt>")
+        return CommandResult(success=False)
+    target = f"{domain}/{action}" if domain else str(project_dir)
+    description = resolve_change_prompt(rest, prompt_content, action, "init")
+    if description is None:
+        return _prompt_required_result("init", target)
+    if init_new_project(project_dir, description):
+        return CommandResult(next_action=f'cd {project_dir} && ./.agents/orchestrator.py new <domain/Feature> "prompt"')
+    return CommandResult(success=False)
 
 
 def _cmd_scan(project: ProjectFeatures) -> CommandResult:
@@ -430,7 +443,7 @@ def dispatch(request: str, prompt_content: str = "", no_controller: bool = False
         return CommandResult(success=False)
 
     if prefix == "init":
-        return _cmd_init(action, rest)
+        return _cmd_init(domain, action, rest, prompt_content)
 
     display_prefix = "feature"
     if prefix == "new":

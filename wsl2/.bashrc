@@ -120,10 +120,11 @@ export GPG_TTY=$(tty)
 #    tmux attach-session -t default || tmux new-session -s default
 # fi
 
-export PATH="$HOME/.bun/bin:$PATH"
 if grep -qi microsoft /proc/version 2>/dev/null; then
   export LD_LIBRARY_PATH=/usr/lib/wsl/lib:$LD_LIBRARY_PATH
   alias usbread='sudo mkdir -p /mnt/d && sudo mount -t drvfs D: /mnt/d && echo "USB Updated Successfully"'
+  # ADB bridge (WSL2 → Windows): resolv.conf's nameserver is the Windows host.
+  export ADB_SERVER_SOCKET=tcp:$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf):5037
 fi
 alias mail='/usr/bin/aerc'
 
@@ -166,7 +167,7 @@ export LESS=-RFX
 # Local secrets (machine-specific, not tracked in git)
 SECRETS_REPO="$HOME/programs/shell/github.com/pannet1/secrets"
 [ -f "$HOME/secrets.key" ] && (cd "$SECRETS_REPO" && git-crypt unlock "$HOME/secrets.key") 2>/dev/null || true
-[ -f "$HOME/.secrets/wsl2.env" ] && source "$HOME/.secrets/wsl2.env"
+# [ -f "$HOME/.secrets/env" ] && source "$HOME/.secrets/env"
 
 export LLAMACPP="$HOME/llama.cpp"
 export PATH="$LLAMACPP/build/bin:$PATH"
@@ -175,9 +176,6 @@ export PATH="$LLAMACPP/build/bin:$PATH"
 export ANDROID_HOME="$HOME/android-sdk"
 export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
 export PATH="$PATH:$ANDROID_HOME/platform-tools"
-
-# ADB bridge (WSL2 → Windows)
-export ADB_SERVER_SOCKET=tcp:$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):5037
 
 # opencode
 export PATH=/home/pannet1/.opencode/bin:$PATH

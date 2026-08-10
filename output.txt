@@ -1,237 +1,184 @@
 ==============================================
-  System Diagnostic: Friday 07 August 2026 02:43:44 AM IST
+  System Diagnostic: Monday 10 August 2026 02:26:14 AM IST
 ==============================================
 Linux dell-precision-t5810 6.12.101+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.101-1 (2026-08-05) x86_64 GNU/Linux
 PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
 NAME="Debian GNU/Linux"
 
 === BOOT PERFORMANCE ===
-Startup finished in 21.778s (firmware) + 9.377s (loader) + 1.257s (kernel) + 5.498s (userspace) = 37.912s 
-graphical.target reached after 5.498s in userspace.
-4.032s nvidia-persistenced.service
- 283ms NetworkManager.service
- 260ms dev-nvme0n1p2.device
- 184ms systemd-udev-trigger.service
- 152ms user@1000.service
-  90ms systemd-journald.service
-  67ms modprobe@drm.service
-  63ms systemd-journal-flush.service
-  62ms boot-efi.mount
-  59ms systemd-udevd.service
-  55ms keyboard-setup.service
-  53ms systemd-tmpfiles-clean.service
+Startup finished in 15.980s (firmware) + 4.955s (loader) + 2.571s (kernel) + 5.607s (userspace) = 29.115s 
+graphical.target reached after 5.564s in userspace.
+4.060s nvidia-persistenced.service
+1.095s mnt-windows.mount
+ 826ms smartmontools.service
+ 382ms NetworkManager.service
+ 316ms udisks2.service
+ 311ms user@1000.service
+ 309ms dev-nvme0n1p2.device
+ 211ms systemd-udev-trigger.service
+ 117ms systemd-logind.service
+ 110ms polkit.service
+ 108ms e2scrub_reap.service
+ 105ms systemd-journald.service
 
 === KERNEL MESSAGES — errors/warnings (this boot) ===
-[ 2782.676697] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2788.681546] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2794.685564] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2800.690036] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2806.692831] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2818.701036] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2824.704091] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2830.706912] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2836.711305] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2842.714983] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2848.719080] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2854.723176] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2860.727107] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2866.733037] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2872.734285] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2878.738633] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2902.750343] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2908.754349] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2914.759503] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2920.763059] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2926.766365] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2932.770385] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2938.774461] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2944.778485] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2950.782437] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2956.796068] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2962.875406] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2975.215794] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2980.804719] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2986.831905] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2998.845109] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3004.821797] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3010.825813] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3016.845505] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3022.828741] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3028.834661] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3034.836767] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3040.840860] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3046.847119] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3052.848903] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3058.854781] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3064.856929] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3070.862260] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3076.864198] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3082.868012] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3088.874629] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3094.876000] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3100.880032] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3106.884095] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3112.888240] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3118.892137] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3124.896183] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3130.903315] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3136.904244] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3142.908353] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3148.912271] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3154.915337] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3160.920008] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3166.923402] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3172.927368] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3178.933265] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3184.935384] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3190.939425] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3196.944526] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3208.951537] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3214.955541] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3220.959641] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3226.963682] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3232.967673] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3238.970979] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3244.974775] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3250.978774] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3256.982821] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3262.986986] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3268.990846] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3274.995051] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3280.998881] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3287.002923] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3293.009390] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3299.011009] IPv6: MLD: clamping QRV from 1 to 2!
+[    0.000000] [Firmware Bug]: TSC ADJUST: CPU0: -178796642484396 force to 0
+[    0.000258] [Firmware Bug]: TSC ADJUST differs within socket(s), fixing all errors
+[    0.114332]   #6  #7  #8  #9 #10 #11
+[    0.117068] MDS CPU bug present and SMT on, data leak possible. See https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln/mds.html for more details.
+[    0.117068] TAA CPU bug present and SMT on, data leak possible. See https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln/tsx_async_abort.html for more details.
+[    0.117068] MMIO Stale Data CPU bug present and SMT on, data leak possible. See https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln/processor_mmio_stale_data.html for more details.
+[    0.117068] VMSCAPE: SMT on, STIBP is required for full protection. See https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln/vmscape.html for more details.
+[    0.408798] ENERGY_PERF_BIAS: Set to 'normal', was 'performance'
+[    3.663801] EDAC sbridge: CPU SrcID #0, Ha #0, Channel #2 has DIMMs, but ECC is disabled
+[    3.663819] EDAC sbridge: Couldn't find mci handler
+[    3.663827] EDAC sbridge: Failed to register device with error -19.
+[    4.248572] nvme nvme0: using unchecked data buffer
+[    4.380265] block nvme0n1: No UUID available providing old NGUID
+[    5.796165] nvidia: loading out-of-tree module taints kernel.
+[    5.796176] nvidia: module license 'NVIDIA' taints kernel.
+[    5.796177] Disabling lock debugging due to kernel taint
+[    5.796181] nvidia: module license taints kernel.
+
+[    6.257642] NVRM: loading NVIDIA UNIX x86_64 Kernel Module  610.57.04  Wed Jul 29 02:50:14 UTC 2026
+[    8.807829] kauditd_printk_skb: 100 callbacks suppressed
+[   16.698839] IPv6: MLD: clamping QRV from 1 to 2!
+[   22.841857] IPv6: MLD: clamping QRV from 1 to 2!
+[   28.681578] IPv6: MLD: clamping QRV from 1 to 2!
+[   34.631105] kauditd_printk_skb: 78 callbacks suppressed
+[   40.761068] IPv6: MLD: clamping QRV from 1 to 2!
+[   46.804722] IPv6: MLD: clamping QRV from 1 to 2!
+[   52.741483] IPv6: MLD: clamping QRV from 1 to 2!
 
 === KERNEL MESSAGES — full tail ===
-[ 2975.215794] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2980.804719] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2986.831905] IPv6: MLD: clamping QRV from 1 to 2!
-[ 2998.845109] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3004.821797] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3010.825813] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3016.845505] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3022.828741] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3028.834661] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3034.836767] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3040.840860] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3046.847119] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3052.848903] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3058.854781] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3064.856929] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3070.862260] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3076.864198] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3082.868012] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3088.874629] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3094.876000] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3100.880032] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3106.884095] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3112.888240] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3118.892137] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3124.896183] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3130.903315] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3136.904244] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3142.908353] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3148.912271] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3154.915337] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3160.920008] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3166.923402] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3172.927368] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3178.933265] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3184.935384] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3190.939425] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3196.944526] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3208.951537] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3214.955541] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3220.959641] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3226.963682] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3232.967673] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3238.970979] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3244.974775] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3250.978774] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3256.982821] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3262.986986] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3267.164360] audit: type=1400 audit(1786050789.790:476): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=8735 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 3267.164372] audit: type=1400 audit(1786050789.790:477): apparmor="ALLOWED" operation="unlink" class="file" profile="Xorg" name="/dev/char/195:254" pid=8735 comm="Xorg" requested_mask="d" denied_mask="d" fsuid=1000 ouid=0
-[ 3267.164377] audit: type=1400 audit(1786050789.790:478): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 3267.181929] audit: type=1400 audit(1786050789.806:479): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 3267.205733] audit: type=1400 audit(1786050789.830:480): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=8735 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 3267.205744] audit: type=1400 audit(1786050789.830:481): apparmor="ALLOWED" operation="unlink" class="file" profile="Xorg" name="/dev/char/195:254" pid=8735 comm="Xorg" requested_mask="d" denied_mask="d" fsuid=1000 ouid=0
-[ 3267.205748] audit: type=1400 audit(1786050789.830:482): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 3268.990846] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3274.995051] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3280.998881] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3287.002923] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3293.009390] IPv6: MLD: clamping QRV from 1 to 2!
-[ 3299.011009] IPv6: MLD: clamping QRV from 1 to 2!
+[    4.043053] audit: type=1400 audit(1786308930.143:9): apparmor="STATUS" operation="profile_load" profile="unconfined" name="ch-run" pid=725 comm="apparmor_parser"
+[    4.043084] audit: type=1400 audit(1786308930.143:10): apparmor="STATUS" operation="profile_load" profile="unconfined" name="cam" pid=723 comm="apparmor_parser"
+[    4.211433] usbcore: registered new interface driver rtl8xxxu
+[    4.214770] rtl8xxxu 3-5:1.0 wlx304a2670a691: renamed from wlan0
+[    4.248572] nvme nvme0: using unchecked data buffer
+[    4.380265] block nvme0n1: No UUID available providing old NGUID
+[    5.796165] nvidia: loading out-of-tree module taints kernel.
+[    5.796176] nvidia: module license 'NVIDIA' taints kernel.
+[    5.796177] Disabling lock debugging due to kernel taint
+[    5.796180] nvidia: module verification failed: signature and/or required key missing - tainting kernel
+[    5.796181] nvidia: module license taints kernel.
+[    5.990589] wlx304a2670a691: authenticate with ba:78:c9:b9:31:df (local address=30:4a:26:70:a6:91)
+[    5.990598] wlx304a2670a691: send auth to ba:78:c9:b9:31:df (try 1/3)
+[    5.993669] wlx304a2670a691: authenticated
+[    5.996282] wlx304a2670a691: associate with ba:78:c9:b9:31:df (try 1/3)
+[    6.002731] wlx304a2670a691: RX AssocResp from ba:78:c9:b9:31:df (capab=0x1411 status=0 aid=1)
+[    6.003298] usb 3-5: rtl8xxxu_bss_info_changed: HT supported
+[    6.004142] wlx304a2670a691: associated
+[    6.202505] nvidia-nvlink: Nvlink Core is being initialized, major device number 238
+
+[    6.215461] nvidia 0000:03:00.0: vgaarb: VGA decodes changed: olddecodes=io+mem,decodes=none:owns=none
+[    6.257642] NVRM: loading NVIDIA UNIX x86_64 Kernel Module  610.57.04  Wed Jul 29 02:50:14 UTC 2026
+[    6.265469] wlx304a2670a691: Limiting TX power to 30 (30 - 0) dBm as advertised by ba:78:c9:b9:31:df
+[    6.334220] nvidia-modeset: Loading NVIDIA Kernel Mode Setting Driver for UNIX platforms  610.57.04  Wed Jul 29 02:28:24 UTC 2026
+[    8.080173] [drm] [nvidia-drm] [GPU ID 0x00000300] Loading driver
+[    8.180979] [drm] Initialized nvidia-drm 0.0.0 for 0000:03:00.0 on minor 0
+[    8.181106] Console: switching to colour dummy device 80x25
+[    8.181132] nvidia 0000:03:00.0: vgaarb: deactivate vga console
+[    8.260866] fbcon: nvidia-drmdrmfb (fb0) is primary device
+[    8.332037] Console: switching to colour frame buffer device 240x67
+[    8.348317] nvidia 0000:03:00.0: [drm] fb0: nvidia-drmdrmfb frame buffer device
+[    8.807829] kauditd_printk_skb: 100 callbacks suppressed
+[    8.807835] audit: type=1400 audit(1786308934.907:111): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+[    8.807868] audit: type=1400 audit(1786308934.907:112): apparmor="ALLOWED" operation="unlink" class="file" profile="Xorg" name="/dev/char/195:255" pid=1126 comm="Xorg" requested_mask="d" denied_mask="d" fsuid=1000 ouid=0
+[    8.807894] audit: type=1400 audit(1786308934.907:113): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[    8.930085] audit: type=1400 audit(1786308935.031:114): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/1126/comm" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=1000
+[    8.930863] audit: type=1400 audit(1786308935.031:115): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+[    8.930870] audit: type=1400 audit(1786308935.031:116): apparmor="ALLOWED" operation="unlink" class="file" profile="Xorg" name="/dev/char/195:0" pid=1126 comm="Xorg" requested_mask="d" denied_mask="d" fsuid=1000 ouid=0
+[    8.930881] audit: type=1400 audit(1786308935.031:117): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia0" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[    8.931287] audit: type=1400 audit(1786308935.031:118): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+[    8.931291] audit: type=1400 audit(1786308935.031:119): apparmor="ALLOWED" operation="unlink" class="file" profile="Xorg" name="/dev/char/195:0" pid=1126 comm="Xorg" requested_mask="d" denied_mask="d" fsuid=1000 ouid=0
+[    8.931293] audit: type=1400 audit(1786308935.031:120): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia0" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   16.698839] IPv6: MLD: clamping QRV from 1 to 2!
+[   22.841857] IPv6: MLD: clamping QRV from 1 to 2!
+[   28.681578] IPv6: MLD: clamping QRV from 1 to 2!
+[   34.403257] systemd-journald[398]: Time jumped backwards, rotating.
+[   34.631105] kauditd_printk_skb: 78 callbacks suppressed
+[   34.631108] audit: type=1400 audit(1786308960.281:199): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+[   34.631113] audit: type=1400 audit(1786308960.281:200): apparmor="ALLOWED" operation="unlink" class="file" profile="Xorg" name="/dev/char/195:254" pid=1126 comm="Xorg" requested_mask="d" denied_mask="d" fsuid=1000 ouid=0
+[   34.631114] audit: type=1400 audit(1786308960.281:201): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   34.687695] audit: type=1400 audit(1786308960.337:202): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   34.706917] audit: type=1400 audit(1786308960.357:203): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+[   34.706927] audit: type=1400 audit(1786308960.357:204): apparmor="ALLOWED" operation="unlink" class="file" profile="Xorg" name="/dev/char/195:254" pid=1126 comm="Xorg" requested_mask="d" denied_mask="d" fsuid=1000 ouid=0
+[   34.706931] audit: type=1400 audit(1786308960.357:205): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   34.763130] audit: type=1400 audit(1786308960.413:206): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   34.763332] audit: type=1400 audit(1786308960.413:207): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   34.816830] audit: type=1400 audit(1786308960.469:208): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+[   40.761068] IPv6: MLD: clamping QRV from 1 to 2!
+[   46.804722] IPv6: MLD: clamping QRV from 1 to 2!
+[   52.741483] IPv6: MLD: clamping QRV from 1 to 2!
 
 === KERNEL: nvidia / drm / acpi / firmware ===
-[  949.944965] audit: type=1400 audit(1786048472.537:243): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=4264 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[  949.945000] audit: type=1400 audit(1786048472.537:245): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia0" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[  949.945090] audit: type=1400 audit(1786048472.537:246): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=4264 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[  949.945121] audit: type=1400 audit(1786048472.537:248): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia0" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[  949.948325] audit: type=1400 audit(1786048472.541:249): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=4264 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[  956.165773] audit: type=1400 audit(1786048478.761:294): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=4264 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[  956.165834] audit: type=1400 audit(1786048478.761:296): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[  956.166952] audit: type=1400 audit(1786048478.761:297): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[  956.175276] audit: type=1400 audit(1786048478.769:298): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=4264 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[  956.175324] audit: type=1400 audit(1786048478.769:300): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[  994.389524] audit: type=1400 audit(1786048516.987:301): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=4264 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[  994.389535] audit: type=1400 audit(1786048516.987:303): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[  994.390323] audit: type=1400 audit(1786048516.987:304): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[  994.398334] audit: type=1400 audit(1786048516.995:305): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=4264 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[  994.398341] audit: type=1400 audit(1786048516.995:307): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1010.022863] audit: type=1400 audit(1786048532.619:308): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=4264 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1010.022903] audit: type=1400 audit(1786048532.623:310): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1010.028258] audit: type=1400 audit(1786048532.627:311): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1010.037337] audit: type=1400 audit(1786048532.635:312): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=4264 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1010.037402] audit: type=1400 audit(1786048532.635:314): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1010.299006] audit: type=1400 audit(1786048532.899:315): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=4264 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1010.299039] audit: type=1400 audit(1786048532.899:317): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=4264 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1492.529517] audit: type=1400 audit(1786049015.118:322): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=5270 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1492.529529] audit: type=1400 audit(1786049015.118:324): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=5270 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1492.529981] audit: type=1400 audit(1786049015.118:325): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=5270 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1492.529995] audit: type=1400 audit(1786049015.118:327): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia0" pid=5270 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1492.530066] audit: type=1400 audit(1786049015.118:328): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=5270 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1492.530098] audit: type=1400 audit(1786049015.118:330): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia0" pid=5270 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1492.533201] audit: type=1400 audit(1786049015.122:331): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=5270 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1505.674985] audit: type=1400 audit(1786049028.262:376): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=5270 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1505.675000] audit: type=1400 audit(1786049028.262:378): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=5270 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1505.675828] audit: type=1400 audit(1786049028.266:379): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=5270 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1505.683940] audit: type=1400 audit(1786049028.274:380): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=5270 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1505.683950] audit: type=1400 audit(1786049028.274:382): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=5270 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1581.407074] audit: type=1400 audit(1786049103.996:383): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=5270 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1581.407089] audit: type=1400 audit(1786049103.996:385): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=5270 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1581.407880] audit: type=1400 audit(1786049103.996:386): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=5270 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1581.416267] audit: type=1400 audit(1786049104.004:387): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=5270 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1581.416316] audit: type=1400 audit(1786049104.004:389): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=5270 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1898.325018] audit: type=1400 audit(1786049420.908:390): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=8735 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1898.325072] audit: type=1400 audit(1786049420.908:392): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1898.337719] audit: type=1400 audit(1786049420.924:394): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=8735 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1898.337766] audit: type=1400 audit(1786049420.924:396): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia0" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1898.337874] audit: type=1400 audit(1786049420.924:397): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=8735 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1898.337906] audit: type=1400 audit(1786049420.924:399): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia0" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1904.316069] audit: type=1400 audit(1786049426.900:462): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=8735 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1904.316081] audit: type=1400 audit(1786049426.900:464): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1904.331222] audit: type=1400 audit(1786049426.916:465): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1904.351703] audit: type=1400 audit(1786049426.936:466): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=8735 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1904.351718] audit: type=1400 audit(1786049426.936:468): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1910.392770] audit: type=1400 audit(1786049432.976:469): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=8735 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1910.392787] audit: type=1400 audit(1786049432.976:471): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1910.409513] audit: type=1400 audit(1786049432.992:472): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 1910.432703] audit: type=1400 audit(1786049433.016:473): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=8735 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 1910.432763] audit: type=1400 audit(1786049433.016:475): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 3267.164360] audit: type=1400 audit(1786050789.790:476): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=8735 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 3267.164377] audit: type=1400 audit(1786050789.790:478): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 3267.181929] audit: type=1400 audit(1786050789.806:479): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
-[ 3267.205733] audit: type=1400 audit(1786050789.830:480): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=8735 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
-[ 3267.205748] audit: type=1400 audit(1786050789.830:482): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=8735 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[    3.663678] EDAC sbridge: Seeking for: PCI ID 8086:6fa0
+[    3.663690] EDAC sbridge: Seeking for: PCI ID 8086:6fa0
+[    3.663698] EDAC sbridge: Seeking for: PCI ID 8086:6f60
+[    3.663702] EDAC sbridge: Seeking for: PCI ID 8086:6fa8
+[    3.663705] EDAC sbridge: Seeking for: PCI ID 8086:6fa8
+[    3.663710] EDAC sbridge: Seeking for: PCI ID 8086:6f71
+[    3.663712] EDAC sbridge: Seeking for: PCI ID 8086:6f71
+[    3.663715] EDAC sbridge: Seeking for: PCI ID 8086:6faa
+[    3.663717] EDAC sbridge: Seeking for: PCI ID 8086:6faa
+[    3.663720] EDAC sbridge: Seeking for: PCI ID 8086:6fab
+[    3.663722] EDAC sbridge: Seeking for: PCI ID 8086:6fab
+[    3.663725] EDAC sbridge: Seeking for: PCI ID 8086:6fac
+[    3.663727] EDAC sbridge: Seeking for: PCI ID 8086:6fac
+[    3.663730] EDAC sbridge: Seeking for: PCI ID 8086:6fad
+[    3.663732] EDAC sbridge: Seeking for: PCI ID 8086:6fad
+[    3.663734] EDAC sbridge: Seeking for: PCI ID 8086:6f68
+[    3.663737] EDAC sbridge: Seeking for: PCI ID 8086:6f79
+[    3.663740] EDAC sbridge: Seeking for: PCI ID 8086:6f6a
+[    3.663744] EDAC sbridge: Seeking for: PCI ID 8086:6f6b
+[    3.663749] EDAC sbridge: Seeking for: PCI ID 8086:6f6c
+[    3.663754] EDAC sbridge: Seeking for: PCI ID 8086:6f6d
+[    3.663759] EDAC sbridge: Seeking for: PCI ID 8086:6ffc
+[    3.663761] EDAC sbridge: Seeking for: PCI ID 8086:6ffc
+[    3.663765] EDAC sbridge: Seeking for: PCI ID 8086:6ffd
+[    3.663768] EDAC sbridge: Seeking for: PCI ID 8086:6ffd
+[    3.663772] EDAC sbridge: Seeking for: PCI ID 8086:6faf
+[    3.663776] EDAC sbridge: Seeking for: PCI ID 8086:6faf
+[    3.663801] EDAC sbridge: CPU SrcID #0, Ha #0, Channel #2 has DIMMs, but ECC is disabled
+[    3.663819] EDAC sbridge: Couldn't find mci handler
+[    3.663827] EDAC sbridge: Failed to register device with error -19.
+[    3.671900] usb 3-5: rtl8xxxu: Loading firmware rtlwifi/rtl8188fufw.bin
+[    3.672266] usb 3-5: Firmware revision 4.0 (signature 0x88f1)
+[    3.674236] usb 3-5: Firmware is already running, resetting the MCU.
+[    5.796165] nvidia: loading out-of-tree module taints kernel.
+[    5.796176] nvidia: module license 'NVIDIA' taints kernel.
+[    5.796180] nvidia: module verification failed: signature and/or required key missing - tainting kernel
+[    5.796181] nvidia: module license taints kernel.
+[    6.202505] nvidia-nvlink: Nvlink Core is being initialized, major device number 238
+[    6.215461] nvidia 0000:03:00.0: vgaarb: VGA decodes changed: olddecodes=io+mem,decodes=none:owns=none
+[    6.257642] NVRM: loading NVIDIA UNIX x86_64 Kernel Module  610.57.04  Wed Jul 29 02:50:14 UTC 2026
+[    6.334220] nvidia-modeset: Loading NVIDIA Kernel Mode Setting Driver for UNIX platforms  610.57.04  Wed Jul 29 02:28:24 UTC 2026
+[    8.080173] [drm] [nvidia-drm] [GPU ID 0x00000300] Loading driver
+[    8.180979] [drm] Initialized nvidia-drm 0.0.0 for 0000:03:00.0 on minor 0
+[    8.181132] nvidia 0000:03:00.0: vgaarb: deactivate vga console
+[    8.260866] fbcon: nvidia-drmdrmfb (fb0) is primary device
+[    8.348317] nvidia 0000:03:00.0: [drm] fb0: nvidia-drmdrmfb frame buffer device
+[    8.807835] audit: type=1400 audit(1786308934.907:111): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+[    8.807894] audit: type=1400 audit(1786308934.907:113): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[    8.930863] audit: type=1400 audit(1786308935.031:115): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+[    8.930881] audit: type=1400 audit(1786308935.031:117): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia0" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[    8.931287] audit: type=1400 audit(1786308935.031:118): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+[    8.931293] audit: type=1400 audit(1786308935.031:120): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia0" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   34.631108] audit: type=1400 audit(1786308960.281:199): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+[   34.631114] audit: type=1400 audit(1786308960.281:201): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   34.687695] audit: type=1400 audit(1786308960.337:202): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   34.706917] audit: type=1400 audit(1786308960.357:203): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+[   34.706931] audit: type=1400 audit(1786308960.357:205): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidia-modeset" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   34.763130] audit: type=1400 audit(1786308960.413:206): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   34.763332] audit: type=1400 audit(1786308960.413:207): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/dev/nvidiactl" pid=1126 comm="Xorg" requested_mask="wr" denied_mask="wr" fsuid=1000 ouid=0
+[   34.816830] audit: type=1400 audit(1786308960.469:208): apparmor="ALLOWED" operation="open" class="file" profile="Xorg" name="/proc/driver/nvidia/params" pid=1126 comm="Xorg" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
 
 === PREVIOUS BOOT kernel errors (boot -1) ===
-Aug 07 01:14:19 dell-precision-t5810 kernel: EDAC sbridge: CPU SrcID #0, Ha #0, Channel #2 has DIMMs, but ECC is disabled
-Aug 07 01:14:19 dell-precision-t5810 kernel: EDAC sbridge: Couldn't find mci handler
-Aug 07 01:14:19 dell-precision-t5810 kernel: EDAC sbridge: Failed to register device with error -19.
-Aug 07 01:14:20 dell-precision-t5810 kernel: 
+Aug 09 12:35:54 dell-precision-t5810 kernel: EDAC sbridge: CPU SrcID #0, Ha #0, Channel #2 has DIMMs, but ECC is disabled
+Aug 09 12:35:54 dell-precision-t5810 kernel: EDAC sbridge: Couldn't find mci handler
+Aug 09 12:35:54 dell-precision-t5810 kernel: EDAC sbridge: Failed to register device with error -19.
+Aug 09 12:35:57 dell-precision-t5810 kernel: 
 
 === SYSTEMD FAILED / DEGRADED UNITS ===
   UNIT LOAD ACTIVE SUB DESCRIPTION
@@ -239,40 +186,56 @@ Aug 07 01:14:20 dell-precision-t5810 kernel:
 0 loaded units listed.
 
 === SYSTEMD: recent errors across boots ===
-Aug 07 01:48:45 dell-precision-t5810 kernel: EDAC sbridge: CPU SrcID #0, Ha #0, Channel #2 has DIMMs, but ECC is disabled
-Aug 07 01:48:45 dell-precision-t5810 kernel: EDAC sbridge: Couldn't find mci handler
-Aug 07 01:48:45 dell-precision-t5810 kernel: EDAC sbridge: Failed to register device with error -19.
-Aug 07 01:48:47 dell-precision-t5810 kernel: 
-Aug 07 01:50:55 dell-precision-t5810 sudo[1237]:  pannet1 : a password is required ; PWD=/home/pannet1/Scripts ; USER=root ; COMMAND=/usr/bin/cat /sys/module/nvidia_drm/parameters/modeset
-Aug 07 01:50:55 dell-precision-t5810 sudo[1238]:  pannet1 : a password is required ; PWD=/home/pannet1/Scripts ; USER=root ; COMMAND=/usr/bin/cat /sys/module/nvidia_drm/parameters/fbdev
-Aug 07 01:50:56 dell-precision-t5810 sudo[1241]:  pannet1 : a password is required ; PWD=/home/pannet1/Scripts ; USER=root ; COMMAND=/usr/bin/dmesg
+Aug 10 02:25:36 dell-precision-t5810 xdg-desktop-portal[1251]: pw.conf: can't load config client.conf: No such file or directory
 
 === SYSTEMD: errors in previous boots ===
-Aug 07 01:14:19 dell-precision-t5810 kernel: EDAC sbridge: CPU SrcID #0, Ha #0, Channel #2 has DIMMs, but ECC is disabled
-Aug 07 01:14:19 dell-precision-t5810 kernel: EDAC sbridge: Couldn't find mci handler
-Aug 07 01:14:19 dell-precision-t5810 kernel: EDAC sbridge: Failed to register device with error -19.
-Aug 07 01:14:20 dell-precision-t5810 kernel: 
-Aug 07 01:15:38 dell-precision-t5810 sudo[1202]:  pannet1 : a password is required ; PWD=/home/pannet1/Scripts ; USER=root ; COMMAND=/usr/bin/cat /sys/module/nvidia_drm/parameters/modeset
-Aug 07 01:15:38 dell-precision-t5810 sudo[1204]:  pannet1 : a password is required ; PWD=/home/pannet1/Scripts ; USER=root ; COMMAND=/usr/bin/cat /sys/module/nvidia_drm/parameters/fbdev
-Aug 07 01:31:00 dell-precision-t5810 nvidia-persistenced[2604]: Failed to query NVIDIA devices. Please ensure that the NVIDIA device files (/dev/nvidia*) exist, and that user 102 has read and write permissions for those files.
-Aug 07 01:31:00 dell-precision-t5810 systemd[1]: Failed to start nvidia-persistenced.service - NVIDIA Persistence Daemon.
+Aug 09 12:36:02 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation).
+Aug 09 12:37:31 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal.service - Portal service.
+Aug 09 12:40:16 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation).
+Aug 09 12:41:47 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal.service - Portal service.
+Aug 09 12:54:58 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation).
+Aug 09 12:56:28 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal.service - Portal service.
+Aug 09 13:29:11 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation).
+Aug 09 13:30:41 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal.service - Portal service.
+Aug 09 13:52:19 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation).
+Aug 09 13:53:49 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal.service - Portal service.
+Aug 09 14:06:40 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation).
+Aug 09 14:08:10 dell-precision-t5810 systemd[973]: Failed to start xdg-desktop-portal.service - Portal service.
+Aug 09 14:17:28 dell-precision-t5810 sudo[68752]: pam_unix(sudo:auth): conversation failed
+Aug 09 14:17:28 dell-precision-t5810 sudo[68752]: pam_unix(sudo:auth): auth could not identify password for [pannet1]
+Aug 09 14:18:39 dell-precision-t5810 sudo[69561]:  pannet1 : a password is required ; PWD=/home/pannet1 ; USER=root ; COMMAND=/usr/sbin/fdisk -l /dev/nbd0
+Aug 09 14:18:39 dell-precision-t5810 sudo[69563]:  pannet1 : a password is required ; PWD=/home/pannet1 ; USER=root ; COMMAND=/usr/sbin/blkid /dev/nbd0
+Aug 09 14:20:49 dell-precision-t5810 sudo[71183]:  pannet1 : a password is required ; PWD=/home/pannet1 ; USER=root ; COMMAND=/usr/sbin/fdisk -l /dev/nbd0
+Aug 09 15:47:04 dell-precision-t5810 sudo[126298]:  pannet1 : 3 incorrect password attempts ; PWD=/home/pannet1 ; USER=root ; COMMAND=/usr/bin/tee /etc/sysctl.d/99-network-tuning.conf
+Aug 09 20:20:11 dell-precision-t5810 sudo[293588]: pam_unix(sudo:auth): conversation failed
+Aug 09 20:20:11 dell-precision-t5810 sudo[293588]: pam_unix(sudo:auth): auth could not identify password for [pannet1]
+Aug 09 20:21:44 dell-precision-t5810 sudo[294595]: pam_unix(sudo:auth): conversation failed
+Aug 09 20:21:44 dell-precision-t5810 sudo[294595]: pam_unix(sudo:auth): auth could not identify password for [pannet1]
+Aug 09 20:22:51 dell-precision-t5810 sudo[295432]: pam_unix(sudo:auth): conversation failed
+Aug 09 20:22:51 dell-precision-t5810 sudo[295432]: pam_unix(sudo:auth): auth could not identify password for [pannet1]
+Aug 09 21:02:02 dell-precision-t5810 sudo[323612]: pam_unix(sudo:auth): conversation failed
+Aug 09 21:02:02 dell-precision-t5810 sudo[323612]: pam_unix(sudo:auth): auth could not identify password for [pannet1]
+Aug 10 02:14:02 dell-precision-t5810 sudo[539817]:  pannet1 : a password is required ; PWD=/home/pannet1/programs/shell/github.com/pannet1/Scripts ; USER=root ; COMMAND=/usr/bin/true
+Aug 10 02:15:48 dell-precision-t5810 xdg-desktop-portal[541112]: pw.conf: can't load config client.conf: No such file or directory
+Aug 10 02:19:07 dell-precision-t5810 sudo[543577]:  pannet1 : a password is required ; PWD=/home/pannet1/programs/shell/github.com/pannet1/Scripts ; USER=root ; COMMAND=/usr/bin/true
+Aug 10 02:20:57 dell-precision-t5810 sudo[545246]:  pannet1 : a password is required ; PWD=/home/pannet1/programs/shell/github.com/pannet1/Scripts ; USER=root ; COMMAND=/usr/sbin/dmidecode -t memory
 
 === SYSTEMD: boot timing breakdown ===
 The time when unit became active or started is printed after the "@" character.
 The time the unit took to start is printed after the "+" character.
 
-graphical.target @5.498s
-└─multi-user.target @5.498s
-  └─nvidia-persistenced.service @1.465s +4.032s
-    └─basic.target @1.461s
-      └─sockets.target @1.461s
-        └─systemd-hostnamed.socket @1.461s
-          └─sysinit.target @1.460s
-            └─apparmor.service @1.415s +44ms
-              └─local-fs.target @1.413s
-                └─boot-efi.mount @1.350s +62ms
-                  └─systemd-fsck@dev-disk-by\x2duuid-AF99\x2dBEE2.service @584ms +34ms
-                    └─dev-disk-by\x2duuid-AF99\x2dBEE2.device @582ms
+graphical.target @5.564s
+└─multi-user.target @5.564s
+  └─nvidia-persistenced.service @1.502s +4.060s
+    └─basic.target @1.497s
+      └─sockets.target @1.497s
+        └─systemd-hostnamed.socket @1.496s
+          └─sysinit.target @1.496s
+            └─apparmor.service @1.447s +48ms
+              └─local-fs.target @1.446s
+                └─boot-efi.mount @1.370s +75ms
+                  └─systemd-fsck@dev-disk-by\x2duuid-AF99\x2dBEE2.service @630ms +33ms
+                    └─dev-disk-by\x2duuid-AF99\x2dBEE2.device @617ms
 
 === CRASHES / PANICS / OOPS ===
 
@@ -281,12 +244,12 @@ Architecture:                            x86_64
 CPU(s):                                  12
 On-line CPU(s) list:                     0-11
 Model name:                              Intel(R) Xeon(R) CPU E5-1650 v4 @ 3.60GHz
-CPU(s) scaling MHz:                      52%
+CPU(s) scaling MHz:                      60%
 CPU max MHz:                             4000.0000
 CPU min MHz:                             1200.0000
 NUMA node0 CPU(s):                       0-11
                total        used        free      shared  buff/cache   available
-Mem:            15Gi       1.8Gi        11Gi       162Mi       2.2Gi        13Gi
+Mem:            15Gi       945Mi        14Gi       4.6Mi       567Mi        14Gi
 Swap:          8.0Gi          0B       8.0Gi
 	Error Correction Type: None
 	Maximum Capacity: 256 GB
@@ -310,19 +273,33 @@ Swap:          8.0Gi          0B       8.0Gi
 	Configured Memory Speed: 2400 MT/s
 
 === HARDWARE: disks (SMART health) ===
-NAME          SIZE ROTA TYPE MOUNTPOINT MODEL
-nvme0n1     476.9G    0 disk            INTEL SSDPEKNU512GZH
-├─nvme0n1p1   953M    0 part /boot/efi  
-├─nvme0n1p2  93.1G    0 part /          
-└─nvme0n1p3 382.9G    0 part /home      
+NAME          SIZE ROTA TYPE MOUNTPOINT   MODEL
+sda         931.5G    1 disk              ST1000NM0008-2F2100
+├─sda1        100M    1 part              
+├─sda2         16M    1 part              
+├─sda3      930.9G    1 part /mnt/windows 
+└─sda4        546M    1 part              
+sr0          1024M    0 rom               HL-DT-ST DVD+/-RW GTA0N
+nvme0n1     476.9G    0 disk              INTEL SSDPEKNU512GZH
+├─nvme0n1p1   953M    0 part /boot/efi    
+├─nvme0n1p2  93.1G    0 part /            
+└─nvme0n1p3 382.9G    0 part /home        
+smartctl NOT installed — install smartmontools for SMART checks
+--- /dev/sda ---
+SMART overall-health self-assessment test result: PASSED
+  5 Reallocated_Sector_Ct   0x0033   100   100   010    Pre-fail  Always       -       0
+187 Reported_Uncorrect      0x0032   100   100   000    Old_age   Always       -       0
+197 Current_Pending_Sector  0x0012   100   100   000    Old_age   Always       -       0
+198 Offline_Uncorrectable   0x0010   100   100   000    Old_age   Offline      -       0
 --- /dev/nvme0n1 ---
+SMART overall-health self-assessment test result: PASSED
 
 === HARDWARE: thermal ===
-x86_pkg_temp: 36000
+x86_pkg_temp: 37000
 
 === HARDWARE: GPU ===
 03:00.0 VGA compatible controller: NVIDIA Corporation GA107 [GeForce RTX 3050 6GB] (rev a1)
-Fri Aug  7 02:43:45 2026       
+Mon Aug 10 02:26:20 2026       
 +-----------------------------------------------------------------------------------------+
 | NVIDIA-SMI 610.57.04              KMD Version: 610.57.04     CUDA UMD Version: 13.3     |
 +-----------------------------------------+------------------------+----------------------+
@@ -331,7 +308,7 @@ Fri Aug  7 02:43:45 2026
 |                                         |                        |               MIG M. |
 |=========================================+========================+======================|
 |   0  NVIDIA GeForce RTX 3050        On  |   00000000:03:00.0  On |                  N/A |
-| 33%   37C    P8              4W /   70W |     144MiB /   6144MiB |      0%      Default |
+| 33%   42C    P8              8W /   70W |     168MiB /   6144MiB |      0%      Default |
 |                                         |                        |                  N/A |
 +-----------------------------------------+------------------------+----------------------+
 
@@ -386,7 +363,7 @@ GpuBlacklist: ""
 TemporaryFilePath: "/var/tmp"
 ExcludedGpus: ""
 Model: 		 NVIDIA GeForce RTX 3050
-IRQ:   		 60
+IRQ:   		 61
 GPU UUID: 	 GPU-37f8f6d9-5558-16e4-8e5c-ada44cfd1051
 Video BIOS: 	 94.07.91.00.c7
 Bus Type: 	 PCIe
@@ -398,13 +375,13 @@ GPU Firmware: 	 610.57.04
 GPU Excluded:	 No
 
 === HARDWARE: USB / storage errors ===
+[    3.674236] usb 3-5: Firmware is already running, resetting the MCU.
 
 === NETWORK ===
 lo               UNKNOWN        00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP> 
 enp0s25          DOWN           d8:9e:f3:01:92:82 <NO-CARRIER,BROADCAST,MULTICAST,UP> 
 wlx304a2670a691  UP             30:4a:26:70:a6:91 <BROADCAST,MULTICAST,UP,LOWER_UP> 
 enp0s25          DOWN           
-wlx304a2670a691  UP             192.168.29.245/24 2405:201:e052:62:e3ce:5928:f95:465f/64 fe80::8279:8560:61f7:bca5/64 
 
 === POWER / ACPI / SUSPEND ===
 s2idle [deep]
@@ -412,22 +389,22 @@ freeze mem disk
 static
 static
 static
-[    0.158954] thermal_sys: Registered thermal governor 'power_allocator'
-[    0.288410] pci 0000:03:00.1: extending delay after power-on from D3hot to 20 msec
-[    0.288480] pci 0000:03:00.1: D0 power state depends on 0000:03:00.0
-[    0.508760] PM: genpd: Disabling unused power domains
-[    1.597684] systemd[1]: systemd-hibernate-clear.service - Clear Stale Hibernate Storage Info skipped, unmet condition check ConditionPathExists=/sys/firmware/efi/efivars/HibernateLocation-8cf2644b-4b0b-428f-9387-6d876050dc67
-[    1.804536] input: Power Button as /devices/LNXSYSTM:00/LNXSYBUS:00/PNP0C0C:00/input/input0
-[    1.804594] ACPI: button: Power Button [PWRB]
-[    1.804661] input: Power Button as /devices/LNXSYSTM:00/LNXPWRBN:00/input/input1
-[    1.826848] ACPI: button: Power Button [PWRF]
-[    5.201384] wlx304a2670a691: Limiting TX power to 30 (30 - 0) dBm as advertised by ba:78:c9:b9:31:df
+[    0.157180] thermal_sys: Registered thermal governor 'power_allocator'
+[    0.284429] pci 0000:03:00.1: extending delay after power-on from D3hot to 20 msec
+[    0.284499] pci 0000:03:00.1: D0 power state depends on 0000:03:00.0
+[    0.512921] PM: genpd: Disabling unused power domains
+[    2.932315] systemd[1]: systemd-hibernate-clear.service - Clear Stale Hibernate Storage Info skipped, unmet condition check ConditionPathExists=/sys/firmware/efi/efivars/HibernateLocation-8cf2644b-4b0b-428f-9387-6d876050dc67
+[    3.177519] input: Power Button as /devices/LNXSYSTM:00/LNXSYBUS:00/PNP0C0C:00/input/input5
+[    3.177550] ACPI: button: Power Button [PWRB]
+[    3.177586] input: Power Button as /devices/LNXSYSTM:00/LNXPWRBN:00/input/input6
+[    3.192311] ACPI: button: Power Button [PWRF]
+[    6.265469] wlx304a2670a691: Limiting TX power to 30 (30 - 0) dBm as advertised by ba:78:c9:b9:31:df
 
 === KERNEL MODULE ISSUES ===
 nvidia_uvm           1916928  0
 nvidia_drm            151552  5
 nvidia_modeset       1814528  10 nvidia_drm
-nvidia              118968320  109 nvidia_uvm,nvidia_modeset
+nvidia              118968320  110 nvidia_uvm,nvidia_modeset
 drm_ttm_helper         16384  2 nvidia_drm
 drm_kms_helper        253952  2 drm_ttm_helper,nvidia_drm
 video                  81920  1 nvidia_modeset
@@ -440,11 +417,10 @@ insmod /lib/modules/6.12.101+deb13-amd64/kernel/drivers/gpu/drm/scheduler/gpu-sc
 insmod /lib/modules/6.12.101+deb13-amd64/kernel/drivers/gpu/drm/drm_exec.ko.xz 
 insmod /lib/modules/6.12.101+deb13-amd64/kernel/drivers/gpu/drm/drm_gpuvm.ko.xz 
 insmod /lib/modules/6.12.101+deb13-amd64/kernel/drivers/gpu/drm/nouveau/nouveau.ko.xz modeset=0 
-modprobe: FATAL: Module vgaarb not found in directory /lib/modules/6.12.101+deb13-amd64
 
 === SWAP / MEMORY PRESSURE ===
-NAME      TYPE SIZE USED PRIO
-/swapfile file   8G   0B   -2
+Filename				Type		Size		Used		Priority
+/swapfile                               file		8388604		0		-2
 60
 100
 
@@ -452,5 +428,74 @@ NAME      TYPE SIZE USED PRIO
 BOOT_IMAGE=/boot/vmlinuz-6.12.101+deb13-amd64 root=UUID=b917de9a-2b39-437f-8462-03e5f05b4ae1 ro quiet
 
 === DPKG: held/broken packages ===
+
+=== SYSTEM STATE ===
+running
+
+=== DISK SPACE / INODES ===
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p2   92G   14G   73G  16% /
+efivarfs        256K  124K  128K  50% /sys/firmware/efi/efivars
+/dev/nvme0n1p3  376G   33G  324G  10% /home
+/dev/nvme0n1p1  952M  9.1M  943M   1% /boot/efi
+/dev/sda3       931G  133G  798G  15% /mnt/windows
+-- inodes --
+Filesystem        Inodes  IUsed     IFree IUse% Mounted on
+/dev/nvme0n1p2   6111232 108232   6003000    2% /
+efivarfs               0      0         0     - /sys/firmware/efi/efivars
+/dev/nvme0n1p3  25141104 332526  24808578    2% /home
+/dev/nvme0n1p1         0      0         0     - /boot/efi
+/dev/sda3      837422392   6345 837416047    1% /mnt/windows
+
+=== MOUNTS / FSTAB ===
+-- fstab entries --
+UUID=b917de9a-2b39-437f-8462-03e5f05b4ae1 /               ext4    errors=remount-ro 0       1
+UUID=AF99-BEE2  /boot/efi       vfat    umask=0077      0       1
+UUID=5dc45edf-8bd3-4d80-a25e-39fca75cb3f7 /home           ext4    defaults        0       2
+/swapfile none swap sw 0 0
+UUID=C4C6EF68C6EF5966  /mnt/windows  ntfs-3g  defaults,uid=1000,gid=1000,umask=022,nofail,remove_hiberfile  0 0
+-- verify fstab --
+
+0 parse errors, 0 errors, 7 warnings
+/
+   [W] cannot detect on-disk filesystem type (Permission denied)
+/boot/efi
+   [W] cannot detect on-disk filesystem type (Permission denied)
+/home
+   [W] cannot detect on-disk filesystem type (Permission denied)
+none
+   [W] non-bind mount source /swapfile is a directory or regular file
+-- /mnt/windows --
+/mnt/windows /dev/sda3 fuseblk
+
+=== PACKAGE CONSISTENCY ===
+Reading package lists...
+Building dependency tree...
+Reading state information...
+upgradable: 0 packages (run 'sudo apt update' first for fresh count)
+
+=== OOM KILLS (this boot) ===
+none
+
+=== ZOMBIE PROCESSES ===
+no zombies
+
+=== SYSTEMD TIMERS (maintenance, last/next run) ===
+Mon 2026-08-10 02:40:25 IST    14min -                                - systemd-tmpfiles-clean.timer systemd-tmpfiles-clean.service
+Mon 2026-08-10 06:07:01 IST 3h 40min Sun 2026-08-09 13:14:57 IST      - apt-daily-upgrade.timer      apt-daily-upgrade.service
+Mon 2026-08-10 07:06:02 IST 4h 39min Mon 2026-08-10 02:01:29 IST      - apt-daily.timer              apt-daily.service
+Tue 2026-08-11 00:00:00 IST      21h Mon 2026-08-10 00:00:04 IST      - dpkg-db-backup.timer         dpkg-db-backup.service
+Tue 2026-08-11 00:28:39 IST      22h Mon 2026-08-10 00:38:56 IST      - logrotate.timer              logrotate.service
+Tue 2026-08-11 04:03:35 IST 1 day 1h Mon 2026-08-10 02:20:48 IST      - man-db.timer                 man-db.service
+Sun 2026-08-16 03:10:05 IST   6 days Sun 2026-08-09 03:11:11 IST      - e2scrub_all.timer            e2scrub_all.service
+-- failed/inactive timers --
+
+=== TIME SYNC ===
+               Local time: Mon 2026-08-10 02:26:20 IST
+           Universal time: Sun 2026-08-09 20:56:20 UTC
+                 RTC time: Sun 2026-08-09 20:56:20
+                Time zone: Asia/Kolkata (IST, +0530)
+              NTP service: active
+          RTC in local TZ: no
 
 === END ===
