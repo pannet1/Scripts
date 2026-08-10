@@ -1,29 +1,20 @@
-import json
 import subprocess
 from dataclasses import dataclass
+from typing import Optional
 
-from .config import (
-    DOMAIN_KEYWORDS,
-    FEATURES_CONFIG,
-    FEATURES_DIR,
-    KNOWN_FEATURES,
-    REPO_ROOT,
-    app_features_dir,
-    load_features_config,
-)
-from .features import (
-    find_feature_dir,
-    register_feature_in_json,
-    resolve_feature,
-    unregister_feature_from_json,
+from .config import REPO_ROOT
+from .feature import (
+    FeatureTarget,
+    ModifyResolution,
+    ProjectFeatures,
+    feature_from_branch,
+    load_project,
+    register_target,
+    unregister_feature,
 )
 from .git_ops import branch_exists, check_branch, current_branch, unmerged_branches
 from .helpers import (
     _KNOWN_PREFIXES,
-    _derive_feature_name_from_path,
-    _domain_of,
-    _feature_from_branch,
-    _find_feature_or_resolve,
     _parse_request,
     _resolve_current_file,
     _resolve_prompt_for_implicit,
@@ -53,41 +44,29 @@ def _cmd_scan() -> CommandResult:
     return CommandResult(success=ok, next_action='new <domain/Feature> "prompt" or modify <domain/Feature> "prompt"')
 
 
-def _cmd_feature(domain: str, action: str, rest: str, prompt_content: str, no_controller: bool, app: str) -> CommandResult:
-    description = resolve_change_prompt(rest, prompt_content, action, "feature")
-    if not domain:
-        domain = KNOWN_FEATURES.get(action, "")
-        if not domain:
-            for _key, (_dom, _act) in DOMAIN_KEYWORDS.items():
-                if _key in action.lower() or _act.lower() == action.lower():
-                    domain = _dom
-                    break
-    feature_dir = scaffold_new_feature(domain, action, description, no_controller=no_controller, app=app)
+def _cmd_feature(target: FeatureTarget, rest: str, prompt_content: str, no_controller: bool) -> CommandResult:
+    description = resolve_change_prompt(rest, prompt_content, target.name, "feature")
+    feature_dir = scaffold_new_feature(target, description, no_controller=no_controller)
     if feature_dir and feature_dir.is_dir():
-        check_branch(action, domain or "nodomain")
-        register_feature_in_json(action, domain or "nodomain", app=app)
-        suffix = f"do {domain}/{action}" if domain else f"do {action}"
-        return CommandResult(next_action=f"./.agents/orchestrator.py {suffix}")
-    print(f"[Orchestrator] Failed to scaffold feature '{action}'.")
+        check_branch(target.name, target.domain)
+        return CommandResult(next_action=f"./.agents/orchestrator.py do {target.domain}/{target.name}")
+    print(f"[Orchestrator] Failed to scaffold feature '{target.name}'.")
     return CommandResult(success=False)
 
 
-def _cmd_do(action: str, rest: str, app: str) -> CommandResult:
-    user_feature_name = action or rest
-    if not user_feature_name:
-        user_feature_name = _feature_from_branch(current_branch())
-    if not user_feature_name:
+def _cmd_do(target: Optional[FeatureTarget], raw: str, app: str) -> CommandResult:
+    if not raw:
         print("[Orchestrator] No feature name given and cannot infer from current branch.")
         return CommandResult(next_action='checkout or create a feature branch first — new <domain/Feature> "prompt"')
-    feature_dir = _find_feature_or_resolve(user_feature_name, app=app)
-    if not feature_dir:
-        print(f"[Orchestrator] Feature not found: {user_feature_name}.")
-        return CommandResult(next_action=f'./.agents/orchestrator.py new {user_feature_name}')
-    if not (feature_dir / "spec.md").exists():
-        print(f"[Orchestrator] No spec.md found.")
-        return CommandResult(next_action=f'./.agents/orchestrator.py new {user_feature_name}')
+    if not target:
+        print(f"[Orchestrator] Feature not found: {raw}.")
+        return CommandResult(next_action=f'./.agents/orchestrator.py new {raw}')
+    if not (target.dir / "spec.md").exists():
+        print("[Orchestrator] No spec.md found.")
+        return CommandResult(next_action=f'./.agents/orchestrator.py new {raw}')
 
-    display = feature_dir.name
+    display = target.name
+    feature_dir = target.dir
 
     branch = current_branch()
     if branch == "main" or branch.startswith("main"):
@@ -99,11 +78,10 @@ def _cmd_do(action: str, rest: str, app: str) -> CommandResult:
                 print(f"  {b}")
             print("=" * 60)
             return CommandResult(next_action="merge the listed branches first")
-        dom = _domain_of(feature_dir)
-        target = f"{dom}/{display}" if dom else display
-        print(f"[Orchestrator] On main with clean slate. Auto-creating branch: {target}")
-        subprocess.run(["git", "checkout", "-b", target], cwd=str(REPO_ROOT))
-        branch = target
+        target_branch = f"{target.domain}/{display}"
+        print(f"[Orchestrator] On main with clean slate. Auto-creating branch: {target_branch}")
+        subprocess.run(["git", "checkout", "-b", target_branch], cwd=str(REPO_ROOT))
+        branch = target_branch
 
     spec_text = (feature_dir / "spec.md").read_text() if (feature_dir / "spec.md").exists() else ""
     if "## Modification" in spec_text:
@@ -115,8 +93,7 @@ def _cmd_do(action: str, rest: str, app: str) -> CommandResult:
     print(f"[Orchestrator] Generating code for {display}...")
     ok = run_runner("backend", feature_dir, task)
     if ok:
-        domain = _domain_of(feature_dir)
-        register_feature_in_json(feature_dir.name, domain)
+        register_target(target)
         print(f"\n{'='*60}\nALL TESTS PASSED.\n")
         print(f"[Orchestrator] Staging {feature_dir}...")
         r1 = subprocess.run(["git", "add", str(feature_dir)], capture_output=True, text=True, cwd=str(REPO_ROOT))
@@ -124,7 +101,7 @@ def _cmd_do(action: str, rest: str, app: str) -> CommandResult:
             print(f"[Orchestrator] git add failed: {r1.stderr.strip()}")
             print("You may need to commit and merge manually.")
             return CommandResult(success=False, next_action="resolve the git error above, then commit and merge manually")
-        msg_body = f"{commit_type}: {feature_dir.name}"
+        msg_body = f"{commit_type}: {display}"
         print(f"[Orchestrator] Committing: {msg_body}")
         r2 = subprocess.run(["git", "commit", "-m", msg_body], capture_output=True, text=True, cwd=str(REPO_ROOT))
         if r2.returncode != 0:
@@ -166,136 +143,60 @@ def _cmd_do(action: str, rest: str, app: str) -> CommandResult:
         print(f"[Orchestrator] Deleting local branch {branch}...")
         subprocess.run(["git", "branch", "-D", branch],
                        capture_output=True, cwd=str(REPO_ROOT))
-        print(f"[Orchestrator] Done. {feature_dir.name} merged to main.")
+        print(f"[Orchestrator] Done. {display} merged to main.")
         return CommandResult(next_action='scan to list features, or new <domain/Feature> "prompt" to start the next one')
     print(f"\n{'='*60}")
     print("IMPLEMENTATION FAILED. The auto-QA loop exhausted its attempts.")
     print("Copy the error output above and tell the AI:")
-    print(f'  "The auto-QA loop failed for {feature_dir.name}. Here is the output: ..."')
+    print(f'  "The auto-QA loop failed for {display}. Here is the output: ..."')
     print("=" * 60)
     return CommandResult(success=False, next_action="fix the failing tests above, then run do again — or undo to discard this branch")
 
 
-def _cmd_modify(action: str, rest: str, prompt_content: str, app: str) -> CommandResult:
-    if not action:
-        current_file = _resolve_current_file()
-        if rest:
-            derived = _derive_feature_name_from_path(rest)
-            change_prompt = _resolve_prompt_for_implicit(rest, prompt_content)
-            if not change_prompt:
-                print("[Orchestrator] No prompt provided.")
-                return CommandResult(next_action='provide an inline prompt, a prompt file, or nvim context')
-            heading = "Modification Request"
-            real_feature = find_feature_dir(derived)
-            if real_feature:
-                check_branch(derived, _domain_of(real_feature))
-                _rewrite_spec_with_ai(real_feature, change_prompt, heading)
-                amend_spec(real_feature, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
-                return CommandResult(next_action=f'./.agents/orchestrator.py do {derived} to implement the amended spec')
-            fuzzy = resolve_feature(derived)
-            if fuzzy:
-                check_branch(derived, _domain_of(fuzzy))
-                _rewrite_spec_with_ai(fuzzy, change_prompt, heading)
-                amend_spec(fuzzy, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
-                return CommandResult(next_action=f'./.agents/orchestrator.py do {derived} to implement the amended spec')
-            scaffold_new_feature("", derived, "", no_controller=True)
-            feature_dir = FEATURES_DIR / "nodomain" / derived
-            if feature_dir.is_dir():
-                check_branch(derived, "nodomain")
-                register_feature_in_json(derived, "nodomain")
-                _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
-                amend_spec(feature_dir, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
-                return CommandResult(next_action=f'./.agents/orchestrator.py do {derived} to implement the amended spec')
-            print(f"[Orchestrator] Could not create feature '{derived}'.")
-            return CommandResult(success=False)
-        if current_file:
-            derived = _derive_feature_name_from_path(current_file)
-            change_prompt = _resolve_prompt_for_implicit(rest, prompt_content)
-            if not change_prompt:
-                print("[Orchestrator] No prompt provided.")
-                return CommandResult(next_action='provide an inline prompt, a prompt file, or nvim context')
-            heading = "Modification Request"
-            real_feature = find_feature_dir(derived)
-            if real_feature:
-                check_branch(derived, _domain_of(real_feature))
-                scaffold_new_feature("", derived, f"Modify {current_file}", no_controller=True)
-                feature_dir = FEATURES_DIR / "nodomain" / derived
-                if feature_dir.is_dir():
-                    register_feature_in_json(derived, "nodomain")
-                    _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
-                    amend_spec(feature_dir, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
-                    return CommandResult(next_action=f'./.agents/orchestrator.py do {derived} to implement the amended spec')
-            fuzzy = resolve_feature(derived)
-            if fuzzy:
-                check_branch(derived, _domain_of(fuzzy))
-                scaffold_new_feature("", derived, f"Modify {current_file}", no_controller=True)
-                feature_dir = FEATURES_DIR / "nodomain" / derived
-                if feature_dir.is_dir():
-                    register_feature_in_json(derived, "nodomain")
-                    _rewrite_spec_with_ai(fuzzy, change_prompt, heading)
-                    amend_spec(fuzzy, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
-                    return CommandResult(next_action=f'./.agents/orchestrator.py do {derived} to implement the amended spec')
-            print(f"[Orchestrator] Feature '{derived}' not found.")
-            return CommandResult(success=False)
+def _cmd_modify(res: Optional[ModifyResolution], raw: str, rest: str, prompt_content: str, implicit: bool) -> CommandResult:
+    if res is None:
         print("[Orchestrator] No feature name given (modify expects a domain/Feature target, inline prompt, prompt file, or nvim context).")
         return CommandResult(next_action='pass a domain/Feature target with an inline prompt')
-    feature_dir = _find_feature_or_resolve(action, app=app)
-    if not feature_dir:
-        resolved_path = REPO_ROOT / action
-        if resolved_path.exists() and resolved_path.is_file():
-            derived = _derive_feature_name_from_path(action)
-            change_prompt = resolve_change_prompt(rest, prompt_content, derived, "modify")
-            real_feature = find_feature_dir(derived)
-            if real_feature:
-                check_branch(derived, _domain_of(real_feature))
-                heading = "Modification Request"
-                scaffold_new_feature("", derived, f"Modify {action}", no_controller=True)
-                feature_dir = FEATURES_DIR / "nodomain" / derived
-                if feature_dir.is_dir():
-                    register_feature_in_json(derived, "nodomain")
-                    _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
-                    amend_spec(feature_dir, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
-                    return CommandResult(next_action=f'./.agents/orchestrator.py do {derived} to implement the amended spec')
-            else:
-                print(f"[Orchestrator] Feature '{derived}' not found.")
-                return CommandResult(success=False, next_action=f'./.agents/orchestrator.py new {derived}')
-        print(f"[Orchestrator] Feature '{action}' not found.")
-        return CommandResult(success=False, next_action=f'./.agents/orchestrator.py new {action}')
-    resolved_name = feature_dir.name
-    change_prompt = resolve_change_prompt(rest, prompt_content, resolved_name, "modify")
+    if res.amend is None:
+        print(f"[Orchestrator] Feature '{res.name}' not found.")
+        return CommandResult(success=False, next_action=f'./.agents/orchestrator.py new {res.name}')
+    if implicit:
+        change_prompt = _resolve_prompt_for_implicit(rest, prompt_content)
+        if not change_prompt:
+            print("[Orchestrator] No prompt provided.")
+            return CommandResult(next_action='provide an inline prompt, a prompt file, or nvim context')
+    else:
+        change_prompt = resolve_change_prompt(rest, prompt_content, res.name, "modify")
     heading = "Modification Request"
-    _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
-    check_branch(resolved_name, _domain_of(feature_dir))
+    if not res.amend.dir.exists():
+        scaffold_new_feature(res.amend, res.scaffold_overview, no_controller=True)
+    _rewrite_spec_with_ai(res.amend.dir, change_prompt, heading)
+    check_branch(res.name, res.branch_domain)
     amend_spec(
-        feature_dir,
+        res.amend.dir,
         heading="CONTRACT AMENDMENT",
         branch_prefix="modify",
-        feature_name=resolved_name,
+        feature_name=res.name,
     )
-    return CommandResult(next_action=f'./.agents/orchestrator.py do {resolved_name} to implement the amended spec')
+    return CommandResult(next_action=f'./.agents/orchestrator.py do {res.name} to implement the amended spec')
 
 
-def _cmd_delete(action: str, rest: str, app: str) -> CommandResult:
-    feature_name = action or rest
-    if not feature_name:
-        feature_name = _feature_from_branch(current_branch())
-    if not feature_name:
+def _cmd_delete(target: Optional[FeatureTarget], raw: str, app: str) -> CommandResult:
+    if not raw:
         print("[Orchestrator] No feature name given and cannot infer from current branch.")
         return CommandResult(next_action='checkout a feature branch first, or pass a feature name')
-    feature_dir = resolve_feature(feature_name, app=app)
-    dom = _domain_of(feature_dir)
-    target_branches = [f"{dom}/{feature_name}"] if dom else [feature_name]
+    target_branches = [f"{target.domain}/{raw}"] if target else [raw]
     branch = current_branch()
     on_target = branch in target_branches
     found_any = False
 
-    if feature_dir and feature_dir.exists():
+    if target and target.dir.exists():
         import shutil
-        shutil.rmtree(feature_dir)
-        print(f"[Orchestrator] Deleted feature directory: {feature_dir}")
+        shutil.rmtree(target.dir)
+        print(f"[Orchestrator] Deleted feature directory: {target.dir}")
         found_any = True
 
-    unregister_feature_from_json(feature_name, feature_dir)
+    unregister_feature(raw, target.dir if target else None, target.config_path if target else None)
 
     if on_target:
         subprocess.run(["git", "checkout", "main"], cwd=str(REPO_ROOT))
@@ -310,12 +211,11 @@ def _cmd_delete(action: str, rest: str, app: str) -> CommandResult:
                 found_any = True
 
     if not found_any:
-        print(f"[Orchestrator] Nothing to delete: feature '{feature_name}' not found.")
+        print(f"[Orchestrator] Nothing to delete: feature '{raw}' not found.")
     return CommandResult(next_action='scan to list remaining features, or new <domain/Feature> "prompt" to start one')
 
 
-def _cmd_merge(action: str, rest: str) -> CommandResult:
-    branch = current_branch()
+def _cmd_merge(branch: str, name: str, target: Optional[FeatureTarget], action: str, rest: str) -> CommandResult:
     if branch == "main" or branch.startswith("main"):
         print("[Orchestrator] You are on main. Checkout a feature branch before running merge.")
         return CommandResult(next_action='checkout a feature branch, then run merge')
@@ -325,16 +225,14 @@ def _cmd_merge(action: str, rest: str) -> CommandResult:
     if action or rest:
         print("[Orchestrator] merge takes no target — it merges the current branch to main.")
         return CommandResult()
-    feature_name = branch.split("/", 1)[1] if "/" in branch else branch
-    feature_dir = find_feature_dir(feature_name)
-    if feature_dir and feature_dir.exists():
+    if target and target.dir.exists():
         commit_type = "feat"
-        print(f"[Orchestrator] Staging {feature_dir}...")
-        r1 = subprocess.run(["git", "add", str(feature_dir)], capture_output=True, text=True, cwd=str(REPO_ROOT))
+        print(f"[Orchestrator] Staging {target.dir}...")
+        r1 = subprocess.run(["git", "add", str(target.dir)], capture_output=True, text=True, cwd=str(REPO_ROOT))
         if r1.returncode != 0:
             print(f"[Orchestrator] git add failed: {r1.stderr.strip()}")
             return CommandResult(success=False, next_action="resolve the git error above, then merge manually")
-        msg_body = f"{commit_type}: {feature_name}"
+        msg_body = f"{commit_type}: {name}"
         print(f"[Orchestrator] Committing: {msg_body}")
         r2 = subprocess.run(["git", "commit", "-m", msg_body], capture_output=True, text=True, cwd=str(REPO_ROOT))
         if r2.returncode != 0:
@@ -346,7 +244,7 @@ def _cmd_merge(action: str, rest: str) -> CommandResult:
                 return CommandResult(success=False, next_action="resolve the git error above, then merge manually")
         print(r2.stdout.strip())
     else:
-        print(f"[Orchestrator] No feature dir for '{feature_name}' — merging branch as-is.")
+        print(f"[Orchestrator] No feature dir for '{name}' — merging branch as-is.")
     print(f"[Orchestrator] Pushing {branch}...")
     r3 = subprocess.run(["git", "push", "origin", branch], capture_output=True, text=True, cwd=str(REPO_ROOT))
     if r3.returncode != 0:
@@ -373,7 +271,7 @@ def _cmd_merge(action: str, rest: str) -> CommandResult:
     print(f"[Orchestrator] Deleting local branch {branch}...")
     subprocess.run(["git", "branch", "-D", branch],
                    capture_output=True, cwd=str(REPO_ROOT))
-    print(f"[Orchestrator] Done. {feature_name} merged to main.")
+    print(f"[Orchestrator] Done. {name} merged to main.")
     return CommandResult(next_action='scan to list features, or new <domain/Feature> "prompt" to start one')
 
 
@@ -405,48 +303,21 @@ def _cmd_undo(action: str, rest: str) -> CommandResult:
     return CommandResult(next_action='new <domain/Feature> "prompt" to start fresh, or scan to list features')
 
 
-def _cmd_move(action: str, rest: str, app: str) -> CommandResult:
-    old_name = action
-    new_target = rest.strip().strip('"').strip("'")
-    if not old_name or not new_target:
+def _cmd_move(old_target: Optional[FeatureTarget], new_target: Optional[FeatureTarget], rest: str, app: str) -> CommandResult:
+    if not old_target or not new_target:
         print("[Orchestrator] Usage: move <OldDomain/OldFeature> <NewDomain/NewFeature>")
         return CommandResult()
-    new_domain = ""
-    if "/" in new_target:
-        new_domain, new_name = new_target.split("/", 1)
-        new_name = new_name.strip()
-    else:
-        new_name = new_target
-    feature_dir = resolve_feature(old_name, app=app)
-    if not feature_dir or not feature_dir.exists():
-        print(f"[Orchestrator] Feature not found: {old_name}")
-        return CommandResult(success=False)
-    parent = feature_dir.parent
-    if new_domain:
-        base = app_features_dir(app) if app else FEATURES_DIR
-        new_dir = base / new_domain / new_name
-    else:
-        new_dir = parent / new_name
+    old_dir = old_target.dir
+    new_dir = new_target.dir
     if new_dir.exists():
-        print(f"[Orchestrator] Target '{new_name}' already exists at {new_dir}")
+        print(f"[Orchestrator] Target '{new_target.name}' already exists at {new_dir}")
         return CommandResult(success=False)
-    old_name_disk = feature_dir.name
-    print(f"[Orchestrator] Moving {old_name_disk} -> {new_name}...")
+    old_name_disk = old_target.name
+    print(f"[Orchestrator] Moving {old_name_disk} -> {new_target.name}...")
     new_dir.parent.mkdir(parents=True, exist_ok=True)
-    feature_dir.rename(new_dir)
-    features = load_features_config()
-    known = features.get("known_features", {})
-    if old_name_disk in known:
-        old_domain = known.pop(old_name_disk)
-        known[new_name] = new_domain or old_domain
-        features["known_features"] = known
-        keywords = features.get("domain_keywords", {})
-        stale = [k for k, v in keywords.items() if len(v) >= 2 and v[1] == old_name_disk]
-        for k in stale:
-            del keywords[k]
-        with open(FEATURES_CONFIG, "w") as f:
-            json.dump(features, f, indent=2)
-        print(f"[Orchestrator] Updated features.json: {old_name_disk} -> {new_name}")
+    old_dir.rename(new_dir)
+    unregister_feature(old_target.name, old_dir, old_target.config_path)
+    register_target(new_target)
     print(f"[Orchestrator] Running tests...")
     result = subprocess.run(
         ["uv", "run", "pytest", "tests/", "--ignore=tests/test_session_lifecycle.py", "--ignore=tests/test_links.py", "-q"],
@@ -462,15 +333,13 @@ def _cmd_move(action: str, rest: str, app: str) -> CommandResult:
         print("[Orchestrator] Tests failed after rename. Check output above.")
     current = current_branch()
     merged = False
-    old_dom = _domain_of(feature_dir)
-    new_dom = new_domain or old_dom
-    old_branch = f"{old_dom}/{old_name_disk}" if old_dom else old_name_disk
-    new_branch = f"{new_dom}/{new_name}" if new_dom else new_name
+    old_branch = f"{old_target.domain}/{old_name_disk}"
+    new_branch = f"{new_target.domain}/{new_target.name}"
     if old_branch == current:
         print(f"[Orchestrator] Renaming branch {old_branch} -> {new_branch}...")
         subprocess.run(["git", "branch", "-m", new_branch], cwd=str(REPO_ROOT))
         subprocess.run(["git", "add", str(new_dir)], cwd=str(REPO_ROOT))
-        subprocess.run(["git", "commit", "-m", f"move: {old_name_disk} -> {new_name}"], capture_output=True, cwd=str(REPO_ROOT))
+        subprocess.run(["git", "commit", "-m", f"move: {old_name_disk} -> {new_target.name}"], capture_output=True, cwd=str(REPO_ROOT))
         if test_ok:
             print(f"[Orchestrator] Merging {new_branch} to main...")
             subprocess.run(["git", "push", "origin", new_branch], capture_output=True, cwd=str(REPO_ROOT))
@@ -484,10 +353,36 @@ def _cmd_move(action: str, rest: str, app: str) -> CommandResult:
         else:
             print(f"[Orchestrator] Tests failed — branch moved to {new_branch}, not merged.")
     if not merged:
-        print(f"[Orchestrator] Moved {old_name_disk} -> {new_name}. git add + commit manually if needed.")
+        print(f"[Orchestrator] Moved {old_name_disk} -> {new_target.name}. git add + commit manually if needed.")
         return CommandResult(success=test_ok, next_action=f'git add + commit the move, then merge {new_branch} to main')
-    label = f"{new_dom}/{new_name}" if new_dom else new_name
+    label = f"{new_target.domain}/{new_target.name}"
     return CommandResult(next_action=f'scan to see {label} on main')
+
+
+def _split_move_target(target_str: str) -> tuple[str, str]:
+    t = target_str.strip().strip('"').strip("'")
+    if "/" in t:
+        domain, name = t.split("/", 1)
+        return domain.strip(), name.strip()
+    return "", t.strip()
+
+
+def _resolve_do(project: ProjectFeatures, action: str, rest: str, app: str) -> tuple[Optional[FeatureTarget], str]:
+    raw = action or rest
+    if not raw:
+        raw = feature_from_branch(current_branch())
+    if not raw:
+        return None, ""
+    return project.resolve(raw, app=app), raw
+
+
+def _resolve_delete(project: ProjectFeatures, action: str, rest: str, app: str) -> tuple[Optional[FeatureTarget], str]:
+    raw = action or rest
+    if not raw:
+        raw = feature_from_branch(current_branch())
+    if not raw:
+        return None, ""
+    return project.resolve(raw, app=app), raw
 
 
 _HELP_TEXT = """Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]
@@ -516,13 +411,10 @@ Examples:
 
 def dispatch(request: str, prompt_content: str = "", no_controller: bool = False, app: str = "") -> CommandResult:
     prefix, domain, action, rest = _parse_request(request)
+    project = load_project(REPO_ROOT)
 
     if domain and not app:
-        _cfg = load_features_config()
-        for _app_name, _app_cfg in _cfg.get("apps", {}).items():
-            if domain in _app_cfg.get("domains", []):
-                app = _app_name
-                break
+        app = project.app_for_domain(domain)
 
     if prefix not in _KNOWN_PREFIXES:
         print("[Orchestrator] Unknown command.")
@@ -540,25 +432,41 @@ def dispatch(request: str, prompt_content: str = "", no_controller: bool = False
         return _cmd_scan()
 
     if prefix == "feature":
-        return _cmd_feature(domain, action, rest, prompt_content, no_controller, app)
+        target = project.target_for_new(action, domain, app)
+        return _cmd_feature(target, rest, prompt_content, no_controller)
 
     if prefix == "do":
-        return _cmd_do(action, rest, app)
+        target, raw = _resolve_do(project, action, rest, app)
+        return _cmd_do(target, raw, app)
 
     if prefix == "modify":
-        return _cmd_modify(action, rest, prompt_content, app)
+        implicit = not action
+        raw = action or rest
+        if implicit:
+            raw = _resolve_current_file() or ""
+        res = project.resolve_modify(raw, app=app, implicit=implicit) if raw else None
+        return _cmd_modify(res, raw, rest, prompt_content, implicit)
 
     if prefix == "delete":
-        return _cmd_delete(action, rest, app)
+        target, raw = _resolve_delete(project, action, rest, app)
+        return _cmd_delete(target, raw, app)
 
     if prefix == "merge":
-        return _cmd_merge(action, rest)
+        branch = current_branch()
+        name = feature_from_branch(branch)
+        target = project.resolve(name) if name else None
+        return _cmd_merge(branch, name, target, action, rest)
 
     if prefix == "undo":
         return _cmd_undo(action, rest)
 
     if prefix == "move":
-        return _cmd_move(action, rest, app)
+        old_target = project.resolve(action, app=app) if action else None
+        new_target = None
+        if old_target and rest:
+            new_domain, new_name = _split_move_target(rest)
+            new_target = project.target_for_new(new_name, new_domain or old_target.domain, app)
+        return _cmd_move(old_target, new_target, rest, app)
 
     print("[Orchestrator] Unknown request.")
     print()
