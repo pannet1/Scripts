@@ -35,7 +35,7 @@ class CommandResult:
 
 
 _KNOWN_PREFIXES = frozenset({
-    "new", "feature", "modify", "do", "delete", "move", "merge", "undo", "deploy", "init", "scan",
+    "new", "modify", "do", "delete", "move", "merge", "undo", "deploy", "init", "scan",
 })
 
 
@@ -72,7 +72,7 @@ Branch commands (run from the feature branch):
 
 Other:
   move     <OldDomain/OldFeature> <NewDomain/NewFeature>
-  init                                   initialize project
+  init                                   create new project
   scan                                   discover existing features
 
 Examples:
@@ -94,7 +94,10 @@ def _prompt_required_result(prefix: str, name: str) -> CommandResult:
     return CommandResult(success=False)
 
 
-def _cmd_init() -> CommandResult:
+def _cmd_init(action: str = "", rest: str = "") -> CommandResult:
+    if action or rest:
+        print("[Orchestrator] init takes no target — it creates a new project.")
+        return CommandResult()
     init_project()
     return CommandResult(next_action='./.agents/orchestrator.py new YourFeature')
 
@@ -426,11 +429,11 @@ def dispatch(request: str, prompt_content: str = "", no_controller: bool = False
         print(_HELP_TEXT)
         return CommandResult(success=False)
 
-    if prefix == "init" and not action:
-        return _cmd_init()
+    if prefix == "init":
+        return _cmd_init(action, rest)
 
     display_prefix = "feature"
-    if prefix in ("new", "init"):
+    if prefix == "new":
         display_prefix = prefix
         prefix = "feature"
 

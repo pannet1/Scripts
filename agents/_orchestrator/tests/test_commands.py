@@ -57,6 +57,12 @@ class TestParseRequest:
     def test_scan(self) -> None:
         assert _parse_request("scan") == ("scan", "", "", "")
 
+    def test_bare_init(self) -> None:
+        assert _parse_request("init") == ("init", "", "", "")
+
+    def test_init_with_target(self) -> None:
+        assert _parse_request("init Payments") == ("init", "", "Payments", "")
+
     def test_legacy_slash_verb_not_parsed(self) -> None:
         assert _parse_request("modify/shared/Payment") == ("modify/shared/payment", "", "", "")
 
@@ -296,8 +302,24 @@ class TestUndoHandler:
         assert "matches main exactly" in out
 
 
+class TestInitHandler:
+
+    def test_init_with_target_rejected(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
+        monkeypatch.setattr("_orchestrator.commands.init_project", lambda: pytest.fail("init_project should not run"))
+        dispatch("init Payments")
+        assert "init takes no target" in capsys.readouterr().out
+
+    def test_init_runs_init_project(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
+        calls: list[str] = []
+        monkeypatch.setattr("_orchestrator.commands.init_project", lambda: calls.append("init"))
+        dispatch("init")
+        assert calls == ["init"]
+
+
 class TestKnownPrefixes:
 
     def test_includes_all_commands(self) -> None:
-        expected = {"new", "feature", "do", "modify", "delete", "move", "merge", "undo", "deploy", "init", "scan"}
+        expected = {"new", "do", "modify", "delete", "move", "merge", "undo", "deploy", "init", "scan"}
         assert _KNOWN_PREFIXES == expected
