@@ -12,6 +12,7 @@ from _orchestrator.commands import (
     _parse_request,
     _resolve_input_to_feature,
     orchestrate,
+    scaffold_new_feature,
 )
 from _orchestrator.git_ops import check_branch
 
@@ -156,15 +157,25 @@ class TestMoveHandler:
         assert "Usage: move <OldDomain/OldFeature> <NewDomain/NewFeature>" in capsys.readouterr().out
 
 
+class TestScaffoldBareFeature:
+
+    def test_bare_feature_lands_in_nodomain(self, tmp_path: Path, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.FEATURES_DIR", tmp_path / "features")
+        result = scaffold_new_feature("", "Payments", "")
+        assert result == tmp_path / "features" / "nodomain" / "Payments"
+        assert (tmp_path / "features" / "nodomain" / "Payments" / "spec.md").exists()
+        assert not (tmp_path / "features" / "Payments").exists()
+
+
 class TestDomainOf:
 
     def test_domain_from_feature_dir(self, tmp_path: Path, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.FEATURES_DIR", tmp_path / "features")
         assert _domain_of(tmp_path / "features" / "shared" / "Payment") == "shared"
 
-    def test_no_domain_for_root_feature(self, tmp_path: Path, monkeypatch: object) -> None:
+    def test_root_level_feature_assumes_nodomain(self, tmp_path: Path, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.FEATURES_DIR", tmp_path / "features")
-        assert _domain_of(tmp_path / "features" / "Payment") == ""
+        assert _domain_of(tmp_path / "features" / "Payment") == "nodomain"
 
     def test_none_returns_empty(self) -> None:
         assert _domain_of(None) == ""
@@ -197,6 +208,14 @@ class TestCheckBranchNaming:
         calls = self._fake_git(monkeypatch)
         check_branch("Payments", "")
         assert ["git", "checkout", "-b", "Payments"] in calls
+
+    def test_branch_for_bare_feature_uses_nodomain(self, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
+        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", lambda: [])
+        monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
+        calls = self._fake_git(monkeypatch)
+        check_branch("Payments", "nodomain")
+        assert ["git", "checkout", "-b", "nodomain/Payments"] in calls
 
     def test_no_operation_prefix_in_branch_name(self, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
