@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -6,6 +7,7 @@ import pytest
 from _orchestrator.commands import (
     _KNOWN_PREFIXES,
     _extract_feature_from_path,
+    _feature_from_branch,
     _parse_request,
     _resolve_input_to_feature,
     orchestrate,
@@ -35,8 +37,11 @@ class TestParseRequest:
     def test_delete_bare_feature(self) -> None:
         assert _parse_request("delete Payment") == ("delete", "", "Payment", "")
 
-    def test_rename_two_tokens(self) -> None:
-        assert _parse_request("rename OldName NewName") == ("rename", "", "OldName", "NewName")
+    def test_move_two_tokens(self) -> None:
+        assert _parse_request("move OldName NewName") == ("move", "", "OldName", "NewName")
+
+    def test_move_across_domains(self) -> None:
+        assert _parse_request("move shared/Payment vps/Payments") == ("move", "shared", "Payment", "vps/Payments")
 
     def test_bare_merge(self) -> None:
         assert _parse_request("merge") == ("merge", "", "", "")
@@ -55,6 +60,100 @@ class TestParseRequest:
 
     def test_empty_request(self) -> None:
         assert _parse_request("") == ("", "", "", "")
+
+
+class TestFeatureFromBranch:
+
+    def test_feature_prefix(self) -> None:
+        assert _feature_from_branch("feature/Payment") == "Payment"
+
+    def test_modify_prefix(self) -> None:
+        assert _feature_from_branch("modify/Payment") == "Payment"
+
+    def test_bugfix_prefix(self) -> None:
+        assert _feature_from_branch("bugfix/Payment") == "Payment"
+
+    def test_domain_slash_feature_branch(self) -> None:
+        assert _feature_from_branch("shared/Payment") == "Payment"
+
+    def test_main_returns_empty(self) -> None:
+        assert _feature_from_branch("main") == ""
+
+    def test_plain_branch_returns_empty(self) -> None:
+        assert _feature_from_branch("dev") == ""
+
+
+class TestDoDeleteInferFromBranch:
+
+    def test_do_without_target_on_feature_branch(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "feature/Payment")
+        monkeypatch.setattr("_orchestrator.commands._find_feature_or_resolve", lambda raw, app="": None)
+        orchestrate("do")
+        assert "Feature not found: Payment" in capsys.readouterr().out
+
+    def test_do_without_target_on_main(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
+        orchestrate("do")
+        assert "cannot infer from current branch" in capsys.readouterr().out
+
+    def test_delete_without_target_on_modify_branch(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "modify/Payment")
+        monkeypatch.setattr("_orchestrator.commands.resolve_feature", lambda raw, app="": None)
+        calls: list[list[str]] = []
+
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            calls.append(cmd)
+            return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+        monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
+        orchestrate("delete")
+        out = capsys.readouterr().out
+        assert "Deleted branch: modify/Payment" in out
+        assert not any("stash" in c for c in calls)
+
+
+class TestMoveHandler:
+
+    def _patch_env(self, tmp_path: Path, monkeypatch: object, known: dict[str, str]) -> None:
+        (tmp_path / "features" / "shared" / "Payment").mkdir(parents=True)
+        (tmp_path / "features" / "shared" / "Payment" / "spec.md").touch()
+        cfg = tmp_path / ".features.json"
+        cfg.write_text(json.dumps({"known_features": known}))
+        monkeypatch.setattr("_orchestrator.commands.FEATURES_DIR", tmp_path / "features")
+        monkeypatch.setattr("_orchestrator.commands.FEATURES_CONFIG", cfg)
+        monkeypatch.setattr("_orchestrator.commands.load_features_config", lambda: json.loads(cfg.read_text()))
+        monkeypatch.setattr("_orchestrator.features.FEATURES_DIR", tmp_path / "features")
+
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+        monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
+
+    def test_move_within_domain(self, tmp_path: Path, capsys: object, monkeypatch: object) -> None:
+        self._patch_env(tmp_path, monkeypatch, {"Payment": "shared"})
+        orchestrate("move Payment Payments")
+        out = capsys.readouterr().out
+        assert "Moving Payment -> Payments" in out
+        assert (tmp_path / "features" / "shared" / "Payments" / "spec.md").exists()
+        assert not (tmp_path / "features" / "shared" / "Payment").exists()
+        data = json.loads((tmp_path / ".features.json").read_text())
+        assert data["known_features"] == {"Payments": "shared"}
+
+    def test_move_across_domains(self, tmp_path: Path, capsys: object, monkeypatch: object) -> None:
+        self._patch_env(tmp_path, monkeypatch, {"Payment": "shared"})
+        orchestrate("move Payment vps/Payments")
+        out = capsys.readouterr().out
+        assert "Moving Payment -> Payments" in out
+        assert (tmp_path / "features" / "vps" / "Payments" / "spec.md").exists()
+        assert not (tmp_path / "features" / "shared" / "Payment").exists()
+        data = json.loads((tmp_path / ".features.json").read_text())
+        assert data["known_features"] == {"Payments": "vps"}
+
+    def test_move_missing_target_usage(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.resolve_feature", lambda raw, app="": None)
+        orchestrate("move Payment")
+        assert "Usage: move <domain/OldName> <domain/NewName>" in capsys.readouterr().out
 
 
 class TestMergeGuard:
@@ -84,7 +183,7 @@ class TestMergeGuard:
 class TestKnownPrefixes:
 
     def test_includes_all_commands(self) -> None:
-        expected = {"new", "feature", "do", "modify", "bugfix", "delete", "merge", "deploy", "scaffold", "scan", "rename"}
+        expected = {"new", "feature", "do", "modify", "bugfix", "delete", "move", "merge", "deploy", "scaffold", "scan"}
         assert _KNOWN_PREFIXES == expected
 
 
