@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from _orchestrator.commands import orchestrate
+from _orchestrator.commands import dispatch
 from _orchestrator.helpers import (
     _KNOWN_PREFIXES,
     _domain_of,
@@ -88,12 +88,12 @@ class TestDoDeleteInferFromBranch:
     def test_do_without_target_on_feature_branch(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "feature/Payment")
         monkeypatch.setattr("_orchestrator.commands._find_feature_or_resolve", lambda raw, app="": None)
-        orchestrate("do")
+        dispatch("do")
         assert "Feature not found: Payment" in capsys.readouterr().out
 
     def test_do_without_target_on_main(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
-        orchestrate("do")
+        dispatch("do")
         assert "cannot infer from current branch" in capsys.readouterr().out
 
     def test_delete_without_target_on_modify_branch(self, capsys: object, monkeypatch: object) -> None:
@@ -107,7 +107,7 @@ class TestDoDeleteInferFromBranch:
             return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
 
         monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
-        orchestrate("delete")
+        dispatch("delete")
         out = capsys.readouterr().out
         assert "Nothing to delete: feature 'Payment' not found." in out
         assert not any("stash" in c for c in calls)
@@ -133,7 +133,7 @@ class TestMoveHandler:
 
     def test_move_within_domain(self, tmp_path: Path, capsys: object, monkeypatch: object) -> None:
         self._patch_env(tmp_path, monkeypatch, {"Payment": "shared"})
-        orchestrate("move Payment Payments")
+        dispatch("move Payment Payments")
         out = capsys.readouterr().out
         assert "Moving Payment -> Payments" in out
         assert (tmp_path / "features" / "shared" / "Payments" / "spec.md").exists()
@@ -143,7 +143,7 @@ class TestMoveHandler:
 
     def test_move_across_domains(self, tmp_path: Path, capsys: object, monkeypatch: object) -> None:
         self._patch_env(tmp_path, monkeypatch, {"Payment": "shared"})
-        orchestrate("move Payment vps/Payments")
+        dispatch("move Payment vps/Payments")
         out = capsys.readouterr().out
         assert "Moving Payment -> Payments" in out
         assert (tmp_path / "features" / "vps" / "Payments" / "spec.md").exists()
@@ -153,7 +153,7 @@ class TestMoveHandler:
 
     def test_move_missing_target_usage(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.resolve_feature", lambda raw, app="": None)
-        orchestrate("move Payment")
+        dispatch("move Payment")
         assert "Usage: move <OldDomain/OldFeature> <NewDomain/NewFeature>" in capsys.readouterr().out
 
 
@@ -239,23 +239,23 @@ class TestMergeGuard:
 
     def test_merge_on_main_aborts(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
-        orchestrate("merge")
+        dispatch("merge")
         out = capsys.readouterr().out
         assert "Checkout a feature branch before running merge" in out
 
     def test_merge_main_variant_aborts(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main*")
-        orchestrate("merge")
+        dispatch("merge")
         assert "Checkout a feature branch before running merge" in capsys.readouterr().out
 
     def test_merge_detached_head_aborts(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "")
-        orchestrate("merge")
+        dispatch("merge")
         assert "Detached HEAD" in capsys.readouterr().out
 
     def test_merge_with_target_on_feature_branch_aborts(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "modify/Payment")
-        orchestrate("merge shared/Payment")
+        dispatch("merge shared/Payment")
         assert "merge takes no target" in capsys.readouterr().out
 
 
@@ -263,17 +263,17 @@ class TestUndoHandler:
 
     def test_undo_on_main_aborts(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
-        orchestrate("undo")
+        dispatch("undo")
         assert "Checkout a feature branch before running undo" in capsys.readouterr().out
 
     def test_undo_detached_head_aborts(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "")
-        orchestrate("undo")
+        dispatch("undo")
         assert "Detached HEAD" in capsys.readouterr().out
 
     def test_undo_with_target_rejected(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "shared/Payment")
-        orchestrate("undo shared/Payment")
+        dispatch("undo shared/Payment")
         assert "undo takes no target" in capsys.readouterr().out
 
     def test_undo_resets_branch_to_main(self, capsys: object, monkeypatch: object) -> None:
@@ -285,7 +285,7 @@ class TestUndoHandler:
             return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
 
         monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
-        orchestrate("undo")
+        dispatch("undo")
         out = capsys.readouterr().out
         assert ["git", "fetch", "origin"] in calls
         assert ["git", "checkout", "main"] in calls

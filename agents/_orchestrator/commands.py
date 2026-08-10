@@ -514,7 +514,7 @@ Examples:
 """
 
 
-def orchestrate(request: str, prompt_content: str = "", no_controller: bool = False, app: str = "") -> CommandResult:
+def dispatch(request: str, prompt_content: str = "", no_controller: bool = False, app: str = "") -> CommandResult:
     prefix, domain, action, rest = _parse_request(request)
 
     if domain and not app:
