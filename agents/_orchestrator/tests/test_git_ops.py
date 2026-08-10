@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from _orchestrator.git_ops import read_prompt_file, current_branch, branch_exists
+from _orchestrator.git_ops import read_prompt_file, current_branch, branch_exists, merge_branch
 
 
 class TestReadPromptFile:
@@ -49,3 +49,54 @@ class TestBranchExists:
 
     def test_nonexistent_returns_false(self) -> None:
         assert branch_exists("nonexistent_branch_xyzzy_123") is False
+
+
+class TestMergeBranch:
+
+    def _fake_run(self, monkeypatch: object, failures: set[int] | None = None) -> list[list[str]]:
+        failures = failures or set()
+        calls: list[list[str]] = []
+
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            calls.append(cmd)
+            if len(calls) - 1 in failures:
+                return type("R", (), {"returncode": 1, "stdout": "", "stderr": f"boom at step {len(calls) - 1}"})()
+            return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
+        return calls
+
+    def test_runs_full_pipeline_and_deletes_branch(self, monkeypatch: object) -> None:
+        calls = self._fake_run(monkeypatch)
+        ok, err = merge_branch("shared/Payment")
+        assert ok is True
+        assert err == ""
+        assert calls == [
+            ["git", "push", "origin", "shared/Payment"],
+            ["git", "checkout", "main"],
+            ["git", "merge", "shared/Payment"],
+            ["git", "push", "origin", "main"],
+            ["git", "push", "origin", "--delete", "shared/Payment"],
+            ["git", "branch", "-D", "shared/Payment"],
+        ]
+
+    def test_short_circuits_on_push_failure(self, monkeypatch: object) -> None:
+        calls = self._fake_run(monkeypatch, failures={0})
+        ok, err = merge_branch("shared/Payment")
+        assert ok is False
+        assert "git push failed" in err
+        assert len(calls) == 1
+
+    def test_short_circuits_on_merge_failure(self, monkeypatch: object) -> None:
+        calls = self._fake_run(monkeypatch, failures={2})
+        ok, err = merge_branch("shared/Payment")
+        assert ok is False
+        assert "git merge failed" in err
+        assert [c[:2] for c in calls] == [["git", "push"], ["git", "checkout"], ["git", "merge"]]
+
+    def test_still_deletes_branch_when_merge_succeeds_after_retry(self, monkeypatch: object) -> None:
+        calls = self._fake_run(monkeypatch, failures={3})
+        ok, err = merge_branch("shared/Payment")
+        assert ok is False
+        assert "git push main failed" in err
+        assert calls[-1] == ["git", "push", "origin", "main"]

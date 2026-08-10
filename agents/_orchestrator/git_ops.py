@@ -37,6 +37,30 @@ def branch_exists(name: str) -> bool:
     return result.returncode == 0
 
 
+def merge_branch(branch: str) -> tuple[bool, str]:
+    """Push branch, merge into main, push main, delete branch locally and remotely.
+
+    Returns (ok, error_message); error_message is empty on success.
+    """
+    steps = (
+        ("push", ["git", "push", "origin", branch]),
+        ("checkout main", ["git", "checkout", "main"]),
+        ("merge", ["git", "merge", branch]),
+        ("push main", ["git", "push", "origin", "main"]),
+    )
+    for label, cmd in steps:
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
+        if result.returncode != 0:
+            return False, f"git {label} failed: {result.stderr.strip()}"
+        if result.stdout.strip():
+            print(result.stdout.strip())
+    subprocess.run(["git", "push", "origin", "--delete", branch],
+                   capture_output=True, text=True, cwd=str(REPO_ROOT))
+    subprocess.run(["git", "branch", "-D", branch],
+                   capture_output=True, text=True, cwd=str(REPO_ROOT))
+    return True, ""
+
+
 def check_branch(action: str, domain: str = "") -> str:
     branch = current_branch()
 

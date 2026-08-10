@@ -5,12 +5,9 @@ from unittest.mock import patch
 import pytest
 
 from _orchestrator.commands import dispatch
+from _orchestrator.commands import _KNOWN_PREFIXES, _parse_request
 from _orchestrator.feature import ProjectFeatures, feature_from_branch, load_project
-from _orchestrator.helpers import (
-    _KNOWN_PREFIXES,
-    _parse_request,
-    scaffold_new_feature,
-)
+from _orchestrator.scaffold import scaffold_new_feature
 from _orchestrator.git_ops import check_branch
 
 
