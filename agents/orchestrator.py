@@ -44,7 +44,7 @@ def parse_args() -> argparse.Namespace:
         print("Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]")
         print()
         print("Actions:")
-        print("  new      <Feature> [description]     scaffold new feature")
+        print("  new      <domain/Feature> \"prompt\"   scaffold new feature")
         print("  modify   <domain/Feature> \"prompt\"   amend existing spec")
         print("  bugfix   <domain/Feature> \"prompt\"   document defect")
         print("  do       <domain/Feature>            run backend agent")
