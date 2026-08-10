@@ -104,6 +104,22 @@ def generate_spec_with_ai(domain: str, action: str, prompt: str) -> str | None:
 
 
 def _zen_chat(headers: dict, payload: dict) -> str | None:
+    from .llm import llm_complete
+
+    system = ""
+    user_parts: list[str] = []
+    for m in payload.get("messages", []):
+        role = m.get("role", "")
+        content = m.get("content", "")
+        if role == "system":
+            system = content
+        elif content:
+            user_parts.append(content)
+    result = llm_complete("\n\n".join(user_parts), system=system)
+    if result is not None:
+        return result
+    print("[Orchestrator] omp transport unavailable/failed — falling back to Zen HTTP.", file=sys.stderr)
+
     fallbacks = ZEN_FALLBACKS[:]
     selected = payload["model"]
     if selected in fallbacks:
