@@ -11,12 +11,12 @@ from _orchestrator.config import MODEL_CONFIG
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Orchestrator Agent -- decompose and dispatch feature work.",
-        usage="%(prog)s [domain/]action/FeatureName [--prompt <file>]",
+        usage="%(prog)s <action> <domain/Feature> [inline prompt] [--prompt <file>]",
     )
     parser.add_argument(
         "command",
         nargs="*",
-        help="e.g. new/Payments / vps/modify/Subscription / admin/do/Payments",
+        help="e.g. new Payments / modify shared/Payment / do Payment",
     )
     parser.add_argument(
         "--prompt", "-p",
@@ -41,24 +41,25 @@ def parse_args() -> argparse.Namespace:
     if not args.command:
         parser.print_help()
         print()
-        print("Actions (action/FeatureName):")
-        print("  ./.agents/orchestrator.py YourFeature              (auto-resolves to modify/)")
-        print("  ./.agents/orchestrator.py new/YourFeature          (scaffold new feature)")
-        print("  ./.agents/orchestrator.py do/YourFeature           (run backend agent)")
-        print("  ./.agents/orchestrator.py modify/YourFeature       (amend existing spec)")
-        print("  ./.agents/orchestrator.py bugfix/YourFeature       (document defect)")
-        print("  ./.agents/orchestrator.py delete/YourFeature       (remove feature)")
-        print("  ./.agents/orchestrator.py merge/YourFeature        (merge to main)")
-        print("  ./.agents/orchestrator.py rename/OldName NewName   (rename feature)")
+        print("Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]")
         print()
-        print("Domain-specific (domain/action/FeatureName):")
-        print("  ./.agents/orchestrator.py admin/new/Payments       (scaffold in admin domain)")
-        print("  ./.agents/orchestrator.py vps/modify/Subscription  (modify in vps domain)")
-        print("  ./.agents/orchestrator.py admin/do/Payments        (run in admin domain)")
+        print("Actions:")
+        print("  new      <Feature> [description]     scaffold new feature")
+        print("  modify   <domain/Feature> \"prompt\"   amend existing spec")
+        print("  bugfix   <domain/Feature> \"prompt\"   document defect")
+        print("  do       <domain/Feature>            run backend agent")
+        print("  delete   <domain/Feature>            remove feature")
+        print("  rename   <OldName> <NewName>         rename feature")
         print()
         print("Utilities:")
-        print("  ./.agents/orchestrator.py scaffold                 (init project)")
-        print("  ./.agents/orchestrator.py scan                     (discover existing features)")
+        print("  merge                                merge current branch to main")
+        print("  scaffold                             init project")
+        print("  scan                                 discover existing features")
+        print()
+        print("Examples:")
+        print("  ./.agents/orchestrator.py new Payments \"auction payment wallet flow\"")
+        print("  ./.agents/orchestrator.py modify shared/Payment \"share screenshot separately\"")
+        print("  ./.agents/orchestrator.py do Payment")
         sys.exit(1)
     return args
 
