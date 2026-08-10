@@ -510,6 +510,10 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         parts = verb.split("/", 2)
         if len(parts) == 3 and parts[0].lower() not in _KNOWN_PREFIXES:
             domain, prefix, action = parts[0], parts[1].lower(), parts[2]
+        elif len(parts) == 3:
+            prefix = parts[0].lower()
+            domain = parts[1]
+            action = parts[2]
         elif len(parts) >= 2:
             prefix = parts[0].lower()
             action = parts[1]
