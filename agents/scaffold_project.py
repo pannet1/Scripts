@@ -593,7 +593,7 @@ def scaffold(stack: dict, force: bool = False) -> int:
 
     print()
     print("Done. Project scaffolded.")
-    print(f"  Next: write prompt.md, then run: python3 agents/orchestrator.py new/YourFeature --prompt prompt.md")
+    print(f"  Next: write prompt.md, then run: python3 agents/orchestrator.py new YourFeature --prompt prompt.md")
     return 0
 
 

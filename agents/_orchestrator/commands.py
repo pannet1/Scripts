@@ -54,12 +54,12 @@ def resolve_change_prompt(rest: str, prompt_content: str, feature_name: str, pre
         return prompt_content
     if not rest:
         print("=" * 60)
-        print(f"ERROR: `{prefix}/{feature_name}` requires a prompt.")
+        print(f"ERROR: `{prefix} {feature_name}` requires a prompt.")
         print()
         print("Options:")
-        print(f'  ./.agents/orchestrator.py {prefix}/{feature_name} --prompt path/to/prompt.md')
-        print(f'  ./.agents/orchestrator.py {prefix}/{feature_name} "describe your change in words"')
-        print(f'  ./.agents/orchestrator.py {prefix}/{feature_name} path/to/prompt.md')
+        print(f'  ./.agents/orchestrator.py {prefix} {feature_name} --prompt path/to/prompt.md')
+        print(f'  ./.agents/orchestrator.py {prefix} {feature_name} "describe your change in words"')
+        print(f'  ./.agents/orchestrator.py {prefix} {feature_name} path/to/prompt.md')
         print("=" * 60)
         sys.exit(1)
     path = Path(rest)
@@ -199,7 +199,7 @@ def amend_spec(feature_dir: Path, heading: str, branch_prefix: str, feature_name
     display = feature_name or feature_dir.name
     print(f"\n{'='*60}\n{heading} for {display}")
     print(f"Spec amended. Run do when ready:\n")
-    print(f"  ./.agents/orchestrator.py do/{display}")
+    print(f"  ./.agents/orchestrator.py do {display}")
     print("=" * 60)
 
 
@@ -416,7 +416,7 @@ def do_scaffold() -> None:
     else:
         print("[Orchestrator] Some violations remain (see above). Re-run scaffold or fix manually.")
     print()
-    print(f"Next: ./.agents/orchestrator.py new/YourFeature")
+    print(f"Next: ./.agents/orchestrator.py new YourFeature")
 
 
 _KNOWN_PREFIXES = frozenset({
@@ -506,17 +506,15 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
     prefix = verb.lower()
     action = rest.strip()
 
-    if "/" in verb:
-        parts = verb.split("/", 2)
-        if len(parts) == 3 and parts[0].lower() not in _KNOWN_PREFIXES:
-            domain, prefix, action = parts[0], parts[1].lower(), parts[2]
-        elif len(parts) == 3:
-            prefix = parts[0].lower()
-            domain = parts[1]
-            action = parts[2]
-        elif len(parts) >= 2:
-            prefix = parts[0].lower()
-            action = parts[1]
+    if prefix in _KNOWN_PREFIXES and rest:
+        target, _, tail = rest.partition(" ")
+        target = target.strip()
+        if "/" in target:
+            domain, action = target.split("/", 1)
+            action = action.strip()
+        else:
+            action = target
+        rest = tail.strip()
 
     if domain and not app:
         _cfg = load_features_config()
@@ -528,24 +526,26 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
     if prefix not in _KNOWN_PREFIXES:
         print("[Orchestrator] Unknown command.")
         print()
-        print("Actions (action/FeatureName):")
-        print('  ./.agents/orchestrator.py YourFeature              (auto-resolves to modify/)')
-        print('  ./.agents/orchestrator.py new/YourFeature          (scaffold new feature)')
-        print('  ./.agents/orchestrator.py do/YourFeature           (run backend agent)')
-        print('  ./.agents/orchestrator.py modify/YourFeature       (amend existing spec)')
-        print('  ./.agents/orchestrator.py bugfix/YourFeature       (document defect)')
-        print('  ./.agents/orchestrator.py delete/YourFeature       (remove feature)')
-        print('  ./.agents/orchestrator.py merge/YourFeature        (merge to main)')
-        print('  ./.agents/orchestrator.py rename/OldName NewName   (rename feature)')
+        print("Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]")
         print()
-        print("Domain-specific (domain/action/FeatureName):")
-        print('  ./.agents/orchestrator.py admin/new/Payments       (scaffold in admin domain)')
-        print('  ./.agents/orchestrator.py vps/modify/Subscription  (modify in vps domain)')
-        print('  ./.agents/orchestrator.py admin/do/Payments        (run in admin domain)')
+        print("Actions:")
+        print('  new      <Feature> ["description"]     scaffold new feature')
+        print('  modify   <domain/Feature> "prompt"     amend existing spec')
+        print('  bugfix   <domain/Feature> "prompt"     document defect')
+        print('  do       <domain/Feature>              run backend agent')
+        print('  delete   <domain/Feature>              remove feature')
+        print('  rename   <OldName> <NewName>           rename feature')
         print()
         print("Utilities:")
-        print('  ./.agents/orchestrator.py scaffold                 (init project)')
-        print('  ./.agents/orchestrator.py scan                     (discover existing features)')
+        print('  merge                                  merge current branch to main')
+        print('  scaffold                               init project')
+        print('  scan                                   discover existing features')
+        print()
+        print("Examples:")
+        print('  ./.agents/orchestrator.py new Payments "auction payment wallet flow"')
+        print('  ./.agents/orchestrator.py modify shared/Payment "share screenshot separately"')
+        print('  ./.agents/orchestrator.py do Payment')
+        print()
         sys.exit(1)
 
     if prefix == "scaffold" and not action:
@@ -575,7 +575,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                 register_feature_in_json(action, domain, app=app)
             print("=" * 60)
             print("THEN RUN:")
-            suffix = f"{domain}/do/{action}" if domain else f"do/{action}"
+            suffix = f"do {domain}/{action}" if domain else f"do {action}"
             print(f"  ./.agents/orchestrator.py {suffix}")
             print("=" * 60)
         else:
@@ -587,11 +587,11 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         feature_dir = _find_feature_or_resolve(user_feature_name, app=app)
         if not feature_dir:
             print(f"[Orchestrator] Feature not found: {user_feature_name}.")
-            print(f"  First run: ./.agents/orchestrator.py new/{user_feature_name}")
+            print(f"  First run: ./.agents/orchestrator.py new {user_feature_name}")
             return
         if not (feature_dir / "spec.md").exists():
             print(f"[Orchestrator] No spec.md found.")
-            print(f"  First run: ./.agents/orchestrator.py new/{user_feature_name}")
+            print(f"  First run: ./.agents/orchestrator.py new {user_feature_name}")
             return
 
         display = feature_dir.name
@@ -744,7 +744,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                         return
                 print(f"[Orchestrator] Feature '{derived}' not found.")
                 return
-            print(f"[Orchestrator] No feature name given (modify/ expects a feature name, inline prompt, prompt file, or nvim context).")
+            print("[Orchestrator] No feature name given (modify expects a domain/Feature target, inline prompt, prompt file, or nvim context).")
             return
         feature_dir = _find_feature_or_resolve(action, app=app)
         if not feature_dir:
@@ -815,65 +815,38 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         return
 
     if prefix == "merge":
-        feature_name = action or rest
-        if not feature_name:
-            branch = current_branch()
-            for br_prefix in ("feature/", "modify/", "bugfix/"):
-                if branch.startswith(br_prefix):
-                    feature_name = branch[len(br_prefix):]
-                    break
-        if not feature_name:
-            print("[Orchestrator] No feature name given and cannot infer from current branch.")
-            return
-        feature_dir = find_feature_dir(feature_name)
-        if not feature_dir or not feature_dir.exists():
-            print(f"[Orchestrator] Feature not found: {feature_name}")
+        if action or rest:
+            print("[Orchestrator] merge takes no target — it merges the current branch to main.")
             return
         branch = current_branch()
         if branch == "main":
-            candidates = [br_prefix + feature_name for br_prefix in ("feature/", "modify/", "bugfix/")]
-            for candidate in candidates:
-                if branch_exists(candidate):
-                    branch = candidate
-                    print(f"[Orchestrator] Checking out {branch}...")
-                    subprocess.run(["git", "checkout", branch],
-                                   capture_output=True, cwd=str(REPO_ROOT))
-                    break
-            if branch == "main":
-                searched = ", ".join(candidates)
-                print(f"[Orchestrator] No branch found for '{feature_name}' (searched: {searched}).")
-                already = subprocess.run(
-                    ["git", "log", "main", "--oneline", "-3", "--", str(feature_dir)],
-                    capture_output=True, text=True, cwd=str(REPO_ROOT),
-                ).stdout.strip()
-                if already:
-                    print("[Orchestrator] The feature's changes are already on main:")
-                    for line in already.splitlines():
-                        print(f"  {line}")
-                    print("[Orchestrator] Nothing to merge. Recreate the branch with 'git branch <candidate> <hash>' only if you need to redo the merge.")
-                else:
-                    print(f"[Orchestrator] Create it with modify/{feature_name}, or checkout the feature branch and run merge.")
-                return
-        if branch.startswith("bugfix/"):
-            commit_type = "fix"
-        else:
-            commit_type = "feat"
-        print(f"[Orchestrator] Staging {feature_dir}...")
-        r1 = subprocess.run(["git", "add", str(feature_dir)], capture_output=True, text=True, cwd=str(REPO_ROOT))
-        if r1.returncode != 0:
-            print(f"[Orchestrator] git add failed: {r1.stderr.strip()}")
+            print("[Orchestrator] You are already on main. Nothing to merge.")
             return
-        msg_body = f"{commit_type}: {feature_name}"
-        print(f"[Orchestrator] Committing: {msg_body}")
-        r2 = subprocess.run(["git", "commit", "-m", msg_body], capture_output=True, text=True, cwd=str(REPO_ROOT))
-        if r2.returncode != 0:
-            combined = r2.stdout + r2.stderr
-            if "nothing to commit" in combined:
-                print("[Orchestrator] Nothing to commit — already up to date.")
+        feature_name = branch.split("/", 1)[1] if "/" in branch else branch
+        feature_dir = find_feature_dir(feature_name)
+        if feature_dir and feature_dir.exists():
+            if branch.startswith("bugfix/"):
+                commit_type = "fix"
             else:
-                print(f"[Orchestrator] git commit failed: {r2.stderr.strip()}")
+                commit_type = "feat"
+            print(f"[Orchestrator] Staging {feature_dir}...")
+            r1 = subprocess.run(["git", "add", str(feature_dir)], capture_output=True, text=True, cwd=str(REPO_ROOT))
+            if r1.returncode != 0:
+                print(f"[Orchestrator] git add failed: {r1.stderr.strip()}")
                 return
-        print(r2.stdout.strip())
+            msg_body = f"{commit_type}: {feature_name}"
+            print(f"[Orchestrator] Committing: {msg_body}")
+            r2 = subprocess.run(["git", "commit", "-m", msg_body], capture_output=True, text=True, cwd=str(REPO_ROOT))
+            if r2.returncode != 0:
+                combined = r2.stdout + r2.stderr
+                if "nothing to commit" in combined:
+                    print("[Orchestrator] Nothing to commit — already up to date.")
+                else:
+                    print(f"[Orchestrator] git commit failed: {r2.stderr.strip()}")
+                    return
+            print(r2.stdout.strip())
+        else:
+            print(f"[Orchestrator] No feature dir for '{feature_name}' — merging branch as-is.")
         print(f"[Orchestrator] Pushing {branch}...")
         r3 = subprocess.run(["git", "push", "origin", branch], capture_output=True, text=True, cwd=str(REPO_ROOT))
         if r3.returncode != 0:
@@ -907,7 +880,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         old_name = action
         new_name = rest.strip().strip('"').strip("'")
         if not old_name or not new_name:
-            print("[Orchestrator] Usage: rename/OldName NewName")
+            print("[Orchestrator] Usage: rename <OldName> <NewName>")
             return
         feature_dir = resolve_feature(old_name)
         if not feature_dir or not feature_dir.exists():
@@ -976,21 +949,24 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
 
     print("[Orchestrator] Unknown request.")
     print()
-    print("Actions (action/FeatureName):")
-    print('  ./.agents/orchestrator.py YourFeature              (auto-resolves to modify/)')
-    print('  ./.agents/orchestrator.py new/YourFeature          (scaffold new feature)')
-    print('  ./.agents/orchestrator.py do/YourFeature           (run backend agent)')
-    print('  ./.agents/orchestrator.py modify/YourFeature       (amend existing spec)')
-    print('  ./.agents/orchestrator.py bugfix/YourFeature       (document defect)')
-    print('  ./.agents/orchestrator.py delete/YourFeature       (remove feature)')
-    print('  ./.agents/orchestrator.py merge/YourFeature        (merge to main)')
-    print('  ./.agents/orchestrator.py rename/OldName NewName   (rename feature)')
+    print("Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]")
     print()
-    print("Domain-specific (domain/action/FeatureName):")
-    print('  ./.agents/orchestrator.py admin/new/Payments       (scaffold in admin domain)')
-    print('  ./.agents/orchestrator.py vps/modify/Subscription  (modify in vps domain)')
-    print('  ./.agents/orchestrator.py admin/do/Payments        (run in admin domain)')
+    print("Actions:")
+    print('  new      <Feature> ["description"]     scaffold new feature')
+    print('  modify   <domain/Feature> "prompt"     amend existing spec')
+    print('  bugfix   <domain/Feature> "prompt"     document defect')
+    print('  do       <domain/Feature>              run backend agent')
+    print('  delete   <domain/Feature>              remove feature')
+    print('  rename   <OldName> <NewName>           rename feature')
     print()
     print("Utilities:")
-    print('  ./.agents/orchestrator.py scaffold                 (init project)')
-    print('  ./.agents/orchestrator.py scan                     (discover existing features)')
+    print('  merge                                  merge current branch to main')
+    print('  scaffold                               init project')
+    print('  scan                                   discover existing features')
+    print()
+    print("Examples:")
+    print('  ./.agents/orchestrator.py new Payments "auction payment wallet flow"')
+    print('  ./.agents/orchestrator.py modify shared/Payment "share screenshot separately"')
+    print('  ./.agents/orchestrator.py do Payment')
+    print()
+    return
