@@ -314,21 +314,36 @@ class TestInitHandler:
         dispatch('init MyProject "python fastapi"')
         assert "init requires a project target" in capsys.readouterr().out
 
-    def test_init_without_prompt_fails(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
-        dispatch("init mypath/MyProject")
-        assert "requires a prompt" in capsys.readouterr().out
-
-    def test_init_creates_project(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_init_creates_folder_and_agents_symlink(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
         monkeypatch.chdir(tmp_path)
-        dispatch('init mypath/MyProject "Python 3.13, FastAPI"')
+        dispatch("init mypath/MyProject")
         proj = tmp_path / "mypath" / "MyProject"
-        assert (proj / ".features.json").exists()
+        assert proj.is_dir()
         assert (proj / ".agents").is_symlink()
-        assert (proj / "features").is_dir()
-        assert (proj / "SPEC.md").exists()
+        assert not (proj / ".features.json").exists()
+        assert not (proj / "features").is_dir()
+        assert not (proj / "SPEC.md").exists()
         assert Path.cwd() == proj
+
+    def test_init_ignores_prompt_argument(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
+        monkeypatch.chdir(tmp_path)
+        dispatch('init mypath/MyProject "Python 3.13, FastAPI, Vue 3"')
+        proj = tmp_path / "mypath" / "MyProject"
+        assert proj.is_dir()
+        assert (proj / ".agents").is_symlink()
+        assert not (proj / ".features.json").exists()
+        assert not (proj / "features").is_dir()
+        assert Path.cwd() == proj
+
+    def test_init_absolute_path(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
+        target = tmp_path / "abs" / "Proj"
+        dispatch(f"init {target}")
+        assert target.is_dir()
+        assert (target / ".agents").is_symlink()
+        assert Path.cwd() == target
 
 
 class TestKnownPrefixes:

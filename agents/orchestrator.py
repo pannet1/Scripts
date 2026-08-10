@@ -43,7 +43,7 @@ def parse_args() -> argparse.Namespace:
         print()
         print("Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]")
         print("Prompt commands (expect an inline prompt):")
-        print('  init     <path>/<project-name> "prompt"  create new project')
+        print('  init     <path>/<project-name>           create new project')
         print("  new      <domain/Feature> \"prompt\"       scaffold new feature")
         print("  modify   <domain/Feature> \"prompt\"       amend existing spec")
         print()
