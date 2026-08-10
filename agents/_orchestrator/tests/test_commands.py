@@ -6,8 +6,54 @@ import pytest
 from _orchestrator.commands import (
     _KNOWN_PREFIXES,
     _extract_feature_from_path,
+    _parse_request,
     _resolve_input_to_feature,
 )
+
+
+class TestParseRequest:
+
+    def test_bare_action_domain_feature(self) -> None:
+        assert _parse_request("modify shared/Payment") == ("modify", "shared", "Payment", "")
+
+    def test_bare_action_domain_feature_with_prompt(self) -> None:
+        assert _parse_request("modify shared/Payment make it seamless") == (
+            "modify", "shared", "Payment", "make it seamless")
+
+    def test_new_accepts_domain_feature_and_prompt(self) -> None:
+        assert _parse_request("new shared/TestFeature test prompt") == (
+            "new", "shared", "TestFeature", "test prompt")
+
+    def test_new_bare_feature_with_prompt(self) -> None:
+        assert _parse_request("new Payments auction payment flow") == (
+            "new", "", "Payments", "auction payment flow")
+
+    def test_do_domain_feature(self) -> None:
+        assert _parse_request("do shared/Payment") == ("do", "shared", "Payment", "")
+
+    def test_delete_bare_feature(self) -> None:
+        assert _parse_request("delete Payment") == ("delete", "", "Payment", "")
+
+    def test_rename_two_tokens(self) -> None:
+        assert _parse_request("rename OldName NewName") == ("rename", "", "OldName", "NewName")
+
+    def test_bare_merge(self) -> None:
+        assert _parse_request("merge") == ("merge", "", "", "")
+
+    def test_merge_with_target(self) -> None:
+        assert _parse_request("merge shared/Payment") == ("merge", "shared", "Payment", "")
+
+    def test_scan(self) -> None:
+        assert _parse_request("scan") == ("scan", "", "", "")
+
+    def test_legacy_slash_verb_not_parsed(self) -> None:
+        assert _parse_request("modify/shared/Payment") == ("modify/shared/payment", "", "", "")
+
+    def test_legacy_domain_slash_action_not_parsed(self) -> None:
+        assert _parse_request("vps/modify/Subscription") == ("vps/modify/subscription", "", "", "")
+
+    def test_empty_request(self) -> None:
+        assert _parse_request("") == ("", "", "", "")
 
 
 class TestKnownPrefixes:
