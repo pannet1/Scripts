@@ -50,6 +50,7 @@ def parse_args() -> argparse.Namespace:
         print("  do                                     run backend agent")
         print("  delete                                 remove feature")
         print("  merge                                  merge current branch to main")
+        print("  undo                                   discard branch, reset to main")
         print()
         print("Other:")
         print("  move     <OldDomain/OldFeature> <NewDomain/NewFeature>")
@@ -73,4 +74,8 @@ if __name__ == "__main__":
             prompt_content = path.read_text().strip()
         else:
             prompt_content = args.prompt.strip()
-    orchestrate(request, prompt_content, no_controller=args.no_controller, app=args.app)
+    result = orchestrate(request, prompt_content, no_controller=args.no_controller, app=args.app)
+    if result.next_action:
+        print()
+        print(f"Next: {result.next_action}")
+    sys.exit(0 if result.success else 1)
