@@ -6,12 +6,14 @@ import pytest
 
 from _orchestrator.commands import (
     _KNOWN_PREFIXES,
+    _domain_of,
     _extract_feature_from_path,
     _feature_from_branch,
     _parse_request,
     _resolve_input_to_feature,
     orchestrate,
 )
+from _orchestrator.git_ops import check_branch
 
 
 class TestParseRequest:
@@ -70,17 +72,14 @@ class TestFeatureFromBranch:
     def test_modify_prefix(self) -> None:
         assert _feature_from_branch("modify/Payment") == "Payment"
 
-    def test_bugfix_prefix(self) -> None:
-        assert _feature_from_branch("bugfix/Payment") == "Payment"
-
     def test_domain_slash_feature_branch(self) -> None:
         assert _feature_from_branch("shared/Payment") == "Payment"
 
     def test_main_returns_empty(self) -> None:
         assert _feature_from_branch("main") == ""
 
-    def test_plain_branch_returns_empty(self) -> None:
-        assert _feature_from_branch("dev") == ""
+    def test_plain_branch_returns_branch_name(self) -> None:
+        assert _feature_from_branch("dev") == "dev"
 
 
 class TestDoDeleteInferFromBranch:
@@ -97,8 +96,9 @@ class TestDoDeleteInferFromBranch:
         assert "cannot infer from current branch" in capsys.readouterr().out
 
     def test_delete_without_target_on_modify_branch(self, capsys: object, monkeypatch: object) -> None:
-        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "modify/Payment")
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "shared/Payment")
         monkeypatch.setattr("_orchestrator.commands.resolve_feature", lambda raw, app="": None)
+        monkeypatch.setattr("_orchestrator.commands.branch_exists", lambda name: False)
         calls: list[list[str]] = []
 
         def fake_run(cmd: list[str], **kwargs: object) -> object:
@@ -108,7 +108,7 @@ class TestDoDeleteInferFromBranch:
         monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
         orchestrate("delete")
         out = capsys.readouterr().out
-        assert "Deleted branch: modify/Payment" in out
+        assert "Nothing to delete: feature 'Payment' not found." in out
         assert not any("stash" in c for c in calls)
 
 
@@ -153,7 +153,67 @@ class TestMoveHandler:
     def test_move_missing_target_usage(self, capsys: object, monkeypatch: object) -> None:
         monkeypatch.setattr("_orchestrator.commands.resolve_feature", lambda raw, app="": None)
         orchestrate("move Payment")
-        assert "Usage: move <domain/OldName> <domain/NewName>" in capsys.readouterr().out
+        assert "Usage: move <OldDomain/OldFeature> <NewDomain/NewFeature>" in capsys.readouterr().out
+
+
+class TestDomainOf:
+
+    def test_domain_from_feature_dir(self, tmp_path: Path, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.FEATURES_DIR", tmp_path / "features")
+        assert _domain_of(tmp_path / "features" / "shared" / "Payment") == "shared"
+
+    def test_no_domain_for_root_feature(self, tmp_path: Path, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.FEATURES_DIR", tmp_path / "features")
+        assert _domain_of(tmp_path / "features" / "Payment") == ""
+
+    def test_none_returns_empty(self) -> None:
+        assert _domain_of(None) == ""
+
+
+class TestCheckBranchNaming:
+
+    def _fake_git(self, monkeypatch: object) -> list[list[str]]:
+        calls: list[list[str]] = []
+
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            calls.append(cmd)
+            return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
+        return calls
+
+    def test_branch_uses_domain_slash_feature(self, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
+        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", lambda: [])
+        monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
+        calls = self._fake_git(monkeypatch)
+        check_branch("Payment", "shared")
+        assert ["git", "checkout", "-b", "shared/Payment"] in calls
+
+    def test_branch_without_domain_is_bare_feature(self, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
+        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", lambda: [])
+        monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
+        calls = self._fake_git(monkeypatch)
+        check_branch("Payments", "")
+        assert ["git", "checkout", "-b", "Payments"] in calls
+
+    def test_no_operation_prefix_in_branch_name(self, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
+        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", lambda: [])
+        monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
+        calls = self._fake_git(monkeypatch)
+        check_branch("Payment", "shared")
+        created = [c for c in calls if c[:3] == ["git", "checkout", "-b"]]
+        assert created
+        for c in created:
+            for name in c[3:]:
+                assert not name.startswith(("feature/", "modify/"))
+
+    def test_already_on_any_branch_blocks(self, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "shared/Payment")
+        with pytest.raises(SystemExit):
+            check_branch("Other", "vps")
 
 
 class TestMergeGuard:
@@ -183,7 +243,7 @@ class TestMergeGuard:
 class TestKnownPrefixes:
 
     def test_includes_all_commands(self) -> None:
-        expected = {"new", "feature", "do", "modify", "bugfix", "delete", "move", "merge", "deploy", "scaffold", "scan"}
+        expected = {"new", "feature", "do", "modify", "delete", "move", "merge", "deploy", "scaffold", "scan"}
         assert _KNOWN_PREFIXES == expected
 
 

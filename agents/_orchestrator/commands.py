@@ -420,7 +420,7 @@ def do_scaffold() -> None:
 
 
 _KNOWN_PREFIXES = frozenset({
-    "new", "feature", "modify", "bugfix", "do", "delete", "move", "merge", "deploy", "scaffold", "scan",
+    "new", "feature", "modify", "do", "delete", "move", "merge", "deploy", "scaffold", "scan",
 })
 
 
@@ -498,12 +498,15 @@ def _find_feature_or_resolve(raw: str, app: str = "") -> Optional[Path]:
 
 
 def _feature_from_branch(branch: str) -> str:
-    for br_prefix in ("feature/", "modify/", "bugfix/"):
-        if branch.startswith(br_prefix):
-            return branch[len(br_prefix):]
-    if "/" in branch:
-        return branch.rsplit("/", 1)[-1]
-    return ""
+    if not branch or branch == "(unknown)" or branch == "main" or branch.startswith("main"):
+        return ""
+    return branch.rsplit("/", 1)[-1]
+
+
+def _domain_of(feature_dir: Optional[Path]) -> str:
+    if not feature_dir:
+        return ""
+    return feature_dir.parent.name if feature_dir.parent != FEATURES_DIR else ""
 
 
 def _parse_request(request: str) -> tuple[str, str, str, str]:
@@ -543,7 +546,6 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         print("Prompt commands (expect an inline prompt):")
         print('  new      <domain/Feature> "prompt"     scaffold new feature')
         print('  modify   <domain/Feature> "prompt"     amend existing spec')
-        print('  bugfix   <domain/Feature> "prompt"     document defect')
         print()
         print("Branch commands (run from the feature branch):")
         print('  do                                     run backend agent')
@@ -551,7 +553,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         print('  merge                                  merge current branch to main')
         print()
         print("Other:")
-        print('  move     <OldName> <NewName>           move feature (optionally cross-domain)')
+        print('  move     <OldDomain/OldFeature> <NewDomain/NewFeature>')
         print('  scaffold                               init project')
         print('  scan                                   discover existing features')
         print()
@@ -585,7 +587,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                         break
         feature_dir = scaffold_new_feature(domain, action, description, no_controller=no_controller, app=app)
         if feature_dir and feature_dir.is_dir():
-            check_branch(action, "feature")
+            check_branch(action, domain)
             if domain:
                 register_feature_in_json(action, domain, app=app)
             print("=" * 60)
@@ -626,20 +628,18 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                     print(f"  {b}")
                 print("=" * 60)
                 return
-            target = f"feature/{display}"
+            dom = _domain_of(feature_dir)
+            target = f"{dom}/{display}" if dom else display
             print(f"[Orchestrator] On main with clean slate. Auto-creating branch: {target}")
             subprocess.run(["git", "checkout", "-b", target], cwd=str(REPO_ROOT))
             branch = target
 
-        if branch.startswith("bugfix/"):
-            task = f"Fix bug in {display}: write a failing test that reproduces the defect, then patch Handler.py per the Defect Resolution section in spec.md"
-            commit_type = "fix"
-        elif branch.startswith("modify/"):
+        spec_text = (feature_dir / "spec.md").read_text() if (feature_dir / "spec.md").exists() else ""
+        if "## Modification" in spec_text:
             task = f"Modify {display} per the amended spec.md"
-            commit_type = "feat"
         else:
             task = f"Implement {display} per its spec.md"
-            commit_type = "feat"
+        commit_type = "feat"
 
         print(f"[Orchestrator] Generating code for {display}...")
         ok = run_runner("backend", feature_dir, task)
@@ -703,7 +703,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
             print(f'  "The auto-QA loop failed for {feature_dir.name}. Here is the output: ..."')
             print("=" * 60)
         return
-    if prefix in ("modify", "bugfix"):
+    if prefix == "modify":
         if not action:
             current_file = _resolve_current_file()
             if rest:
@@ -712,26 +712,26 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                 if not change_prompt:
                     print("[Orchestrator] No prompt provided.")
                     return
-                heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
+                heading = "Modification Request"
                 real_feature = find_feature_dir(derived)
                 if real_feature:
-                    check_branch(derived, prefix)
+                    check_branch(derived, _domain_of(real_feature))
                     _rewrite_spec_with_ai(real_feature, change_prompt, heading)
-                    amend_spec(real_feature, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                    amend_spec(real_feature, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
                     return
                 fuzzy = resolve_feature(derived)
                 if fuzzy:
-                    check_branch(derived, prefix)
+                    check_branch(derived, _domain_of(fuzzy))
                     _rewrite_spec_with_ai(fuzzy, change_prompt, heading)
-                    amend_spec(fuzzy, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                    amend_spec(fuzzy, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
                     return
                 scaffold_new_feature("", derived, "", no_controller=True)
                 feature_dir = FEATURES_DIR / derived
                 if feature_dir.is_dir():
-                    check_branch(derived, prefix)
+                    check_branch(derived, "")
                     register_feature_in_json(derived, "")
                     _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
-                    amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                    amend_spec(feature_dir, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
                     return
                 print(f"[Orchestrator] Could not create feature '{derived}'.")
                 return
@@ -741,26 +741,26 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                 if not change_prompt:
                     print("[Orchestrator] No prompt provided.")
                     return
-                heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
+                heading = "Modification Request"
                 real_feature = find_feature_dir(derived)
                 if real_feature:
-                    check_branch(derived, prefix)
-                    scaffold_new_feature("", derived, f"{prefix.title()} {current_file}", no_controller=True)
+                    check_branch(derived, _domain_of(real_feature))
+                    scaffold_new_feature("", derived, f"Modify {current_file}", no_controller=True)
                     feature_dir = FEATURES_DIR / derived
                     if feature_dir.is_dir():
                         register_feature_in_json(derived, "")
                         _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
-                        amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                        amend_spec(feature_dir, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
                         return
                 fuzzy = resolve_feature(derived)
                 if fuzzy:
-                    check_branch(derived, prefix)
-                    scaffold_new_feature("", derived, f"{prefix.title()} {current_file}", no_controller=True)
+                    check_branch(derived, _domain_of(real_feature))
+                    scaffold_new_feature("", derived, f"Modify {current_file}", no_controller=True)
                     feature_dir = FEATURES_DIR / derived
                     if feature_dir.is_dir():
                         register_feature_in_json(derived, "")
                         _rewrite_spec_with_ai(fuzzy, change_prompt, heading)
-                        amend_spec(fuzzy, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                        amend_spec(fuzzy, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
                         return
                 print(f"[Orchestrator] Feature '{derived}' not found.")
                 return
@@ -775,13 +775,13 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                 real_feature = find_feature_dir(derived)
                 if real_feature:
                     check_branch(derived, prefix)
-                    heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
-                    scaffold_new_feature("", derived, f"{prefix.title()} {action}", no_controller=True)
+                    heading = "Modification Request"
+                    scaffold_new_feature("", derived, f"Modify {action}", no_controller=True)
                     feature_dir = FEATURES_DIR / derived
                     if feature_dir.is_dir():
                         register_feature_in_json(derived, "")
                         _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
-                        amend_spec(feature_dir, heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION", branch_prefix=prefix, feature_name=derived)
+                        amend_spec(feature_dir, heading="CONTRACT AMENDMENT", branch_prefix="modify", feature_name=derived)
                         return
                 else:
                     print(f"[Orchestrator] Feature '{derived}' not found.")
@@ -790,13 +790,13 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
             return
         resolved_name = feature_dir.name
         change_prompt = resolve_change_prompt(rest, prompt_content, resolved_name, prefix)
-        heading = "Modification Request" if prefix == "modify" else "Defect Resolution"
+        heading = "Modification Request"
         _rewrite_spec_with_ai(feature_dir, change_prompt, heading)
-        check_branch(resolved_name, prefix)
+        check_branch(resolved_name, _domain_of(feature_dir))
         amend_spec(
             feature_dir,
-            heading="CONTRACT AMENDMENT" if prefix == "modify" else "DEFECT DOCUMENTATION",
-            branch_prefix=prefix,
+            heading="CONTRACT AMENDMENT",
+            branch_prefix="modify",
             feature_name=resolved_name,
         )
         return
@@ -809,8 +809,9 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
             print("[Orchestrator] No feature name given and cannot infer from current branch.")
             return
         feature_dir = resolve_feature(feature_name, app=app)
+        dom = _domain_of(feature_dir)
+        target_branches = [f"{dom}/{feature_name}"] if dom else [feature_name]
         branch = current_branch()
-        target_branches = [f"feature/{feature_name}", f"modify/{feature_name}", f"bugfix/{feature_name}"]
         on_target = branch in target_branches
         found_any = False
 
@@ -852,10 +853,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         feature_name = branch.split("/", 1)[1] if "/" in branch else branch
         feature_dir = find_feature_dir(feature_name)
         if feature_dir and feature_dir.exists():
-            if branch.startswith("bugfix/"):
-                commit_type = "fix"
-            else:
-                commit_type = "feat"
+            commit_type = "feat"
             print(f"[Orchestrator] Staging {feature_dir}...")
             r1 = subprocess.run(["git", "add", str(feature_dir)], capture_output=True, text=True, cwd=str(REPO_ROOT))
             if r1.returncode != 0:
@@ -907,7 +905,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         old_name = action
         new_target = rest.strip().strip('"').strip("'")
         if not old_name or not new_target:
-            print("[Orchestrator] Usage: move <domain/OldName> <domain/NewName>")
+            print("[Orchestrator] Usage: move <OldDomain/OldFeature> <NewDomain/NewFeature>")
             return
         new_domain = ""
         if "/" in new_target:
@@ -960,27 +958,27 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
             print("[Orchestrator] Tests failed after rename. Check output above.")
         current = current_branch()
         merged = False
-        for br_prefix in ("feature/", "modify/", "bugfix/"):
-            old_branch = br_prefix + old_name_disk
-            new_branch = br_prefix + new_name
-            if old_branch == current:
-                print(f"[Orchestrator] Renaming branch {old_branch} -> {new_branch}...")
-                subprocess.run(["git", "branch", "-m", new_branch], cwd=str(REPO_ROOT))
-                subprocess.run(["git", "add", str(new_dir)], cwd=str(REPO_ROOT))
-                subprocess.run(["git", "commit", "-m", f"move: {old_name_disk} -> {new_name}"], capture_output=True, cwd=str(REPO_ROOT))
-                if test_ok:
-                    print(f"[Orchestrator] Merging {new_branch} to main...")
-                    subprocess.run(["git", "push", "origin", new_branch], capture_output=True, cwd=str(REPO_ROOT))
-                    subprocess.run(["git", "checkout", "main"], capture_output=True, cwd=str(REPO_ROOT))
-                    subprocess.run(["git", "merge", new_branch], capture_output=True, cwd=str(REPO_ROOT))
-                    subprocess.run(["git", "push", "origin", "main"], capture_output=True, cwd=str(REPO_ROOT))
-                    subprocess.run(["git", "push", "origin", "--delete", new_branch], capture_output=True, cwd=str(REPO_ROOT))
-                    subprocess.run(["git", "branch", "-D", new_branch], capture_output=True, cwd=str(REPO_ROOT))
-                    print(f"[Orchestrator] Merged to main. Done.")
-                    merged = True
-                else:
-                    print(f"[Orchestrator] Tests failed — branch moved to {new_branch}, not merged.")
-                break
+        old_dom = _domain_of(feature_dir)
+        new_dom = new_domain or old_dom
+        old_branch = f"{old_dom}/{old_name_disk}" if old_dom else old_name_disk
+        new_branch = f"{new_dom}/{new_name}" if new_dom else new_name
+        if old_branch == current:
+            print(f"[Orchestrator] Renaming branch {old_branch} -> {new_branch}...")
+            subprocess.run(["git", "branch", "-m", new_branch], cwd=str(REPO_ROOT))
+            subprocess.run(["git", "add", str(new_dir)], cwd=str(REPO_ROOT))
+            subprocess.run(["git", "commit", "-m", f"move: {old_name_disk} -> {new_name}"], capture_output=True, cwd=str(REPO_ROOT))
+            if test_ok:
+                print(f"[Orchestrator] Merging {new_branch} to main...")
+                subprocess.run(["git", "push", "origin", new_branch], capture_output=True, cwd=str(REPO_ROOT))
+                subprocess.run(["git", "checkout", "main"], capture_output=True, cwd=str(REPO_ROOT))
+                subprocess.run(["git", "merge", new_branch], capture_output=True, cwd=str(REPO_ROOT))
+                subprocess.run(["git", "push", "origin", "main"], capture_output=True, cwd=str(REPO_ROOT))
+                subprocess.run(["git", "push", "origin", "--delete", new_branch], capture_output=True, cwd=str(REPO_ROOT))
+                subprocess.run(["git", "branch", "-D", new_branch], capture_output=True, cwd=str(REPO_ROOT))
+                print(f"[Orchestrator] Merged to main. Done.")
+                merged = True
+            else:
+                print(f"[Orchestrator] Tests failed — branch moved to {new_branch}, not merged.")
         if not merged:
             print(f"[Orchestrator] Moved {old_name_disk} -> {new_name}. git add + commit manually if needed.")
         return
@@ -992,7 +990,6 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
     print("Prompt commands (expect an inline prompt):")
     print('  new      <domain/Feature> "prompt"     scaffold new feature')
     print('  modify   <domain/Feature> "prompt"     amend existing spec')
-    print('  bugfix   <domain/Feature> "prompt"     document defect')
     print()
     print("Branch commands (run from the feature branch):")
     print('  do                                     run backend agent')
@@ -1000,7 +997,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
     print('  merge                                  merge current branch to main')
     print()
     print("Other:")
-    print('  move     <OldName> <NewName>           move feature (optionally cross-domain)')
+    print('  move     <OldDomain/OldFeature> <NewDomain/NewFeature>')
     print('  scaffold                               init project')
     print('  scan                                   discover existing features')
     print()
