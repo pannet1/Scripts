@@ -259,10 +259,47 @@ class TestMergeGuard:
         assert "merge takes no target" in capsys.readouterr().out
 
 
+class TestUndoHandler:
+
+    def test_undo_on_main_aborts(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
+        orchestrate("undo")
+        assert "Checkout a feature branch before running undo" in capsys.readouterr().out
+
+    def test_undo_detached_head_aborts(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "")
+        orchestrate("undo")
+        assert "Detached HEAD" in capsys.readouterr().out
+
+    def test_undo_with_target_rejected(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "shared/Payment")
+        orchestrate("undo shared/Payment")
+        assert "undo takes no target" in capsys.readouterr().out
+
+    def test_undo_resets_branch_to_main(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "shared/Payment")
+        calls: list[list[str]] = []
+
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            calls.append(cmd)
+            return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+        monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
+        orchestrate("undo")
+        out = capsys.readouterr().out
+        assert ["git", "fetch", "origin"] in calls
+        assert ["git", "checkout", "main"] in calls
+        assert ["git", "reset", "--hard", "origin/main"] in calls
+        assert ["git", "clean", "-fd"] in calls
+        assert ["git", "branch", "-D", "shared/Payment"] in calls
+        assert ["git", "push", "origin", "--delete", "shared/Payment"] in calls
+        assert "matches main exactly" in out
+
+
 class TestKnownPrefixes:
 
     def test_includes_all_commands(self) -> None:
-        expected = {"new", "feature", "do", "modify", "delete", "move", "merge", "deploy", "scaffold", "scan"}
+        expected = {"new", "feature", "do", "modify", "delete", "move", "merge", "undo", "deploy", "scaffold", "scan"}
         assert _KNOWN_PREFIXES == expected
 
 
