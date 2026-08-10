@@ -420,7 +420,7 @@ def do_scaffold() -> None:
 
 
 _KNOWN_PREFIXES = frozenset({
-    "new", "feature", "modify", "bugfix", "do", "delete", "merge", "deploy", "scaffold", "scan", "rename",
+    "new", "feature", "modify", "bugfix", "do", "delete", "move", "merge", "deploy", "scaffold", "scan",
 })
 
 
@@ -497,6 +497,15 @@ def _find_feature_or_resolve(raw: str, app: str = "") -> Optional[Path]:
     return feature_dir
 
 
+def _feature_from_branch(branch: str) -> str:
+    for br_prefix in ("feature/", "modify/", "bugfix/"):
+        if branch.startswith(br_prefix):
+            return branch[len(br_prefix):]
+    if "/" in branch:
+        return branch.rsplit("/", 1)[-1]
+    return ""
+
+
 def _parse_request(request: str) -> tuple[str, str, str, str]:
     cmd = request.strip().split(None, 1)
     verb = cmd[0] if cmd else ""
@@ -531,20 +540,23 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         print()
         print("Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]")
         print()
-        print("Actions:")
+        print("Prompt commands (expect an inline prompt):")
         print('  new      <domain/Feature> "prompt"     scaffold new feature')
         print('  modify   <domain/Feature> "prompt"     amend existing spec')
         print('  bugfix   <domain/Feature> "prompt"     document defect')
-        print('  rename   <OldName> <NewName>           rename feature')
         print()
-        print("Utilities:")
-        print('  do       <domain/Feature>              run backend agent')
-        print('  delete   <domain/Feature>              remove feature')
+        print("Branch commands (run from the feature branch):")
+        print('  do                                     run backend agent')
+        print('  delete                                 remove feature')
         print('  merge                                  merge current branch to main')
+        print()
+        print("Other:")
+        print('  move     <OldName> <NewName>           move feature (optionally cross-domain)')
         print('  scaffold                               init project')
         print('  scan                                   discover existing features')
         print()
         print("Examples:")
+
         print('  ./.agents/orchestrator.py new Payments "auction payment wallet flow"')
         print('  ./.agents/orchestrator.py modify shared/Payment "share screenshot separately"')
         print('  ./.agents/orchestrator.py do Payment')
@@ -587,6 +599,11 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
 
     if prefix == "do":
         user_feature_name = action or rest
+        if not user_feature_name:
+            user_feature_name = _feature_from_branch(current_branch())
+        if not user_feature_name:
+            print("[Orchestrator] No feature name given and cannot infer from current branch.")
+            return
         feature_dir = _find_feature_or_resolve(user_feature_name, app=app)
         if not feature_dir:
             print(f"[Orchestrator] Feature not found: {user_feature_name}.")
@@ -786,6 +803,11 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
 
     if prefix == "delete":
         feature_name = action or rest
+        if not feature_name:
+            feature_name = _feature_from_branch(current_branch())
+        if not feature_name:
+            print("[Orchestrator] No feature name given and cannot infer from current branch.")
+            return
         feature_dir = resolve_feature(feature_name, app=app)
         branch = current_branch()
         target_branches = [f"feature/{feature_name}", f"modify/{feature_name}", f"bugfix/{feature_name}"]
@@ -800,7 +822,6 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
 
         unregister_feature_from_json(feature_name, feature_dir)
 
-        subprocess.run(["git", "stash"], cwd=str(REPO_ROOT), capture_output=True)
         if on_target:
             subprocess.run(["git", "checkout", "main"], cwd=str(REPO_ROOT))
             subprocess.run(["git", "branch", "-D", branch], cwd=str(REPO_ROOT))
@@ -882,29 +903,40 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         print(f"[Orchestrator] Done. {feature_name} merged to main.")
         return
 
-    if prefix == "rename":
+    if prefix == "move":
         old_name = action
-        new_name = rest.strip().strip('"').strip("'")
-        if not old_name or not new_name:
-            print("[Orchestrator] Usage: rename <OldName> <NewName>")
+        new_target = rest.strip().strip('"').strip("'")
+        if not old_name or not new_target:
+            print("[Orchestrator] Usage: move <domain/OldName> <domain/NewName>")
             return
-        feature_dir = resolve_feature(old_name)
+        new_domain = ""
+        if "/" in new_target:
+            new_domain, new_name = new_target.split("/", 1)
+            new_name = new_name.strip()
+        else:
+            new_name = new_target
+        feature_dir = resolve_feature(old_name, app=app)
         if not feature_dir or not feature_dir.exists():
             print(f"[Orchestrator] Feature not found: {old_name}")
             return
         parent = feature_dir.parent
-        new_dir = parent / new_name
+        if new_domain:
+            base = app_features_dir(app) if app else FEATURES_DIR
+            new_dir = base / new_domain / new_name
+        else:
+            new_dir = parent / new_name
         if new_dir.exists():
             print(f"[Orchestrator] Target '{new_name}' already exists at {new_dir}")
             return
         old_name_disk = feature_dir.name
-        print(f"[Orchestrator] Renaming {old_name_disk} -> {new_name}...")
+        print(f"[Orchestrator] Moving {old_name_disk} -> {new_name}...")
+        new_dir.parent.mkdir(parents=True, exist_ok=True)
         feature_dir.rename(new_dir)
         features = load_features_config()
         known = features.get("known_features", {})
         if old_name_disk in known:
-            domain = known.pop(old_name_disk)
-            known[new_name] = domain
+            old_domain = known.pop(old_name_disk)
+            known[new_name] = new_domain or old_domain
             features["known_features"] = known
             keywords = features.get("domain_keywords", {})
             stale = [k for k, v in keywords.items() if len(v) >= 2 and v[1] == old_name_disk]
@@ -935,7 +967,7 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                 print(f"[Orchestrator] Renaming branch {old_branch} -> {new_branch}...")
                 subprocess.run(["git", "branch", "-m", new_branch], cwd=str(REPO_ROOT))
                 subprocess.run(["git", "add", str(new_dir)], cwd=str(REPO_ROOT))
-                subprocess.run(["git", "commit", "-m", f"rename: {old_name_disk} -> {new_name}"], capture_output=True, cwd=str(REPO_ROOT))
+                subprocess.run(["git", "commit", "-m", f"move: {old_name_disk} -> {new_name}"], capture_output=True, cwd=str(REPO_ROOT))
                 if test_ok:
                     print(f"[Orchestrator] Merging {new_branch} to main...")
                     subprocess.run(["git", "push", "origin", new_branch], capture_output=True, cwd=str(REPO_ROOT))
@@ -947,30 +979,33 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
                     print(f"[Orchestrator] Merged to main. Done.")
                     merged = True
                 else:
-                    print(f"[Orchestrator] Tests failed — branch renamed to {new_branch}, not merged.")
+                    print(f"[Orchestrator] Tests failed — branch moved to {new_branch}, not merged.")
                 break
         if not merged:
-            print(f"[Orchestrator] Renamed {old_name_disk} -> {new_name}. git add + commit manually if needed.")
+            print(f"[Orchestrator] Moved {old_name_disk} -> {new_name}. git add + commit manually if needed.")
         return
 
     print("[Orchestrator] Unknown request.")
     print()
     print("Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]")
     print()
-    print("Actions:")
+    print("Prompt commands (expect an inline prompt):")
     print('  new      <domain/Feature> "prompt"     scaffold new feature')
     print('  modify   <domain/Feature> "prompt"     amend existing spec')
     print('  bugfix   <domain/Feature> "prompt"     document defect')
-    print('  rename   <OldName> <NewName>           rename feature')
     print()
-    print("Utilities:")
-    print('  do       <domain/Feature>              run backend agent')
-    print('  delete   <domain/Feature>              remove feature')
+    print("Branch commands (run from the feature branch):")
+    print('  do                                     run backend agent')
+    print('  delete                                 remove feature')
     print('  merge                                  merge current branch to main')
+    print()
+    print("Other:")
+    print('  move     <OldName> <NewName>           move feature (optionally cross-domain)')
     print('  scaffold                               init project')
     print('  scan                                   discover existing features')
     print()
     print("Examples:")
+
     print('  ./.agents/orchestrator.py new Payments "auction payment wallet flow"')
     print('  ./.agents/orchestrator.py modify shared/Payment "share screenshot separately"')
     print('  ./.agents/orchestrator.py do Payment')
