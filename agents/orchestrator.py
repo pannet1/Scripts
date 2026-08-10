@@ -54,7 +54,7 @@ def parse_args() -> argparse.Namespace:
         print()
         print("Other:")
         print("  move     <OldDomain/OldFeature> <NewDomain/NewFeature>")
-        print("  init                                   initialize project")
+        print("  init                                   create new project")
         print("  scan                                   discover existing features")
 
         print("  ./.agents/orchestrator.py new Payments \"auction payment wallet flow\"")
