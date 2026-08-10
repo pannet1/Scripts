@@ -304,18 +304,31 @@ class TestUndoHandler:
 
 class TestInitHandler:
 
-    def test_init_with_target_rejected(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_bare_init_fails(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
-        monkeypatch.setattr("_orchestrator.commands.init_project", lambda: pytest.fail("init_project should not run"))
-        dispatch("init Payments")
-        assert "init takes no target" in capsys.readouterr().out
-
-    def test_init_runs_init_project(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
-        calls: list[str] = []
-        monkeypatch.setattr("_orchestrator.commands.init_project", lambda: calls.append("init"))
         dispatch("init")
-        assert calls == ["init"]
+        assert "init requires a project target" in capsys.readouterr().out
+
+    def test_init_without_path_fails(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
+        dispatch('init MyProject "python fastapi"')
+        assert "init requires a project target" in capsys.readouterr().out
+
+    def test_init_without_prompt_fails(self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
+        dispatch("init mypath/MyProject")
+        assert "requires a prompt" in capsys.readouterr().out
+
+    def test_init_creates_project(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("_orchestrator.commands.load_project", lambda repo: FakeProject())
+        monkeypatch.chdir(tmp_path)
+        dispatch('init mypath/MyProject "Python 3.13, FastAPI"')
+        proj = tmp_path / "mypath" / "MyProject"
+        assert (proj / ".features.json").exists()
+        assert (proj / ".agents").is_symlink()
+        assert (proj / "features").is_dir()
+        assert (proj / "SPEC.md").exists()
+        assert Path.cwd() == proj
 
 
 class TestKnownPrefixes:

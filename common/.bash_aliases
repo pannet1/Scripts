@@ -27,9 +27,16 @@ alias df='df -h'
 alias du='du -ch'
 alias free='free -h'
 alias ip='ip -c'
-alias explorer='explorer.exe .'
-alias open='explorer.exe'
-alias pbcopy='clip.exe'
-alias pbpaste='powershell.exe -Command Get-Clipboard'
+# Windows/WSL2 aliases; native Linux (Debian) gets xclip/xdg-open instead
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    alias explorer='explorer.exe .'
+    alias open='explorer.exe'
+    alias pbcopy='clip.exe'
+    alias pbpaste='powershell.exe -Command Get-Clipboard'
+else
+    alias pbcopy='xclip -selection clipboard'
+    alias pbpaste='xclip -selection clipboard -o'
+    alias open='xdg-open'
+fi
 
 alias reload='exec bash'

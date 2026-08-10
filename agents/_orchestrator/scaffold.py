@@ -1,11 +1,9 @@
-import json
-import subprocess
+import os
 import sys
 from pathlib import Path
-from typing import Any
 
-from .config import FEATURES_CONFIG, REPO_ROOT
-from .feature import detect_existing_features, detect_features_dir, register_target
+from .config import AGENTS_DIR
+from .feature import register_target
 from .llm import generate_spec_with_ai
 from .specs import _qa_spec
 from .templates import CODE_TEMPLATES, DEFAULT_OVERVIEW, SPEC_TEMPLATE
@@ -58,63 +56,31 @@ def scaffold_new_feature(target, overview: str = "", no_controller: bool = False
     return slice_dir
 
 
-def _ensure_shared_logger() -> None:
-    logger_path = REPO_ROOT / "shared" / "logger.py"
-    if logger_path.exists():
-        return
-    logger_path.parent.mkdir(parents=True, exist_ok=True)
-    logger_path.write_text(
-        'from __future__ import annotations\n'
-        '\n'
-        'import logging\n'
-        'from typing import Any\n'
-        '\n'
-        '\n'
-        'def logging_func(name: str) -> logging.Logger:\n'
-        '    return logging.getLogger(name)\n'
-    )
-    print(f"[Orchestrator] Created {logger_path.relative_to(REPO_ROOT)}")
+def init_new_project(project_dir: Path, prompt: str) -> bool:
+    """Create a new project: structure, .agents symlink, .features.json — then cd into it."""
+    project_dir = project_dir.resolve()
+    project_dir.mkdir(parents=True, exist_ok=True)
+    os.chdir(project_dir)
 
+    sys.path.insert(0, str(AGENTS_DIR))
+    import scaffold_project as sp
+    sp.REPO_ROOT = project_dir
 
-def init_project() -> None:
-    if FEATURES_CONFIG.exists():
-        print(f"[Orchestrator] {FEATURES_CONFIG} already exists.")
-        return
+    stack = sp.parse_tech_stack(prompt)
+    if not stack:
+        print("[Orchestrator] Could not identify any technologies from the prompt.")
+        print("  Try: 'Python 3.13, FastAPI, SQLite' or similar.")
+        return False
+    if sp.scaffold(stack) != 0:
+        return False
 
-    features_dir = detect_features_dir(REPO_ROOT)
-    existing = detect_existing_features(REPO_ROOT)
-
-    payload: dict[str, Any] = {
-        "features_dir": features_dir,
-        "known_features": existing,
-        "domain_keywords": {},
-    }
-    FEATURES_CONFIG.write_text(json.dumps(payload, indent=2) + "\n")
-    print(f"[Orchestrator] Created {FEATURES_CONFIG}")
-    print(f"[Orchestrator] Features directory: {features_dir}/")
-
-    if existing:
-        print(f"[Orchestrator] Discovered {len(existing)} existing features:")
-        for fname, dom in sorted(existing.items()):
-            print(f"    {fname}  ({dom}/)")
-    print()
-
-    _ensure_shared_logger()
-
-    print()
-    print("[Orchestrator] === Compliance Fix ===")
-    from .compliance import fix_all
-    fix_all()
-
-    print()
-    print("[Orchestrator] === Verification ===")
-    result = subprocess.run(
-        ["uv", "run", "pytest", "tests/test_compliance.py", "-v", "--tb=no"],
-        capture_output=True, text=True, cwd=str(REPO_ROOT),
-    check=False)
-    print(result.stdout, end="")
-    if result.returncode == 0:
-        print("[Orchestrator] Project is compliant.")
-    else:
-        print("[Orchestrator] Some violations remain (see above). Re-run scaffold or fix manually.")
-    print()
+    agents_link = project_dir / "agents"
+    if agents_link.is_symlink() or agents_link.exists():
+        agents_link.unlink()
+    dot_link = project_dir / ".agents"
+    if not dot_link.is_symlink() and not dot_link.exists():
+        rel = os.path.relpath(str(AGENTS_DIR), str(project_dir))
+        dot_link.symlink_to(rel)
+        print(f"  .agents/ -> {rel}")
+    print(f"[Orchestrator] Project created at {project_dir}")
+    return True
