@@ -535,11 +535,11 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         print('  new      <domain/Feature> "prompt"     scaffold new feature')
         print('  modify   <domain/Feature> "prompt"     amend existing spec')
         print('  bugfix   <domain/Feature> "prompt"     document defect')
-        print('  do       <domain/Feature>              run backend agent')
-        print('  delete   <domain/Feature>              remove feature')
         print('  rename   <OldName> <NewName>           rename feature')
         print()
         print("Utilities:")
+        print('  do       <domain/Feature>              run backend agent')
+        print('  delete   <domain/Feature>              remove feature')
         print('  merge                                  merge current branch to main')
         print('  scaffold                               init project')
         print('  scan                                   discover existing features')
@@ -818,12 +818,15 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
         return
 
     if prefix == "merge":
+        branch = current_branch()
+        if branch == "main" or branch.startswith("main"):
+            print("[Orchestrator] You are on main. Checkout a feature branch before running merge.")
+            return
+        if not branch or branch == "(unknown)":
+            print("[Orchestrator] Detached HEAD — checkout a feature branch before running merge.")
+            return
         if action or rest:
             print("[Orchestrator] merge takes no target — it merges the current branch to main.")
-            return
-        branch = current_branch()
-        if branch == "main":
-            print("[Orchestrator] You are already on main. Nothing to merge.")
             return
         feature_name = branch.split("/", 1)[1] if "/" in branch else branch
         feature_dir = find_feature_dir(feature_name)
@@ -958,11 +961,11 @@ def orchestrate(request: str, prompt_content: str = "", no_controller: bool = Fa
     print('  new      <domain/Feature> "prompt"     scaffold new feature')
     print('  modify   <domain/Feature> "prompt"     amend existing spec')
     print('  bugfix   <domain/Feature> "prompt"     document defect')
-    print('  do       <domain/Feature>              run backend agent')
-    print('  delete   <domain/Feature>              remove feature')
     print('  rename   <OldName> <NewName>           rename feature')
     print()
     print("Utilities:")
+    print('  do       <domain/Feature>              run backend agent')
+    print('  delete   <domain/Feature>              remove feature')
     print('  merge                                  merge current branch to main')
     print('  scaffold                               init project')
     print('  scan                                   discover existing features')

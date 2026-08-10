@@ -8,6 +8,7 @@ from _orchestrator.commands import (
     _extract_feature_from_path,
     _parse_request,
     _resolve_input_to_feature,
+    orchestrate,
 )
 
 
@@ -54,6 +55,30 @@ class TestParseRequest:
 
     def test_empty_request(self) -> None:
         assert _parse_request("") == ("", "", "", "")
+
+
+class TestMergeGuard:
+
+    def test_merge_on_main_aborts(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
+        orchestrate("merge")
+        out = capsys.readouterr().out
+        assert "Checkout a feature branch before running merge" in out
+
+    def test_merge_main_variant_aborts(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main*")
+        orchestrate("merge")
+        assert "Checkout a feature branch before running merge" in capsys.readouterr().out
+
+    def test_merge_detached_head_aborts(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "")
+        orchestrate("merge")
+        assert "Detached HEAD" in capsys.readouterr().out
+
+    def test_merge_with_target_on_feature_branch_aborts(self, capsys: object, monkeypatch: object) -> None:
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "modify/Payment")
+        orchestrate("merge shared/Payment")
+        assert "merge takes no target" in capsys.readouterr().out
 
 
 class TestKnownPrefixes:
