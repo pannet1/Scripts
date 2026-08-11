@@ -17,9 +17,7 @@ from pathlib import Path
 from typing import Any
 
 REPO = Path.cwd()
-AGENTS = Path(__file__).resolve().parent
 FEATURES_CONFIG = REPO / ".features.json"
-FALLBACK_CONFIG = AGENTS / "features.json"
 
 EXPECTED_FILES = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
 CODE_TEMPLATES = {
@@ -64,9 +62,8 @@ def test_{action_lower}_handler() -> None:
 
 
 def _read_config() -> dict[str, Any]:
-    for path in (FEATURES_CONFIG, FALLBACK_CONFIG):
-        if path.exists():
-            return json.loads(path.read_text())
+    if FEATURES_CONFIG.exists():
+        return json.loads(FEATURES_CONFIG.read_text())
     return {}
 
 

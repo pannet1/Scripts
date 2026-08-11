@@ -178,6 +178,9 @@ class TestAutoBackendProtection:
 
         monkeypatch.setattr(rr, "call_llm", lambda prompt, persona="": self._llm_output())
         monkeypatch.setattr(rr, "run_pytest", lambda test_path: (True, ""))
+        monkeypatch.setattr(rr, "REPO_ROOT", tmp_path)
+        (tmp_path / ".python-version").write_text("3.13\n")
+        (tmp_path / "pyproject.toml").write_text("[project]\nname = 'dummy'\nversion = '0.1.0'\n")
 
         ok = rr.auto_backend(target, "prompt", persona="p")
 
