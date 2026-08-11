@@ -34,6 +34,7 @@ AGENTS_DIR = Path(__file__).resolve().parent
 MODEL_CONFIG = AGENTS_DIR / "model_config.json"
 FEW_SHOT_COUNT = 2
 VERBOSE = False
+FEATURE_CANONICAL = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
 
 
 def _complete(prompt: str, persona: str = "") -> str | None:
@@ -55,10 +56,13 @@ def write_file(path: Path, content: str) -> None:
 
 def collect_target_files(target: Path) -> dict:
     files = {}
-    for fname in ["spec.md", "Schema.py", "Handler.py", "Controller.py", "Tests.py"]:
+    for fname in ["spec.md", *FEATURE_CANONICAL]:
         path = target / fname
         if path.exists():
             files[fname] = read_file(path)
+    for p in sorted(target.iterdir()):
+        if p.is_file() and p.suffix == ".py" and p.name not in files:
+            files[p.name] = read_file(p)
     return files
 
 
@@ -79,7 +83,7 @@ def build_prompt(persona: str, target: Path, target_files: dict, task: str, erro
                 if content:
                     parts.append(f"```python\n# {fname} ({ex['dir']})\n{content}\n```")
 
-    for fname in ["Schema.py", "Handler.py", "Controller.py", "Tests.py"]:
+    for fname in sorted(f for f in target_files if f.endswith(".py")):
         content = target_files.get(fname, "")
         if content:
             parts.append(f"## Existing: {fname}\n{content}")
@@ -164,7 +168,7 @@ def extract_code_blocks(text: str) -> dict[str, str]:
 def write_code_blocks(files: dict[str, str], target: Path, protect: set[str] | None = None) -> tuple[list[Path], list[Path]]:
     written: list[Path] = []
     deleted: list[Path] = []
-    expected = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
+    expected = FEATURE_CANONICAL
     produced = set()
     protect = protect or set()
 
@@ -567,7 +571,9 @@ def run_pytest(test_path: Path) -> tuple[bool, str]:
 
 
 def auto_backend(target: Path, prompt: str, verbose: bool = False, persona: str = "", spec: str = "") -> bool:
-    expected = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
+    expected = FEATURE_CANONICAL
+    pre_existing = {p.name for p in target.iterdir() if p.is_file() and p.suffix == ".py"}
+    protected_extra = pre_existing - expected
     t_total = time.time()
 
     last_error: str = ""
@@ -595,7 +601,7 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False, persona: str 
             last_error = "No code blocks found in LLM response."
             print(f"[Runner] {last_error} Retrying...", file=sys.stderr)
             continue
-        written, _ = write_code_blocks(files, target, protect={p.name for p in written})
+        written, _ = write_code_blocks(files, target, protect=protected_extra | {p.name for p in written})
         for w in written:
             print(f"[Runner] Wrote {w}")
         bad = truncated_files(written)
