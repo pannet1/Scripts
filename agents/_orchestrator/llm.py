@@ -83,10 +83,11 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
     that was injected into the system prompt; attempts whose flags were not
     applied (harness print-mode bug) are detected and retried.
 
-    `model` is passed to `omp --model` (fuzzy match); a non-free value (e.g.
-    `--model claude-sonnet-4-5`) leads the attempts, while free-tier config
-    values are absorbed into FREE_MODEL_CHAIN so the most capable free model
-    is attempted first.
+    The per-attempt model comes from the free-model chain (FREE_MODEL_CHAIN,
+    most capable first): attempt 1 uses the first model, attempt 2 the second,
+    and so on. `model`, when given, overrides the configured default — a
+    non-free value (e.g. `--model claude-sonnet-4-5`) leads the attempts,
+    free-tier values are absorbed into the chain.
     """
     omp = _omp_binary()
     if omp is None:
@@ -106,7 +107,7 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
         base_cmd += ["--system-prompt", system]
     SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
 
-    model_attempts: list[str] = _model_chain(model, 3)
+    model_attempts: list[str] = _model_chain(model or default_model(), 3)
     for attempt in range(1, max_attempts + 1):
         for m in model_attempts:
             cmd = base_cmd[:] + ["--model", m]
@@ -175,5 +176,4 @@ def generate_spec_with_ai(domain: str, action: str, prompt: str) -> str | None:
     return llm_complete(
         f"Feature: {action}\nDomain: {domain or '(none)'}\n\nDescription:\n{prompt}",
         system=system_prompt,
-        model=default_model(),
     )
