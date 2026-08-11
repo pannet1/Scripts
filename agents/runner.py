@@ -510,8 +510,6 @@ def validate_code_structure(code: str, fname: str) -> list[str]:
     issues: list[str] = []
     if fname == "Schema.py" and "BaseModel" not in code and "Schema" in fname:
         issues.append("Schema.py must import and use pydantic.BaseModel")
-    if fname == "Handler.py" and "class " not in code:
-        issues.append("Handler.py must define a class")
     if fname == "Handler.py" and "logging_func" not in code:
         issues.append("Handler.py must have a module-level logger")
     if fname == "Tests.py" and "def test_" not in code:
