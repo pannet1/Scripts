@@ -8,6 +8,7 @@ from _orchestrator.git_ops import (
     branch_exists,
     current_branch,
     merge_branch,
+    open_branches,
     read_prompt_file,
 )
 
@@ -54,6 +55,30 @@ class TestBranchExists:
 
     def test_nonexistent_returns_false(self) -> None:
         assert branch_exists("nonexistent_branch_xyzzy_123") is False
+
+
+class TestOpenBranches:
+
+    def test_lists_all_non_main_branches(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            return type("R", (), {"returncode": 0, "stdout": "main\nauction/SubmitBid\nmodify/Users\n", "stderr": ""})()
+
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
+        assert open_branches() == ["auction/SubmitBid", "modify/Users"]
+
+    def test_empty_when_only_main(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            return type("R", (), {"returncode": 0, "stdout": "main\n", "stderr": ""})()
+
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
+        assert open_branches() == []
+
+    def test_returns_empty_on_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            raise subprocess.SubprocessError("git not found")
+
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
+        assert open_branches() == []
 
 
 class TestMergeBranch:
