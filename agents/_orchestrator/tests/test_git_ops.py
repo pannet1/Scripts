@@ -7,9 +7,13 @@ import pytest
 from _orchestrator.git_ops import (
     branch_exists,
     current_branch,
+    ensure_branch,
     merge_branch,
     open_branches,
+    push_branch,
     read_prompt_file,
+    reset_to_main,
+    stage_and_commit,
 )
 
 
@@ -79,6 +83,130 @@ class TestOpenBranches:
 
         monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
         assert open_branches() == []
+
+
+class TestEnsureBranch:
+
+    def _run(self, monkeypatch: pytest.MonkeyPatch, branch: str, exists: bool) -> list[list[str]]:
+        calls: list[list[str]] = []
+        monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: branch)
+        monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: exists)
+
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            calls.append(cmd)
+            return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
+        return calls
+
+    def test_creates_branch_from_main(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        calls = self._run(monkeypatch, "main", False)
+        assert ensure_branch("Payment", "shared") == "shared/Payment"
+        assert ["git", "checkout", "-b", "shared/Payment"] in calls
+
+    def test_switches_when_branch_exists(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        calls = self._run(monkeypatch, "main", True)
+        assert ensure_branch("Payment", "shared") == "shared/Payment"
+        assert ["git", "checkout", "shared/Payment"] in calls
+
+    def test_bare_feature_without_domain(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        calls = self._run(monkeypatch, "main", False)
+        assert ensure_branch("Payments") == "Payments"
+        assert ["git", "checkout", "-b", "Payments"] in calls
+
+    def test_keeps_existing_feature_branch(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        calls = self._run(monkeypatch, "shared/Payment", False)
+        assert ensure_branch("Payment", "shared") == "shared/Payment"
+        assert calls == []
+
+
+class TestStageAndCommit:
+
+    def _fake_run(self, monkeypatch: pytest.MonkeyPatch, results: list[tuple[int, str, str]]) -> list[list[str]]:
+        calls: list[list[str]] = []
+        it = iter(results)
+
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            calls.append(cmd)
+            rc, out, err = next(it)
+            return type("R", (), {"returncode": rc, "stdout": out, "stderr": err})()
+
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
+        return calls
+
+    def test_stages_and_commits(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        calls = self._fake_run(monkeypatch, [(0, "", ""), (0, "[main abc1234] feat: Payment\n", "")])
+        ok, detail = stage_and_commit(["features/shared/Payment"], "feat: Payment")
+        assert ok is True
+        assert detail == "[main abc1234] feat: Payment"
+        assert calls == [
+            ["git", "add", "features/shared/Payment"],
+            ["git", "commit", "-m", "feat: Payment"],
+        ]
+
+    def test_nothing_to_commit_is_ok(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self._fake_run(monkeypatch, [(0, "", ""), (1, "", "nothing to commit, working tree clean")])
+        ok, detail = stage_and_commit(["x"], "feat: x")
+        assert ok is True
+        assert detail == "nothing to commit"
+
+    def test_add_failure_reported(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self._fake_run(monkeypatch, [(1, "", "pathspec is outside repository")])
+        ok, detail = stage_and_commit(["x"], "feat: x")
+        assert ok is False
+        assert "git add failed" in detail
+
+
+class TestPushBranch:
+
+    def test_push_ok(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
+        ok, err = push_branch("shared/Payment")
+        assert ok is True
+        assert err == ""
+
+    def test_push_failure_reported(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            return type("R", (), {"returncode": 128, "stdout": "", "stderr": "remote rejected"})
+
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
+        ok, err = push_branch("shared/Payment")
+        assert ok is False
+        assert err == "remote rejected"
+
+
+class TestResetToMain:
+
+    def test_resets_and_cleans(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        calls: list[list[str]] = []
+
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            calls.append(cmd)
+            return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
+        ok, err = reset_to_main()
+        assert ok is True
+        assert err == ""
+        assert calls == [
+            ["git", "fetch", "origin"],
+            ["git", "checkout", "main"],
+            ["git", "reset", "--hard", "origin/main"],
+            ["git", "clean", "-fd"],
+        ]
+
+    def test_checkout_failure_reported(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            rc = 1 if cmd[:2] == ["git", "checkout"] else 0
+            return type("R", (), {"returncode": rc, "stdout": "", "stderr": "checkout failed"})()
+
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
+        ok, err = reset_to_main()
+        assert ok is False
+        assert "git checkout main failed" in err
 
 
 class TestMergeBranch:

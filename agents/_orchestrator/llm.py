@@ -84,10 +84,11 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
     applied (harness print-mode bug) are detected and retried.
 
     The per-attempt model walks the free-model chain (FREE_MODEL_CHAIN, most
-    capable first): attempt 1 uses the first model; on failure attempt 2 uses
-    the second, and so on, wrapping at the end. `model`, when given, overrides
-    the configured default — a non-free value (e.g. `--model claude-sonnet-4-5`)
-    leads the attempts, free-tier values are absorbed into the chain.
+    capable first): each model gets exactly one attempt — attempt 1 uses the
+    first model, attempt 2 the second, and so on, never repeating a model.
+    `model`, when given, overrides the configured default — a non-free value
+    (e.g. `--model claude-sonnet-4-5`) leads the attempts, free-tier values
+    are absorbed into the chain.
     """
     omp = _omp_binary()
     if omp is None:
@@ -107,11 +108,9 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
         base_cmd += ["--system-prompt", system]
     SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
 
-    model_attempts: list[str] = _model_chain(model or default_model(), 3)
-    for i in range(max_attempts):
-        m = model_attempts[i % len(model_attempts)]
+    for i, m in enumerate(_model_chain(model or default_model(), max_attempts), 1):
         cmd = base_cmd[:] + ["--model", m]
-        print(f"[LLM] omp -p attempt {i + 1} (model={m})", file=sys.stderr)
+        print(f"[LLM] omp -p attempt {i} (model={m})", file=sys.stderr)
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 60, cwd=str(SCRATCH_DIR), check=False)
         except subprocess.TimeoutExpired:
@@ -132,7 +131,7 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
             rest = stripped[len(token):].lstrip("\n").strip() or None
             if rest and not any(marker in rest for marker in TOOL_CALL_MARKERS):
                 return rest
-        print(f"[LLM] attempt {i + 1}: verification failed (model={m}); trying next model", file=sys.stderr)
+        print(f"[LLM] attempt {i}: verification failed (model={m}); trying next model", file=sys.stderr)
     print("[LLM] verification never passed — giving up.", file=sys.stderr)
     return None
 

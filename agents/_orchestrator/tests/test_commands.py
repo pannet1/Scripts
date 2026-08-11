@@ -114,7 +114,7 @@ class TestDoDeleteInferFromBranch:
             calls.append(cmd)
             return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
 
-        monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
         dispatch("delete")
         out = capsys.readouterr().out
         assert "Nothing to delete: feature 'Payment' not found." in out
@@ -134,6 +134,8 @@ class TestMoveHandler:
             return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
 
         monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
+        # handle the pytest run (uv) in commands and all git calls in git_ops
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "main")
 
     def test_move_within_domain(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
@@ -260,7 +262,7 @@ class TestDoPushesWithoutMerge:
             calls.append(cmd)
             return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
 
-        monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
         monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "auction/SubmitBid")
         monkeypatch.setattr("_orchestrator.commands.run_runner", lambda *a, **k: True)
         monkeypatch.setattr("_orchestrator.commands.register_target", lambda *a, **k: None)
@@ -324,7 +326,7 @@ class TestUndoHandler:
             calls.append(cmd)
             return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
 
-        monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
+        monkeypatch.setattr("_orchestrator.git_ops.subprocess.run", fake_run)
         dispatch("undo")
         out = capsys.readouterr().out
         assert ["git", "fetch", "origin"] in calls
