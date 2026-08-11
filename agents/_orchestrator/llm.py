@@ -37,10 +37,12 @@ FREE_MODEL_CHAIN: tuple[str, ...] = (
 
 
 def _model_chain(model: str, limit: int) -> list[str]:
-    """Attempt order: an explicitly requested `model` first, then the free
-    model chain (most capable first), deduped and capped at `limit`."""
+    """Attempt order: an explicitly requested non-chain `model` first (e.g. a
+    paid model via `--model`), then the free model chain (most capable first),
+    deduped and capped at `limit`. Free-tier values from model_config are
+    absorbed into the chain's capability order instead of leading it."""
     chain: list[str] = []
-    if model:
+    if model and model not in FREE_MODEL_CHAIN:
         chain.append(model)
     for candidate in FREE_MODEL_CHAIN:
         if candidate not in chain:
@@ -81,9 +83,10 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
     that was injected into the system prompt; attempts whose flags were not
     applied (harness print-mode bug) are detected and retried.
 
-    `model` is passed to `omp --model` (fuzzy match); the first attempt uses it
-    (when given), then falls back through the three most capable free models
-    (FREE_MODEL_CHAIN, most capable first).
+    `model` is passed to `omp --model` (fuzzy match); a non-free value (e.g.
+    `--model claude-sonnet-4-5`) leads the attempts, while free-tier config
+    values are absorbed into FREE_MODEL_CHAIN so the most capable free model
+    is attempted first.
     """
     omp = _omp_binary()
     if omp is None:

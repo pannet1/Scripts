@@ -1,8 +1,7 @@
-import json
 from pathlib import Path
 
-from .config import AGENTS_DIR, MODEL_CONFIG
-from .llm import llm_complete
+from .config import AGENTS_DIR
+from .llm import default_model, llm_complete
 
 MAX_SPEC_QA_ATTEMPTS = 3
 
@@ -12,18 +11,10 @@ SPEC_QA_PERSONA = SPEC_QA_PERSONA_PATH.read_text() if SPEC_QA_PERSONA_PATH.exist
 
 def _validate_spec(spec: str, original_prompt: str) -> tuple[bool, str]:
     """Validate spec against the original prompt, returning (is_valid, corrected_spec)."""
-    model = "deepseek-v4-flash"
-    if MODEL_CONFIG.exists():
-        try:
-            cfg = json.loads(MODEL_CONFIG.read_text())
-        except (json.JSONDecodeError, OSError):
-            cfg = {}
-        model = cfg.get("model", model)
-
     result = llm_complete(
         f"## Original Prompt\n\n{original_prompt}\n\n## Generated Spec\n\n{spec}",
         system=SPEC_QA_PERSONA,
-        model=model,
+        model=default_model(),
     )
     if result is None:
         return True, spec
