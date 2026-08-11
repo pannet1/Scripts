@@ -15,9 +15,17 @@ from .feature import (
 from .git_ops import (
     branch_exists,
     check_branch,
+    checkout_main,
     current_branch,
+    delete_local_branch,
+    delete_remote_branch,
+    ensure_branch,
     guard_open_branches,
     merge_branch,
+    push_branch,
+    rename_branch,
+    reset_to_main,
+    stage_and_commit,
 )
 from .launcher import run_runner
 from .prompts import (
@@ -157,10 +165,8 @@ def _cmd_do(target: FeatureTarget | None, raw: str) -> CommandResult:
     if branch == "main" or branch.startswith("main"):
         if guard_open_branches():
             return CommandResult(next_action="merge or delete the listed branches first")
-        target_branch = f"{target.domain}/{display}"
-        print(f"[Orchestrator] On main with clean slate. Auto-creating branch: {target_branch}")
-        subprocess.run(["git", "checkout", "-b", target_branch], cwd=str(REPO_ROOT), check=False)
-        branch = target_branch
+        print("[Orchestrator] On main with clean slate.")
+        branch = ensure_branch(display, target.domain)
 
     spec_text = (feature_dir / "spec.md").read_text() if (feature_dir / "spec.md").exists() else ""
     if "## Modification" in spec_text:
@@ -175,27 +181,21 @@ def _cmd_do(target: FeatureTarget | None, raw: str) -> CommandResult:
         register_target(target)
         print(f"\n{'='*60}\nALL TESTS PASSED.\n")
         print(f"[Orchestrator] Staging {feature_dir}...")
-        r1 = subprocess.run(["git", "add", str(feature_dir)], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
-        if r1.returncode != 0:
-            print(f"[Orchestrator] git add failed: {r1.stderr.strip()}")
-            print("You may need to commit and merge manually.")
-            return CommandResult(success=False, next_action="resolve the git error above, then commit and merge manually")
         msg_body = f"{commit_type}: {display}"
         print(f"[Orchestrator] Committing: {msg_body}")
-        r2 = subprocess.run(["git", "commit", "-m", msg_body], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
-        if r2.returncode != 0:
-            combined = r2.stdout + r2.stderr
-            if "nothing to commit" in combined:
-                print("[Orchestrator] Nothing to commit — already up to date.")
-            else:
-                print(f"[Orchestrator] git commit failed: {r2.stderr.strip()}")
-                print("You may need to commit and merge manually.")
-                return CommandResult(success=False, next_action="resolve the git error above, then commit and merge manually")
-        print(r2.stdout.strip())
+        ok, detail = stage_and_commit([str(feature_dir)], msg_body)
+        if not ok:
+            print(f"[Orchestrator] {detail}")
+            print("You may need to commit and merge manually.")
+            return CommandResult(success=False, next_action="resolve the git error above, then commit and merge manually")
+        if detail == "nothing to commit":
+            print("[Orchestrator] Nothing to commit — already up to date.")
+        elif detail:
+            print(detail)
         print(f"[Orchestrator] Pushing {branch} to origin...")
-        r3 = subprocess.run(["git", "push", "-u", "origin", branch], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
-        if r3.returncode != 0:
-            print(f"[Orchestrator] git push failed: {r3.stderr.strip()}")
+        ok_push, push_err = push_branch(branch)
+        if not ok_push:
+            print(f"[Orchestrator] git push failed: {push_err}")
             print("You may need to commit and push manually.")
             return CommandResult(success=False, next_action="resolve the git error above, then push and merge manually")
         print(f"[Orchestrator] Done. {display} committed and pushed to '{branch}' (NOT merged to main).")
@@ -256,14 +256,14 @@ def _cmd_delete(target: FeatureTarget | None, raw: str) -> CommandResult:
     unregister_feature(raw, target.dir if target else None, target.config_path if target else None)
 
     if on_target:
-        subprocess.run(["git", "checkout", "main"], cwd=str(REPO_ROOT), check=False)
-        subprocess.run(["git", "branch", "-D", branch], cwd=str(REPO_ROOT), check=False)
+        checkout_main()
+        delete_local_branch(branch)
         print(f"[Orchestrator] Deleted branch: {branch}")
         found_any = True
     else:
         for tb in target_branches:
             if branch_exists(tb):
-                subprocess.run(["git", "branch", "-D", tb], cwd=str(REPO_ROOT), check=False)
+                delete_local_branch(tb)
                 print(f"[Orchestrator] Deleted branch: {tb}")
                 found_any = True
 
@@ -285,21 +285,16 @@ def _cmd_merge(branch: str, name: str, target: FeatureTarget | None, action: str
     if target and target.dir.exists():
         commit_type = "feat"
         print(f"[Orchestrator] Staging {target.dir}...")
-        r1 = subprocess.run(["git", "add", str(target.dir)], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
-        if r1.returncode != 0:
-            print(f"[Orchestrator] git add failed: {r1.stderr.strip()}")
-            return CommandResult(success=False, next_action="resolve the git error above, then merge manually")
         msg_body = f"{commit_type}: {name}"
         print(f"[Orchestrator] Committing: {msg_body}")
-        r2 = subprocess.run(["git", "commit", "-m", msg_body], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
-        if r2.returncode != 0:
-            combined = r2.stdout + r2.stderr
-            if "nothing to commit" in combined:
-                print("[Orchestrator] Nothing to commit — already up to date.")
-            else:
-                print(f"[Orchestrator] git commit failed: {r2.stderr.strip()}")
-                return CommandResult(success=False, next_action="resolve the git error above, then merge manually")
-        print(r2.stdout.strip())
+        ok, detail = stage_and_commit([str(target.dir)], msg_body)
+        if not ok:
+            print(f"[Orchestrator] {detail}")
+            return CommandResult(success=False, next_action="resolve the git error above, then merge manually")
+        if detail == "nothing to commit":
+            print("[Orchestrator] Nothing to commit — already up to date.")
+        elif detail:
+            print(detail)
     else:
         print(f"[Orchestrator] No feature dir for '{name}' — merging branch as-is.")
     print(f"[Orchestrator] Pushing and merging {branch} to main...")
@@ -324,18 +319,12 @@ def _cmd_undo(action: str, rest: str) -> CommandResult:
         print("[Orchestrator] undo takes no target — it discards the current branch and resets to main.")
         return CommandResult()
     print(f"[Orchestrator] Undoing {branch}: discarding commits and resetting to main...")
-    subprocess.run(["git", "fetch", "origin"], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
-    r1 = subprocess.run(["git", "checkout", "main"], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
-    if r1.returncode != 0:
-        print(f"[Orchestrator] git checkout main failed: {r1.stderr.strip()}")
+    ok, err = reset_to_main()
+    if not ok:
+        print(f"[Orchestrator] {err}")
         return CommandResult(success=False)
-    r2 = subprocess.run(["git", "reset", "--hard", "origin/main"], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
-    if r2.returncode != 0:
-        print(f"[Orchestrator] git reset failed: {r2.stderr.strip()}")
-        return CommandResult(success=False)
-    subprocess.run(["git", "clean", "-fd"], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
-    subprocess.run(["git", "branch", "-D", branch], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
-    subprocess.run(["git", "push", "origin", "--delete", branch], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
+    delete_local_branch(branch)
+    delete_remote_branch(branch)
     print(f"[Orchestrator] Done. {branch} removed; working tree matches main exactly.")
     return CommandResult(next_action='new <domain/Feature> "prompt" to start fresh, or scan to list features')
 
@@ -373,12 +362,11 @@ def _cmd_move(old_target: FeatureTarget | None, new_target: FeatureTarget | None
     new_branch = f"{new_target.domain}/{new_target.name}"
     if old_branch == current:
         print(f"[Orchestrator] Renaming branch {old_branch} -> {new_branch}...")
-        subprocess.run(["git", "branch", "-m", new_branch], cwd=str(REPO_ROOT), check=False)
-        subprocess.run(["git", "add", str(new_dir)], cwd=str(REPO_ROOT), check=False)
-        r = subprocess.run(["git", "commit", "-m", f"move: {old_name_disk} -> {new_target.name}"], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
-        if r.returncode != 0 and "nothing to commit" not in (r.stdout + r.stderr):
-            print(f"[Orchestrator] git commit failed: {r.stderr.strip()}")
-        subprocess.run(["git", "push", "-u", "origin", new_branch], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
+        rename_branch(new_branch)
+        ok, detail = stage_and_commit([str(new_dir)], f"move: {old_name_disk} -> {new_target.name}")
+        if not ok and detail != "nothing to commit":
+            print(f"[Orchestrator] {detail}")
+        push_branch(new_branch)
         if not test_ok:
             print(f"[Orchestrator] Tests failed — branch moved to {new_branch}.")
     print(f"[Orchestrator] Moved {old_name_disk} -> {new_target.name} on branch {new_branch} (NOT merged to main).")
