@@ -123,6 +123,36 @@ class TestBuildPrompt:
         assert "## Existing: Schema.py" in prompt
 
 
+# ── validate_code_structure ───────────────────────────────────────
+
+class TestValidateCodeStructure:
+    def test_function_based_handler_allowed(self) -> None:
+        code = (
+            "from shared.logger import logging_func\n\n"
+            "logger = logging_func(__name__)\n\n\n"
+            "def compute(x: int) -> int:\n"
+            "    return x + 1\n"
+        )
+        issues = rr.validate_code_structure(code, "Handler.py")
+        assert issues == []
+
+    def test_handler_requires_logger(self) -> None:
+        code = "def compute(x: int) -> int:\n    return x + 1\n"
+        issues = rr.validate_code_structure(code, "Handler.py")
+        assert "Handler.py must have a module-level logger" in issues
+
+    def test_class_based_handler_still_allowed(self) -> None:
+        code = (
+            "from shared.logger import logging_func\n\n"
+            "logger = logging_func(__name__)\n\n\n"
+            "class H:\n"
+            "    def run(self) -> str:\n"
+            "        return \"ok\"\n"
+        )
+        issues = rr.validate_code_structure(code, "Handler.py")
+        assert issues == []
+
+
 # ── auto_backend end-to-end ────────────────────────────────────────
 
 class TestAutoBackendProtection:
