@@ -30,8 +30,6 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path.cwd()
-AGENTS_DIR = Path(__file__).resolve().parent
-MODEL_CONFIG = AGENTS_DIR / "model_config.json"
 FEW_SHOT_COUNT = 2
 VERBOSE = False
 FEATURE_CANONICAL = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
