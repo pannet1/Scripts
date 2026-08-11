@@ -25,6 +25,31 @@ def default_model() -> str:
     return cfg.get("model", "")
 
 
+# Free-tier OpenCode Zen models, most capable first (per provider descriptions:
+# largest/agentic reasoning first, fast tiers after). llm_complete falls down
+# this chain so a failing completion moves to the next model instead of
+# retrying the same one.
+FREE_MODEL_CHAIN: tuple[str, ...] = (
+    "nemotron-3-ultra-free",        # largest Nemotron: max reasoning & agent accuracy
+    "deepseek-v4-flash-free",       # DeepSeek V4 Flash: enhanced agentic capabilities
+    "nemotron-3.5-lightning-free",  # fast Nemotron MoE: reliable agentic tasks
+)
+
+
+def _model_chain(model: str, limit: int) -> list[str]:
+    """Attempt order: an explicitly requested `model` first, then the free
+    model chain (most capable first), deduped and capped at `limit`."""
+    chain: list[str] = []
+    if model:
+        chain.append(model)
+    for candidate in FREE_MODEL_CHAIN:
+        if candidate not in chain:
+            chain.append(candidate)
+        if len(chain) >= limit:
+            break
+    return chain[:limit]
+
+
 def _omp_binary() -> str | None:
     return shutil.which("omp")
 
@@ -56,8 +81,9 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
     that was injected into the system prompt; attempts whose flags were not
     applied (harness print-mode bug) are detected and retried.
 
-    `model` is passed to `omp --model` (fuzzy match); on failure the call is
-    retried without it so the harness default model takes over.
+    `model` is passed to `omp --model` (fuzzy match); the first attempt uses it
+    (when given), then falls back through the three most capable free models
+    (FREE_MODEL_CHAIN, most capable first).
     """
     omp = _omp_binary()
     if omp is None:
@@ -77,13 +103,11 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
         base_cmd += ["--system-prompt", system]
     SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
 
-    model_attempts: list[str] = [model, ""] if model else [""]
+    model_attempts: list[str] = _model_chain(model, 3)
     for attempt in range(1, max_attempts + 1):
         for m in model_attempts:
-            cmd = base_cmd[:]
-            if m:
-                cmd += ["--model", m]
-            print(f"[LLM] omp -p attempt {attempt} (model={m or '<harness default>'})", file=sys.stderr)
+            cmd = base_cmd[:] + ["--model", m]
+            print(f"[LLM] omp -p attempt {attempt} (model={m})", file=sys.stderr)
             try:
                 proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 60, cwd=str(SCRATCH_DIR), check=False)
             except subprocess.TimeoutExpired:
@@ -91,11 +115,11 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
                 return None
             if proc.returncode != 0:
                 tail = [l for l in proc.stderr.strip().splitlines() if l.strip()][-3:]
-                print(f"[LLM] omp failed (model={m or '<harness default>'}): {' | '.join(tail) or 'no stderr'}", file=sys.stderr)
+                print(f"[LLM] omp failed (model={m}): {' | '.join(tail) or 'no stderr'}", file=sys.stderr)
                 continue
             result = _extract_text(proc.stdout)
             if not result:
-                print(f"[LLM] omp returned no text (model={m or '<harness default>'}); retrying", file=sys.stderr)
+                print(f"[LLM] omp returned no text (model={m}); retrying", file=sys.stderr)
                 continue
             if not token:
                 return result

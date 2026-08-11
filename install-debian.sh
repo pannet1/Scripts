@@ -4,13 +4,13 @@ set -euo pipefail
 [ "$(id -u)" -ne 0 ] || { echo "Run as normal user (no sudo): $0"; exit 1; }
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$HOME/.local/share/pnpm/bin:$PATH"
 
 ok()   { echo "  $1 ✓"; }
 fail() { echo "  $1 ✗"; }
 fix()  { echo "  → $1"; }
 step() { echo ""; echo "--- $1 ---"; }
-check_cmd() { command -v "$1" &>/dev/null || [ -x "$HOME/.local/bin/$1" ] || [ -x "$HOME/.opencode/bin/$1" ] || [ -x "$HOME/.bun/bin/$1" ]; }
+check_cmd() { command -v "$1" &>/dev/null || [ -x "$HOME/.local/bin/$1" ] || [ -x "$HOME/.opencode/bin/$1" ] || [ -x "$HOME/.bun/bin/$1" ] || [ -x "$HOME/.local/share/pnpm/bin/$1" ]; }
 
 ensure_pkg() {
     local missing=""
@@ -93,12 +93,13 @@ fi
 step "4/13: Core packages"
 ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserver-utils xfonts-base xfonts-75dpi xfonts-100dpi \
     libpangocairo-1.0-0 build-essential pkg-config ripgrep fd-find tmux picom alacritty \
+    tree xxd \
     rofi flameshot scrot xwallpaper pcmanfm udisks2 network-manager-gnome ibus xfce4-power-manager \
     alsa-utils fonts-font-awesome fonts-jetbrains-mono libnotify-bin \
     fonts-noto-core fonts-samyak-taml fonts-lohit-taml fonts-taml \
     p7zip-full p7zip-rar rar xdg-utils bind9-dnsutils smartmontools \
     libavcodec-extra61 \
-    firefox-esr
+    firefox-esr smplayer
 
 # ── 5. Networking ──
 step "5/13: Networking"
@@ -216,7 +217,7 @@ fi
 
 # ── 10. Shell tools ──
 step "10/13: Shell tools"
-ensure_pkg git-crypt adb
+ensure_pkg git-crypt adb sd
 if check_cmd starship; then
     ok "starship binary"
 else
@@ -240,6 +241,30 @@ else
     fix "installing bun (PATH set in .bashrc)"
     curl -fsSL https://bun.sh/install | bash 2>/dev/null || true
     ok "bun installed"
+fi
+if check_cmd pnpm; then
+    ok "pnpm binary"
+else
+    fail "pnpm"
+    fix "installing pnpm"
+    curl -fsSL https://get.pnpm.io/install.sh | env PNPM_HOME="$HOME/.local/share/pnpm" sh
+    ok "pnpm installed"
+fi
+if check_cmd mare-browser-mcp; then
+    ok "mare-browser-mcp (pnpm)"
+else
+    fail "mare-browser-mcp"
+    fix "pnpm add -g mare-browser-mcp"
+    pnpm add -g mare-browser-mcp
+    ok "mare-browser-mcp installed"
+fi
+if ls "$HOME/.cache/ms-playwright"/*/chromium* >/dev/null 2>&1; then
+    ok "playwright chromium"
+else
+    fail "playwright chromium"
+    fix "npx playwright install chromium"
+    npx playwright install chromium
+    ok "playwright chromium installed"
 fi
 if check_cmd wallust; then
     ok "wallust binary"
@@ -343,3 +368,20 @@ echo ""
 echo "  Reboot (NVIDIA), then: startx"
 echo "  tmux            (then prefix + I for plugins)"
 echo "  nvim            (plugins auto-install on first launch)"
+
+# ── 14. Telegram (official tar.xz) ──
+step "14/14: Telegram"
+TG_DIR="$HOME/.local/share/TelegramDesktop"
+if [ -x "$TG_DIR/Telegram" ]; then
+    ok "telegram binary"
+else
+    fail "telegram"
+    fix "downloading official Telegram tarball"
+    curl -fsSL https://telegram.org/dl/desktop/linux -o /tmp/telegram.tar.xz
+    rm -rf "$TG_DIR"
+    mkdir -p "$TG_DIR"
+    tar -xJf /tmp/telegram.tar.xz -C "$TG_DIR" --strip-components=1
+    rm -f /tmp/telegram.tar.xz
+    ln -sf "$TG_DIR/Telegram" "$HOME/.local/bin/telegram"
+    ok "telegram installed"
+fi
