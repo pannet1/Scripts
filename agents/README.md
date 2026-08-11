@@ -110,7 +110,6 @@ max_attempts=4)`. One attempt per model — no repeats:
 | `_orchestrator/config.py` | Paths: `REPO_ROOT`, `AGENTS_DIR`, `PERSONAS_DIR`, `MODEL_CONFIG`; `load_persona(name)`. |
 | `runner.py` | Backend subprocess engine (never run by hand). |
 | `qa_test.py` | Standalone read-only audit of features + code standards. |
-| `select_model.py` | Standalone interactive model picker (writes `model_config.json`). |
 | `personas/*.md` | `backend_agent.md` (used by `do`), `spec_qa_agent.md` (loaded via `load_persona`). |
 
 ## Tests
