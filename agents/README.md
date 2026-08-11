@@ -111,7 +111,7 @@ max_attempts=4)`. One attempt per model — no repeats:
 | `runner.py` | Backend subprocess engine (never run by hand). |
 | `qa_test.py` | Standalone read-only audit of features + code standards. |
 | `select_model.py` | Standalone interactive model picker (writes `model_config.json`). |
-| `personas/*.md` | `backend_agent.md` (used), `compliance_agent.md`, `spec_qa_agent.md` (loaded via `load_persona`). |
+| `personas/*.md` | `backend_agent.md` (used by `do`), `spec_qa_agent.md` (loaded via `load_persona`). |
 
 ## Tests
 
