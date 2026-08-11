@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from .config import AGENTS_DIR
-from .llm import default_model, llm_complete
+from .llm import llm_complete
 
 MAX_SPEC_QA_ATTEMPTS = 3
 
@@ -14,7 +14,6 @@ def _validate_spec(spec: str, original_prompt: str) -> tuple[bool, str]:
     result = llm_complete(
         f"## Original Prompt\n\n{original_prompt}\n\n## Generated Spec\n\n{spec}",
         system=SPEC_QA_PERSONA,
-        model=default_model(),
     )
     if result is None:
         return True, spec

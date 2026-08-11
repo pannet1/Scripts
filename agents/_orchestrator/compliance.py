@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import AGENTS_DIR, REPO_ROOT
-from .llm import default_model, llm_complete
+from .llm import llm_complete
 
 PERSONA_PATH = AGENTS_DIR / "personas" / "compliance_agent.md"
 PERSONA = PERSONA_PATH.read_text() if PERSONA_PATH.exists() else ""
@@ -55,7 +55,6 @@ def _ai_fix_file(persona: str, rel: Path, content: str) -> dict[str, Any]:
         f"File: {rel}\n\n```python\n{content}\n```\n\n"
         f"Return the COMPLETE fixed file content inside a single ```python code block. No explanations.",
         system=persona,
-        model=default_model(),
     )
     if not result:
         return {"path": str(rel), "error": True, "fixed": "", "changed": False}
