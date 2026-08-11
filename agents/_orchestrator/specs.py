@@ -1,12 +1,11 @@
 from pathlib import Path
 
-from .config import AGENTS_DIR
+from .config import load_persona
 from .llm import llm_complete
 
 MAX_SPEC_QA_ATTEMPTS = 3
 
-SPEC_QA_PERSONA_PATH = AGENTS_DIR / "personas" / "spec_qa_agent.md"
-SPEC_QA_PERSONA = SPEC_QA_PERSONA_PATH.read_text() if SPEC_QA_PERSONA_PATH.exists() else ""
+SPEC_QA_PERSONA = load_persona("spec_qa")
 
 
 def _validate_spec(spec: str, original_prompt: str) -> tuple[bool, str]:
