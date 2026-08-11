@@ -5,11 +5,10 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .config import AGENTS_DIR, REPO_ROOT
+from .config import REPO_ROOT, load_persona
 from .llm import llm_complete
 
-PERSONA_PATH = AGENTS_DIR / "personas" / "compliance_agent.md"
-PERSONA = PERSONA_PATH.read_text() if PERSONA_PATH.exists() else ""
+PERSONA = load_persona("compliance")
 
 EXCLUDE_DIRS: frozenset[str] = frozenset({
     ".venv", "venv", "env", ".env", "node_modules",
