@@ -16,8 +16,8 @@ from .git_ops import (
     branch_exists,
     check_branch,
     current_branch,
+    guard_open_branches,
     merge_branch,
-    unmerged_branches,
 )
 from .launcher import run_runner
 from .prompts import (
@@ -131,9 +131,9 @@ def _cmd_feature(target: FeatureTarget, rest: str, prompt_content: str, no_contr
     description = resolve_change_prompt(rest, prompt_content, target.name, prefix)
     if description is None:
         return _prompt_required_result(prefix, target.name)
+    check_branch(target.name, target.domain)
     feature_dir = scaffold_new_feature(target, description, no_controller=no_controller)
     if feature_dir and feature_dir.is_dir():
-        check_branch(target.name, target.domain)
         return CommandResult(next_action=f"./.agents/orchestrator.py do {target.domain}/{target.name}")
     print(f"[Orchestrator] Failed to scaffold feature '{target.name}'.")
     return CommandResult(success=False)
@@ -155,14 +155,8 @@ def _cmd_do(target: FeatureTarget | None, raw: str) -> CommandResult:
 
     branch = current_branch()
     if branch == "main" or branch.startswith("main"):
-        pending = unmerged_branches()
-        if pending:
-            print("=" * 60)
-            print("BLOCKED: Unmerged branches still exist. Merge them first:")
-            for b in pending:
-                print(f"  {b}")
-            print("=" * 60)
-            return CommandResult(next_action="merge the listed branches first")
+        if guard_open_branches():
+            return CommandResult(next_action="merge or delete the listed branches first")
         target_branch = f"{target.domain}/{display}"
         print(f"[Orchestrator] On main with clean slate. Auto-creating branch: {target_branch}")
         subprocess.run(["git", "checkout", "-b", target_branch], cwd=str(REPO_ROOT), check=False)
@@ -231,10 +225,10 @@ def _cmd_modify(res: ModifyResolution | None, raw: str, rest: str, prompt_conten
         if change_prompt is None:
             return _prompt_required_result("modify", res.name)
     heading = "Modification Request"
+    check_branch(res.name, res.branch_domain)
     if not res.amend.dir.exists():
         scaffold_new_feature(res.amend, res.scaffold_overview, no_controller=True)
     rewrite_spec_with_ai(res.amend.dir, change_prompt, heading)
-    check_branch(res.name, res.branch_domain)
     amend_spec(
         res.amend.dir,
         heading="CONTRACT AMENDMENT",

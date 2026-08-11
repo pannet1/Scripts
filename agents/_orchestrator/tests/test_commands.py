@@ -201,7 +201,7 @@ class TestCheckBranchNaming:
 
     def test_branch_uses_domain_slash_feature(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
-        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", list)
+        monkeypatch.setattr("_orchestrator.git_ops.open_branches", list)
         monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
         calls = self._fake_git(monkeypatch)
         check_branch("Payment", "shared")
@@ -209,7 +209,7 @@ class TestCheckBranchNaming:
 
     def test_branch_without_domain_is_bare_feature(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
-        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", list)
+        monkeypatch.setattr("_orchestrator.git_ops.open_branches", list)
         monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
         calls = self._fake_git(monkeypatch)
         check_branch("Payments", "")
@@ -217,7 +217,7 @@ class TestCheckBranchNaming:
 
     def test_branch_for_bare_feature_uses_nodomain(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
-        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", list)
+        monkeypatch.setattr("_orchestrator.git_ops.open_branches", list)
         monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
         calls = self._fake_git(monkeypatch)
         check_branch("Payments", "nodomain")
@@ -225,7 +225,7 @@ class TestCheckBranchNaming:
 
     def test_no_operation_prefix_in_branch_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
-        monkeypatch.setattr("_orchestrator.git_ops.unmerged_branches", list)
+        monkeypatch.setattr("_orchestrator.git_ops.open_branches", list)
         monkeypatch.setattr("_orchestrator.git_ops.branch_exists", lambda name: False)
         calls = self._fake_git(monkeypatch)
         check_branch("Payment", "shared")
@@ -239,6 +239,13 @@ class TestCheckBranchNaming:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "shared/Payment")
         with pytest.raises(SystemExit):
             check_branch("Other", "vps")
+
+    def test_any_open_branch_blocks_even_if_merged(self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+        monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "main")
+        monkeypatch.setattr("_orchestrator.git_ops.open_branches", lambda: ["modify/Users"])
+        with pytest.raises(SystemExit):
+            check_branch("Payment", "shared")
+        assert "Other branches are open" in capsys.readouterr().out
 
 
 class TestDoPushesWithoutMerge:

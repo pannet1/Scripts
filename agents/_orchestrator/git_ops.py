@@ -15,16 +15,28 @@ def current_branch() -> str:
         return "(unknown)"
 
 
-def unmerged_branches() -> list[str]:
+def open_branches() -> list[str]:
+    """Local branches other than main (merged or not)."""
     try:
         result = subprocess.run(
-            ["git", "branch", "--no-merged", "main"],
+            ["git", "for-each-ref", "--format=%(refname:short)", "refs/heads"],
             capture_output=True, text=True, cwd=str(REPO_ROOT),
-        check=False)
-        lines = [l.strip() for l in result.stdout.split("\n") if l.strip() and not l.strip().startswith("*")]
-        return [l for l in lines if l != "main"]
+            check=False)
+        return [l.strip() for l in result.stdout.split("\n") if l.strip() and l.strip() != "main"]
     except (OSError, subprocess.SubprocessError):
         return []
+
+
+def guard_open_branches() -> list[str]:
+    """Return open (non-main) branches, printing a block banner if any exist."""
+    pending = open_branches()
+    if pending:
+        print("=" * 60)
+        print("BLOCKED: Other branches are open. Merge or delete them first:")
+        for b in pending:
+            print(f"  {b}")
+        print("=" * 60)
+    return pending
 
 
 def branch_exists(name: str) -> bool:
@@ -70,13 +82,7 @@ def check_branch(action: str, domain: str = "") -> str:
         sys.exit(1)
 
     if branch == "main" or branch.startswith("main"):
-        pending = unmerged_branches()
-        if pending:
-            print("=" * 60)
-            print("BLOCKED: Unmerged branches still exist. Merge them first:")
-            for b in pending:
-                print(f"  {b}")
-            print("=" * 60)
+        if guard_open_branches():
             sys.exit(1)
         target = f"{domain}/{action}" if domain else action
         if branch_exists(target):
