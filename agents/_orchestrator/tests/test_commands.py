@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from _orchestrator.commands import _KNOWN_PREFIXES, _parse_request, dispatch
+from _orchestrator.commands import _KNOWN_PREFIXES, _cmd_do, _parse_request, dispatch
 from _orchestrator.feature import ProjectFeatures, feature_from_branch
 from _orchestrator.git_ops import check_branch
 from _orchestrator.scaffold import scaffold_new_feature
@@ -239,6 +239,33 @@ class TestCheckBranchNaming:
         monkeypatch.setattr("_orchestrator.git_ops.current_branch", lambda: "shared/Payment")
         with pytest.raises(SystemExit):
             check_branch("Other", "vps")
+
+
+class TestDoPushesWithoutMerge:
+
+    def test_do_pushes_branch_but_never_merges_to_main(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        project = ProjectFeatures.load(tmp_path)
+        target = project.target_for_new("SubmitBid", "auction")
+        scaffold_new_feature(target, "")
+        calls: list[list[str]] = []
+
+        def fake_run(cmd: list[str], **kwargs: object) -> object:
+            calls.append(cmd)
+            return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+        monkeypatch.setattr("_orchestrator.commands.subprocess.run", fake_run)
+        monkeypatch.setattr("_orchestrator.commands.current_branch", lambda: "auction/SubmitBid")
+        monkeypatch.setattr("_orchestrator.commands.run_runner", lambda *a, **k: True)
+        monkeypatch.setattr("_orchestrator.commands.register_target", lambda *a, **k: None)
+
+        result = _cmd_do(target, "SubmitBid")
+
+        assert ["git", "push", "-u", "origin", "auction/SubmitBid"] in calls
+        assert ["git", "commit", "-m", "feat: SubmitBid"] in calls
+        assert not any(c[:3] == ["git", "checkout", "main"] for c in calls)
+        assert not any(c[:2] == ["git", "merge"] for c in calls)
+        assert "run merge" in result.next_action
+        assert result.success
 
 
 class TestMergeGuard:
