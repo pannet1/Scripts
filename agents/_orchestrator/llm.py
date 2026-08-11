@@ -83,11 +83,11 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
     that was injected into the system prompt; attempts whose flags were not
     applied (harness print-mode bug) are detected and retried.
 
-    The per-attempt model comes from the free-model chain (FREE_MODEL_CHAIN,
-    most capable first): attempt 1 uses the first model, attempt 2 the second,
-    and so on. `model`, when given, overrides the configured default — a
-    non-free value (e.g. `--model claude-sonnet-4-5`) leads the attempts,
-    free-tier values are absorbed into the chain.
+    The per-attempt model walks the free-model chain (FREE_MODEL_CHAIN, most
+    capable first): attempt 1 uses the first model; on failure attempt 2 uses
+    the second, and so on, wrapping at the end. `model`, when given, overrides
+    the configured default — a non-free value (e.g. `--model claude-sonnet-4-5`)
+    leads the attempts, free-tier values are absorbed into the chain.
     """
     omp = _omp_binary()
     if omp is None:
@@ -108,37 +108,31 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
     SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
 
     model_attempts: list[str] = _model_chain(model or default_model(), 3)
-    for attempt in range(1, max_attempts + 1):
-        for m in model_attempts:
-            cmd = base_cmd[:] + ["--model", m]
-            print(f"[LLM] omp -p attempt {attempt} (model={m})", file=sys.stderr)
-            try:
-                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 60, cwd=str(SCRATCH_DIR), check=False)
-            except subprocess.TimeoutExpired:
-                print(f"[LLM] omp timed out after {timeout}s", file=sys.stderr)
-                return None
-            if proc.returncode != 0:
-                tail = [l for l in proc.stderr.strip().splitlines() if l.strip()][-3:]
-                print(f"[LLM] omp failed (model={m}): {' | '.join(tail) or 'no stderr'}", file=sys.stderr)
-                continue
-            result = _extract_text(proc.stdout)
-            if not result:
-                print(f"[LLM] omp returned no text (model={m}); retrying", file=sys.stderr)
-                continue
-            if not token:
-                return result
-            stripped = result.lstrip()
-            if stripped.startswith(token):
-                rest = stripped[len(token):].lstrip("\n").strip() or None
-                if rest and not any(marker in rest for marker in TOOL_CALL_MARKERS):
-                    return rest
-                print(f"[LLM] attempt {attempt}: token echoed but flags partially applied (tool calls in output); retrying", file=sys.stderr)
-                break
-            if any(marker in result for marker in TOOL_CALL_MARKERS):
-                print(f"[LLM] attempt {attempt}: flags not applied (tool calls in output); retrying", file=sys.stderr)
-            else:
-                print(f"[LLM] attempt {attempt}: verification token missing; retrying", file=sys.stderr)
-            break
+    for i in range(max_attempts):
+        m = model_attempts[i % len(model_attempts)]
+        cmd = base_cmd[:] + ["--model", m]
+        print(f"[LLM] omp -p attempt {i + 1} (model={m})", file=sys.stderr)
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 60, cwd=str(SCRATCH_DIR), check=False)
+        except subprocess.TimeoutExpired:
+            print(f"[LLM] omp timed out after {timeout}s", file=sys.stderr)
+            return None
+        if proc.returncode != 0:
+            tail = [l for l in proc.stderr.strip().splitlines() if l.strip()][-3:]
+            print(f"[LLM] omp failed (model={m}): {' | '.join(tail) or 'no stderr'}", file=sys.stderr)
+            continue
+        result = _extract_text(proc.stdout)
+        if not result:
+            print(f"[LLM] omp returned no text (model={m}); retrying", file=sys.stderr)
+            continue
+        if not token:
+            return result
+        stripped = result.lstrip()
+        if stripped.startswith(token):
+            rest = stripped[len(token):].lstrip("\n").strip() or None
+            if rest and not any(marker in rest for marker in TOOL_CALL_MARKERS):
+                return rest
+        print(f"[LLM] attempt {i + 1}: verification failed (model={m}); trying next model", file=sys.stderr)
     print("[LLM] verification never passed — giving up.", file=sys.stderr)
     return None
 
