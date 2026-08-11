@@ -94,7 +94,7 @@ Every feature lives at `apps/backend/app/features/<domain>/<ActionName>/` with e
 - Non-strategy `.yml` files in the strategies dir are skipped with a warning
 
 ## Agentic Workflow (AI Harness)
-- **Orchestrator** (`.agents/orchestrator.py`): decomposes human request, dispatches
+- **Orchestrator** (`.agents/orch.py`): decomposes human request, dispatches
 - **Runner** (`.agents/runner.py`): persona + spec → Zen API → write code → pytest
 - **Personas**: stored in `.agents/personas/` (backend_agent.md, qa_agent.md)
 - **Spec flow**: human prompt → Orchestrator → Zen API → spec.md → Runner → code

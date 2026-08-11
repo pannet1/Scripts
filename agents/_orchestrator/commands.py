@@ -59,7 +59,7 @@ def _parse_request(request: str) -> tuple[str, str, str, str]:
     return prefix, domain, action, rest
 
 
-_HELP_TEXT = """Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]
+_HELP_TEXT = """Usage:  ./.agents/orch.py <action> <domain/Feature> [inline prompt]
 
 Prompt commands (expect an inline prompt):
   init     <path>/<project-name>           create new project
@@ -77,9 +77,9 @@ Other:
   scan                                   discover existing features
 
 Examples:
-  ./.agents/orchestrator.py new Payments "auction payment wallet flow"
-  ./.agents/orchestrator.py modify shared/Payment "share screenshot separately"
-  ./.agents/orchestrator.py do Payment
+  ./.agents/orch.py new Payments "auction payment wallet flow"
+  ./.agents/orch.py modify shared/Payment "share screenshot separately"
+  ./.agents/orch.py do Payment
 """
 
 
@@ -88,9 +88,9 @@ def _prompt_required_result(prefix: str, name: str) -> CommandResult:
     print(f"ERROR: `{prefix} {name}` requires a prompt.")
     print()
     print("Options:")
-    print(f'  ./.agents/orchestrator.py {prefix} {name} --prompt path/to/prompt.md')
-    print(f'  ./.agents/orchestrator.py {prefix} {name} "describe your change in words"')
-    print(f'  ./.agents/orchestrator.py {prefix} {name} path/to/prompt.md')
+    print(f'  ./.agents/orch.py {prefix} {name} --prompt path/to/prompt.md')
+    print(f'  ./.agents/orch.py {prefix} {name} "describe your change in words"')
+    print(f'  ./.agents/orch.py {prefix} {name} path/to/prompt.md')
     print("=" * 60)
     return CommandResult(success=False)
 
@@ -108,7 +108,7 @@ def _cmd_init(domain: str, action: str, rest: str, prompt_content: str) -> Comma
         print("[Orchestrator] init requires a project target: init <path>/<project-name>")
         return CommandResult(success=False)
     if init_new_project(project_dir):
-        return CommandResult(next_action=f'cd {project_dir} && ./.agents/orchestrator.py new <domain/Feature> "prompt"')
+        return CommandResult(next_action=f'cd {project_dir} && ./.agents/orch.py new <domain/Feature> "prompt"')
     return CommandResult(success=False)
 
 
@@ -134,7 +134,7 @@ def _cmd_feature(target: FeatureTarget, rest: str, prompt_content: str, no_contr
     check_branch(target.name, target.domain)
     feature_dir = scaffold_new_feature(target, description, no_controller=no_controller)
     if feature_dir and feature_dir.is_dir():
-        return CommandResult(next_action=f"./.agents/orchestrator.py do {target.domain}/{target.name}")
+        return CommandResult(next_action=f"./.agents/orch.py do {target.domain}/{target.name}")
     print(f"[Orchestrator] Failed to scaffold feature '{target.name}'.")
     return CommandResult(success=False)
 
@@ -145,10 +145,10 @@ def _cmd_do(target: FeatureTarget | None, raw: str) -> CommandResult:
         return CommandResult(next_action='checkout or create a feature branch first — new <domain/Feature> "prompt"')
     if not target:
         print(f"[Orchestrator] Feature not found: {raw}.")
-        return CommandResult(next_action=f'./.agents/orchestrator.py new {raw}')
+        return CommandResult(next_action=f'./.agents/orch.py new {raw}')
     if not (target.dir / "spec.md").exists():
         print("[Orchestrator] No spec.md found.")
-        return CommandResult(next_action=f'./.agents/orchestrator.py new {raw}')
+        return CommandResult(next_action=f'./.agents/orch.py new {raw}')
 
     display = target.name
     feature_dir = target.dir
@@ -214,7 +214,7 @@ def _cmd_modify(res: ModifyResolution | None, raw: str, rest: str, prompt_conten
         return CommandResult(next_action='pass a domain/Feature target with an inline prompt')
     if res.amend is None:
         print(f"[Orchestrator] Feature '{res.name}' not found.")
-        return CommandResult(success=False, next_action=f'./.agents/orchestrator.py new {res.name}')
+        return CommandResult(success=False, next_action=f'./.agents/orch.py new {res.name}')
     if implicit:
         change_prompt = resolve_prompt_for_implicit(rest, prompt_content)
         if not change_prompt:
@@ -235,7 +235,7 @@ def _cmd_modify(res: ModifyResolution | None, raw: str, rest: str, prompt_conten
         branch_prefix="modify",
         feature_name=res.name,
     )
-    return CommandResult(next_action=f'./.agents/orchestrator.py do {res.name} to implement the amended spec')
+    return CommandResult(next_action=f'./.agents/orch.py do {res.name} to implement the amended spec')
 
 
 def _cmd_delete(target: FeatureTarget | None, raw: str) -> CommandResult:

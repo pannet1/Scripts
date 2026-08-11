@@ -83,5 +83,5 @@ def amend_spec(feature_dir: Path, heading: str, branch_prefix: str, feature_name
     display = feature_name or feature_dir.name
     print(f"\n{'='*60}\n{heading} for {display}")
     print("Spec amended. Run do when ready:\n")
-    print(f"  ./.agents/orchestrator.py do {display}")
+    print(f"  ./.agents/orch.py do {display}")
     print("=" * 60)

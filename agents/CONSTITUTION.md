@@ -105,7 +105,7 @@ logger = logging_func(__name__)
 
 ### Entry Point
 ```
-python .agents/orchestrator.py "<human request>"
+python .agents/orch.py "<human request>"
 ```
 
 ### Workflow

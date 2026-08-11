@@ -116,7 +116,7 @@ def cmd_init() -> int:
     print()
     print("Edit .features.json to change features_dir, then run:")
     print("  ./.agents/scaffolder.py scan")
-    print("  ./.agents/orchestrator.py new YourFeature")
+    print("  ./.agents/orch.py new YourFeature")
     return 0
 
 
