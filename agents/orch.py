@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
     if not args.command:
         parser.print_help()
         print()
-        print("Usage:  ./.agents/orchestrator.py <action> <domain/Feature> [inline prompt]")
+        print("Usage:  ./.agents/orch.py <action> <domain/Feature> [inline prompt]")
         print("Prompt commands (expect an inline prompt):")
         print('  init     <path>/<project-name>           create new project')
         print("  new      <domain/Feature> \"prompt\"       scaffold new feature")
@@ -57,9 +57,9 @@ def parse_args() -> argparse.Namespace:
         print("  move     <OldDomain/OldFeature> <NewDomain/NewFeature>")
         print("  scan                                   discover existing features")
 
-        print("  ./.agents/orchestrator.py new Payments \"auction payment wallet flow\"")
-        print("  ./.agents/orchestrator.py modify shared/Payment \"share screenshot separately\"")
-        print("  ./.agents/orchestrator.py do Payment")
+        print("  ./.agents/orch.py new Payments \"auction payment wallet flow\"")
+        print("  ./.agents/orch.py modify shared/Payment \"share screenshot separately\"")
+        print("  ./.agents/orch.py do Payment")
         sys.exit(1)
     return args
 
