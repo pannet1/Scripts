@@ -185,7 +185,6 @@ ffile() {
   find . -name "$1" -not -path './.venv/*' -not -path './.git/*' -not -path './.pytest_cache/*' 2>/dev/null
 }
 
-
 # Added by Antigravity CLI installer
 export PATH="/home/pannet1/.local/bin:$PATH"
 
@@ -194,7 +193,9 @@ export PATH="$HOME/.local/node22/bin:$PATH"
 # pnpm
 export PNPM_HOME="/home/pannet1/.local/share/pnpm"
 case ":$PATH:" in
-  *":$PNPM_HOME/bin:"*) ;;
-  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
+*":$PNPM_HOME/bin:"*) ;;
+*) export PATH="$PNPM_HOME/bin:$PATH" ;;
 esac
 # pnpm end
+#
+find ~ -type f -size +500M

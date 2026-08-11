@@ -3,19 +3,36 @@
   "mcp": {
     "mare_browser_mcp": {
       "type": "local",
-      "command": ["mare-browser-mcp"],
+      "command": [
+        "mare-browser-mcp"
+      ],
       "environment": {
         "HEADLESS": "true"
-      }
+      },
+    },
+    "agent-native-localhost": {
+      "type": "remote",
+      "url": "http://localhost:8080/mcp",
+      "enabled": true
     },
     "anythingllm": {
       "type": "local",
-      "command": ["anythingllm-mcp-server"],
+      "command": [
+        "anythingllm-mcp-server"
+      ],
       "environment": {
         "ANYTHINGLLM_BASE_URL": "http://localhost:3001/api",
         "ANYTHINGLLM_API_KEY": "sk-anythingllm-local-dev",
         "ANYTHINGLLM_WORKSPACE": "local-rag"
       }
+    },
+    "chrome-devtools": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ]
     }
   },
   "provider": {
@@ -65,4 +82,3 @@
     }
   }
 }
-

@@ -6,11 +6,5 @@
         "apiKey": "{env:OPENCODE_ZEN_KEY=<REMOVED>}"
       }
     }
-  },
-  "mcp": {
-    "chrome-devtools": {
-      "type": "local",
-      "command": ["npx", "-y", "chrome-devtools-mcp@latest"]
-    }
   }
 }

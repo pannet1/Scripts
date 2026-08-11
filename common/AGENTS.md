@@ -40,6 +40,7 @@ with open("data/cron.txt", "a") as f:
 - Use full paths for commands
 - Test any script execution manually before relying on cron
 - Check `data/cron.txt` for cron output/logging
+- **The user runs all `sudo` commands and long-running commands themselves.** Give the command and let the user execute it; do not attempt to run sudo/long-running commands directly (curl network probes, `docker pull`, etc. that need sudo or take a long time should be delegated to the user).
 
 ## SSH Connection Multiplexing
 
@@ -78,6 +79,22 @@ sudo systemctl restart sshd
 - `ControlPersist 600`: Keeps connection alive for 10 minutes (client side)
 - `ClientAliveCountMax 10`: Server allows 10 x 60s = 10 min idle time
 - SSH multiplexing reuses the same connection for multiple sessions
+
+## Creating Videos with Rendiv
+
+When the user asks to create, make, generate, or edit a **video** — load the
+`rendiv-video` skill (installed globally) and follow its guidance.
+
+Workflow:
+1. **Load the skill** via the skill tool: `rendiv-video` (gives the full Rendiv API: compositions, animation, media, captions, transitions).
+2. **Write or edit compositions** in the Rendiv project as React/TSX components driven by `useFrame()`. If starting from scratch, use the project at `/home/pannet1/programs/javascript/github.com/pannet1/make-videos` (already scaffolded with `src/index.tsx` + `src/MyVideo.tsx`).
+3. **Register** compositions in `src/index.tsx` with `<Composition id=... component=... />`.
+4. **Render** using the project's `render.sh`:
+   ```bash
+   cd /home/pannet1/programs/javascript/github.com/pannet1/make-videos && ./render.sh MyVideo out/my-video.mp4
+   ```
+   (Renders inside the `rendiv` Docker container — Chromium only works there. Long-running: delegate to the user.)
+5. If composing a brand-new video from a prompt, create a new composition component, register it, and render it with `./render.sh <CompositionId> out/<name>.mp4`.
 
 ## Custom Commands
 
