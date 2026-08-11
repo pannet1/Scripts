@@ -1,8 +1,9 @@
+import os
 import subprocess
 import sys
 from pathlib import Path
 
-from .config import PERSONAS_DIR, RUNNER
+from .config import AGENTS_DIR, PERSONAS_DIR, RUNNER
 
 
 def run_runner(persona_key: str, target: Path, task: str, error_path: Path | None = None) -> bool:
@@ -21,7 +22,11 @@ def run_runner(persona_key: str, target: Path, task: str, error_path: Path | Non
     if error_path:
         cmd += ["--error", str(error_path)]
 
-    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1) as proc:
+    # runner.py is a package member now; make the package importable for the subprocess.
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(AGENTS_DIR) + os.pathsep + env.get("PYTHONPATH", "")
+
+    with subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1) as proc:
         if proc.stdout is None:
             return False
         for line in proc.stdout:

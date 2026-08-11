@@ -6,16 +6,12 @@ extracts Python code blocks from the response, writes them to disk,
 and runs pytest in an auto-correction loop.
 
 Usage:
-    python .agents/runner.py \
-        --persona .agents/personas/backend_agent.md \
+    Normally spawned by launcher.py (`orch.py do`). Standalone debugging from agents/:
+
+    PYTHONPATH=. python _orchestrator/runner.py \
+        --persona personas/backend_agent.md \
         --target features/your-domain/YourFeature/ \
         --task "Implement the feature per spec.md" \
-        --api
-
-    python .agents/runner.py \
-        --persona .agents/personas/qa_agent.md \
-        --target features/your-domain/YourFeature/ \
-        --error /tmp/pytest_errors.txt \
         --api
 """
 

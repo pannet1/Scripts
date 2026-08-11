@@ -1,15 +1,10 @@
-"""Tests for runner.py — file pruning protection and prompt context."""
+"""Tests for _orchestrator/runner.py — file pruning protection and prompt context."""
 
-import sys
 from pathlib import Path
 
 import pytest
 
-# Add agents/ dir to path so we can import runner
-_AGENTS = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_AGENTS))
-
-import runner as rr
+import _orchestrator.runner as rr
 
 # ── collect_target_files ───────────────────────────────────────────
 

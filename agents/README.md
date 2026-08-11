@@ -108,7 +108,7 @@ max_attempts=4)`. One attempt per model — no repeats:
 | `_orchestrator/prompts.py` | Prompt resolution incl. current-file detection via `nvim --headless`. |
 | `_orchestrator/templates.py` | Code + spec templates, default overview. |
 | `_orchestrator/config.py` | Paths: `REPO_ROOT`, `AGENTS_DIR`, `PERSONAS_DIR`, `MODEL_CONFIG`; `load_persona(name)`. |
-| `runner.py` | Backend subprocess engine (never run by hand). |
+| `_orchestrator/runner.py` | Backend subprocess engine (never run by hand). |
 | `qa_test.py` | Standalone read-only audit of features + code standards. |
 | `personas/*.md` | `backend_agent.md` (used by `do`), `spec_qa_agent.md` (loaded via `load_persona`). |
 
@@ -116,6 +116,5 @@ max_attempts=4)`. One attempt per model — no repeats:
 
 ```
 cd agents
-.venv/bin/python -m pytest _orchestrator/tests -q   # command/feature/git/llm units (141)
-.venv/bin/python -m pytest tests -q                 # runner engine (11)
+.venv/bin/python -m pytest _orchestrator/tests -q   # single suite: commands, feature, git, llm, templates, runner (152)
 ```
