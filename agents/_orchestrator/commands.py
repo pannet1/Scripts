@@ -198,14 +198,14 @@ def _cmd_do(target: FeatureTarget | None, raw: str) -> CommandResult:
                 print("You may need to commit and merge manually.")
                 return CommandResult(success=False, next_action="resolve the git error above, then commit and merge manually")
         print(r2.stdout.strip())
-        print(f"[Orchestrator] Pushing and merging {branch} to main...")
-        ok_merge, merge_err = merge_branch(branch)
-        if not ok_merge:
-            print(f"[Orchestrator] {merge_err}")
-            print("You may need to resolve and merge manually.")
-            return CommandResult(success=False, next_action="resolve the git error above, then merge manually")
-        print(f"[Orchestrator] Done. {display} merged to main.")
-        return CommandResult(next_action='scan to list features, or new <domain/Feature> "prompt" to start the next one')
+        print(f"[Orchestrator] Pushing {branch} to origin...")
+        r3 = subprocess.run(["git", "push", "-u", "origin", branch], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
+        if r3.returncode != 0:
+            print(f"[Orchestrator] git push failed: {r3.stderr.strip()}")
+            print("You may need to commit and push manually.")
+            return CommandResult(success=False, next_action="resolve the git error above, then push and merge manually")
+        print(f"[Orchestrator] Done. {display} committed and pushed to '{branch}' (NOT merged to main).")
+        return CommandResult(next_action=f'run merge to merge {branch} into main when ready')
     print(f"\n{'='*60}")
     print("IMPLEMENTATION FAILED. The auto-QA loop exhausted its attempts.")
     print("Copy the error output above and tell the AI:")
@@ -375,29 +375,20 @@ def _cmd_move(old_target: FeatureTarget | None, new_target: FeatureTarget | None
         print(result.stdout[-500:] if len(result.stdout) > 500 else result.stdout)
         print("[Orchestrator] Tests failed after rename. Check output above.")
     current = current_branch()
-    merged = False
     old_branch = f"{old_target.domain}/{old_name_disk}"
     new_branch = f"{new_target.domain}/{new_target.name}"
     if old_branch == current:
         print(f"[Orchestrator] Renaming branch {old_branch} -> {new_branch}...")
         subprocess.run(["git", "branch", "-m", new_branch], cwd=str(REPO_ROOT), check=False)
         subprocess.run(["git", "add", str(new_dir)], cwd=str(REPO_ROOT), check=False)
-        subprocess.run(["git", "commit", "-m", f"move: {old_name_disk} -> {new_target.name}"], capture_output=True, cwd=str(REPO_ROOT), check=False)
-        if test_ok:
-            print(f"[Orchestrator] Merging {new_branch} to main...")
-            ok_merge, merge_err = merge_branch(new_branch)
-            if ok_merge:
-                print("[Orchestrator] Merged to main. Done.")
-                merged = True
-            else:
-                print(f"[Orchestrator] {merge_err}")
-        else:
-            print(f"[Orchestrator] Tests failed — branch moved to {new_branch}, not merged.")
-    if not merged:
-        print(f"[Orchestrator] Moved {old_name_disk} -> {new_target.name}. git add + commit manually if needed.")
-        return CommandResult(success=test_ok, next_action=f'git add + commit the move, then merge {new_branch} to main')
-    label = f"{new_target.domain}/{new_target.name}"
-    return CommandResult(next_action=f'scan to see {label} on main')
+        r = subprocess.run(["git", "commit", "-m", f"move: {old_name_disk} -> {new_target.name}"], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
+        if r.returncode != 0 and "nothing to commit" not in (r.stdout + r.stderr):
+            print(f"[Orchestrator] git commit failed: {r.stderr.strip()}")
+        subprocess.run(["git", "push", "-u", "origin", new_branch], capture_output=True, text=True, cwd=str(REPO_ROOT), check=False)
+        if not test_ok:
+            print(f"[Orchestrator] Tests failed — branch moved to {new_branch}.")
+    print(f"[Orchestrator] Moved {old_name_disk} -> {new_target.name} on branch {new_branch} (NOT merged to main).")
+    return CommandResult(success=test_ok, next_action=f'run merge to merge {new_branch} into main when ready')
 
 
 def _split_move_target(target_str: str) -> tuple[str, str]:
