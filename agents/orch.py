@@ -56,10 +56,12 @@ def parse_args() -> argparse.Namespace:
         print("Other:")
         print("  move     <OldDomain/OldFeature> <NewDomain/NewFeature>")
         print("  scan                                   discover existing features")
+        print("  qa                                     run feature tests + code-standards audit (no LLM)")
 
         print("  ./.agents/orch.py new Payments \"auction payment wallet flow\"")
         print("  ./.agents/orch.py modify shared/Payment \"share screenshot separately\"")
         print("  ./.agents/orch.py do Payment")
+        print("  ./.agents/orch.py qa")
         sys.exit(1)
     return args
 

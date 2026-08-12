@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from _orchestrator.commands import _KNOWN_PREFIXES, _cmd_do, _parse_request, dispatch
+from _orchestrator.commands import _KNOWN_PREFIXES, _cmd_do, _cmd_qa, _parse_request, dispatch
 from _orchestrator.feature import ProjectFeatures, feature_from_branch
 from _orchestrator.git_ops import check_branch
 from _orchestrator.scaffold import scaffold_new_feature
@@ -56,6 +56,9 @@ class TestParseRequest:
 
     def test_scan(self) -> None:
         assert _parse_request("scan") == ("scan", "", "", "")
+
+    def test_qa(self) -> None:
+        assert _parse_request("qa") == ("qa", "", "", "")
 
     def test_bare_init(self) -> None:
         assert _parse_request("init") == ("init", "", "", "")
@@ -382,8 +385,85 @@ class TestInitHandler:
         assert Path.cwd() == target
 
 
+class FakeQaProject:
+    """Stands in for ProjectFeatures in `qa` tests: known features + features root."""
+
+    def __init__(self, known: dict[str, str], root: Path) -> None:
+        self.known_features = known
+        self._root = root
+
+    def root_for_domain(self, domain: str) -> Path:
+        return self._root
+
+
+class TestQaHandler:
+
+    def _run_qa(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+        known: dict[str, str],
+        pytest_stdout: str = "",
+        pytest_rc: int = 0,
+    ) -> str:
+        features_root = tmp_path / "features"
+        project = FakeQaProject(known, features_root)
+        monkeypatch.setattr("_orchestrator.commands.REPO_ROOT", tmp_path)
+
+        class FakeResult:
+            def __init__(self, stdout: str, returncode: int) -> None:
+                self.stdout = stdout
+                self.returncode = returncode
+
+        monkeypatch.setattr(
+            "_orchestrator.commands.subprocess.run",
+            lambda *a, **k: FakeResult(pytest_stdout, pytest_rc),
+        )
+        result = _cmd_qa(project)
+        assert result.success == (pytest_rc == 0)
+        return capsys.readouterr().out
+
+    def test_qa_with_no_features_is_clean(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+        out = self._run_qa(tmp_path, capsys, monkeypatch, known={})
+        assert "0 feature slices" in out
+
+    def test_qa_runs_pytest_per_feature(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+        feat_dir = tmp_path / "features" / "auction" / "SubmitBid"
+        feat_dir.mkdir(parents=True)
+        (feat_dir / "Tests.py").write_text("def test_bid():\n    assert True\n")
+        out = self._run_qa(
+            tmp_path, capsys, monkeypatch,
+            known={"SubmitBid": "auction"},
+            pytest_stdout="tests/SubmitBid/Tests.py::test_bid PASSED\n",
+        )
+        assert "[auction/SubmitBid]" in out
+        assert "PASS  test_bid" in out
+        assert "1 passed, 0 failed" in out
+
+    def test_qa_fails_when_feature_tests_fail(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+        feat_dir = tmp_path / "features" / "auction" / "SubmitBid"
+        feat_dir.mkdir(parents=True)
+        (feat_dir / "Tests.py").write_text("def test_bid():\n    assert False\n")
+        out = self._run_qa(
+            tmp_path, capsys, monkeypatch,
+            known={"SubmitBid": "auction"},
+            pytest_stdout="tests/SubmitBid/Tests.py::test_bid FAILED\n",
+            pytest_rc=1,
+        )
+        assert "FAIL  test_bid" in out
+        assert "Summary: 0 passed, 1 failed, 1 feature slices" in out
+
+    def test_qa_skips_features_without_tests(self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+        feat_dir = tmp_path / "features" / "auction" / "SubmitBid"
+        feat_dir.mkdir(parents=True)
+        out = self._run_qa(tmp_path, capsys, monkeypatch, known={"SubmitBid": "auction"})
+        assert "[auction/SubmitBid]" not in out
+        assert "0 feature slices" in out
+
+
 class TestKnownPrefixes:
 
     def test_includes_all_commands(self) -> None:
-        expected = {"new", "do", "modify", "delete", "move", "merge", "undo", "init", "scan"}
+        expected = {"new", "do", "modify", "delete", "move", "merge", "undo", "init", "scan", "qa"}
         assert _KNOWN_PREFIXES == expected
