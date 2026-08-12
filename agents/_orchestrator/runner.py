@@ -192,86 +192,16 @@ def write_code_blocks(files: dict[str, str], target: Path, protect: set[str] | N
 
 
 def validate_code_standards(written: list[Path]) -> list[str]:
+    """Per-file standards gates, driven by agents/rules/python/core.json (group 'standards')."""
+    from _orchestrator import rules
+
     violations: list[str] = []
     for p in written:
         if not p.exists() or p.suffix != ".py":
             continue
-        text = p.read_text()
-        violations.extend(check_unused_imports(text, p.name))
-        lines = text.splitlines()
-        for i, line in enumerate(lines, 1):
-            stripped = line.strip()
-            if stripped.startswith("#") and "noqa" not in stripped:
-                violations.append(f"{p.name}:{i} comment found")
-            if "print(" in stripped and "logger" not in stripped:
-                violations.append(f"{p.name}:{i} print() found")
-            if re.search(r'[\U0001F600-\U0010FFFF]', stripped):
-                violations.append(f"{p.name}:{i} emoji found")
-        for m in re.finditer(r'^(?:from\s+(flask|sqlalchemy)\s+import|import\s+(flask|sqlalchemy))', text, re.MULTILINE):
-            violations.append(f"{p.name}: forbidden import '{m.group(0)}' — use FastAPI, not Flask/SQLAlchemy")
-        for m in re.finditer(r'^(?:    )*def (\w+)\(', text, re.MULTILINE):
-            start = m.start()
-            depth = 1
-            pos = start + len(m.group(0)) - 1
-            while depth > 0 and pos + 1 < len(text):
-                pos += 1
-                if text[pos] == '(':
-                    depth += 1
-                elif text[pos] == ')':
-                    depth -= 1
-            eol = text.find('\n', pos)
-            if eol == -1:
-                eol = len(text)
-            sig = text[start:eol]
-            if "->" not in sig and not sig.strip().startswith("def test_"):
-                violations.append(f"{p.name}: missing return type on {m.group(1)}")
-        if p.name == "__init__.py":
-            continue
-        if p.name == "Schema.py" and "class " in text and "BaseModel" in text:
-            continue
-        if p.name == "Tests.py":
-            continue
-        if "from shared.logger import logging_func" not in text:
-            if "logging.getLogger" in text:
-                violations.append(f"{p.name}: use `from shared.logger import logging_func` instead of `logging.getLogger(__name__)`")
-            else:
-                violations.append(f"{p.name}: missing `from shared.logger import logging_func`")
+        for v in rules.check_text(p.read_text(), p.name, groups={"standards"}):
+            violations.append(f"{v.path}:{v.line} {v.message}" if v.line else f"{v.path}: {v.message}")
     return violations
-
-
-def check_unused_imports(code: str, fname: str) -> list[str]:
-    issues: list[str] = []
-    imports: list[tuple[str, int, str]] = []
-    lines = code.splitlines()
-    for i, line in enumerate(lines):
-        s = line.strip()
-        m = re.match(r'^from\s+(\S+)\s+import\s+(.+)$', s)
-        if m:
-            for part in m.group(2).split(','):
-                alias = part.strip().split(' as ')[-1].strip()
-                if alias and alias != '_' and not alias.startswith('*'):
-                    imports.append((alias.split('.')[0], i + 1, f"from {m.group(1)} import {part.strip()}"))
-            continue
-        m = re.match(r'^import\s+(.+)$', s)
-        if m:
-            for part in m.group(1).split(','):
-                alias = part.strip().split(' as ')[-1].strip()
-                top = alias.split('.')[0]
-                if top and top != '_':
-                    imports.append((top, i + 1, f"import {part.strip()}"))
-    for name, ln, full_import in imports:
-        if full_import.startswith("from __future__"):
-            continue
-        if "from __future__ import annotations" in code and full_import.startswith("from typing import"):
-            continue
-        if name == "__name__":
-            continue
-        if name == "pytest" and fname == "Tests.py":
-            continue
-        rest = '\n'.join(lines[ln:])
-        if name not in rest:
-            issues.append(f"{fname}:{ln} unused import '{full_import}'")
-    return issues
 
 
 def validate_constitution(repo_root: Path, target: Path) -> list[str]:
@@ -420,24 +350,10 @@ def collect_examples(target: Path, count: int = FEW_SHOT_COUNT) -> list[dict[str
 
 
 def validate_code_structure(code: str, fname: str) -> list[str]:
-    issues: list[str] = []
-    if fname == "Schema.py" and "BaseModel" not in code and "Schema" in fname:
-        issues.append("Schema.py must import and use pydantic.BaseModel")
-    if fname == "Handler.py" and "logging_func" not in code:
-        issues.append("Handler.py must have a module-level logger")
-    if fname == "Tests.py" and "def test_" not in code:
-        issues.append("Tests.py must contain test functions")
-    opens = code.count("(")
-    closes = code.count(")")
-    if opens != closes:
-        issues.append(f"Unbalanced parentheses: {opens} open vs {closes} close")
-    opens = code.count("'''")
-    if opens % 2 != 0:
-        issues.append("Unbalanced triple-single-quotes")
-    opens = code.count('"""')
-    if opens % 2 != 0:
-        issues.append("Unbalanced triple-double-quotes")
-    return issues
+    """Structural gates (group 'structure') via the shared rules registry."""
+    from _orchestrator import rules
+
+    return [v.message for v in rules.check_text(code, fname, groups={"structure"})]
 
 
 def extract_json_blocks(text: str) -> dict[str, str]:

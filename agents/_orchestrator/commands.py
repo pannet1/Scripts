@@ -2,6 +2,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import rules
 from .config import REPO_ROOT
 from .feature import (
     FeatureTarget,
@@ -44,7 +45,12 @@ class CommandResult:
 
 
 _KNOWN_PREFIXES = frozenset({
-    "new", "modify", "do", "delete", "move", "merge", "undo", "init", "scan",
+    "new", "modify", "do", "delete", "move", "merge", "undo", "init", "scan", "qa",
+})
+
+_QA_SKIP_PARTS = frozenset({
+    ".agents", "__pycache__", ".git", ".venv",
+    ".mypy_cache", ".ruff_cache", "__init__.py",
 })
 
 
@@ -83,11 +89,13 @@ Branch commands (run from the feature branch):
 Other:
   move     <OldDomain/OldFeature> <NewDomain/NewFeature>
   scan                                   discover existing features
+  qa                                     run feature tests + code-standards audit (no LLM)
 
 Examples:
   ./.agents/orch.py new Payments "auction payment wallet flow"
   ./.agents/orch.py modify shared/Payment "share screenshot separately"
   ./.agents/orch.py do Payment
+  ./.agents/orch.py qa
 """
 
 
@@ -133,6 +141,94 @@ def _cmd_scan(project: ProjectFeatures) -> CommandResult:
         for name in sorted(by_domain[domain]):
             print(f"  {name}")
     return CommandResult(next_action='new <domain/Feature> "prompt" or modify <domain/Feature> "prompt"')
+
+
+def _qa_audit_file(path: Path) -> list[str]:
+    return [
+        f"    {v.path}:{v.line} {v.message}" if v.line else f"    {v.path}: {v.message}"
+        for v in rules.check_file(path)
+    ]
+
+
+def _cmd_qa(project: ProjectFeatures) -> CommandResult:
+    """Run every feature's Tests.py via pytest + a rules-based standards audit. No LLM."""
+    all_passed: list[str] = []
+    all_failed: list[str] = []
+    all_violations: list[str] = []
+
+    print("=" * 50)
+    print(" QA — Full Feature Regression + Code Standards")
+    print("=" * 50)
+    print()
+
+    for py_file in sorted(REPO_ROOT.glob("*.py")):
+        if any(part in _QA_SKIP_PARTS for part in py_file.relative_to(REPO_ROOT).parts):
+            continue
+        all_violations.extend(_qa_audit_file(py_file))
+
+    n_features = 0
+    for name, domain in sorted(project.known_features.items()):
+        feat_dir = project.root_for_domain(domain) / domain / name if domain else project.root_for_domain(domain) / name
+        test_file = feat_dir / "Tests.py"
+        if not test_file.exists():
+            continue
+        n_features += 1
+        print(f"  [{domain}/{name}]")
+
+        if feat_dir.is_dir():
+            for py_file in sorted(feat_dir.glob("*.py")):
+                all_violations.extend(_qa_audit_file(py_file))
+
+        result = subprocess.run(
+            ["uv", "run", "pytest", str(test_file), "-v"],
+            capture_output=True, text=True,
+            cwd=str(REPO_ROOT), timeout=120,
+            check=False,
+        )
+        for line in result.stdout.splitlines():
+            if " PASSED" in line:
+                t = line.split("::")[-1].replace(" PASSED", "").strip()
+                print(f"    PASS  {t}")
+                all_passed.append(f"      {domain}/{name} :: {t}")
+            elif " FAILED" in line:
+                t = line.split("::")[-1].replace(" FAILED", "").strip()
+                print(f"    FAIL  {t}")
+                all_failed.append(f"      {domain}/{name} :: {t}")
+        print()
+
+    print("=" * 50)
+    print(" Code Standards Violations")
+    print("=" * 50)
+    print()
+    if all_violations:
+        for v in sorted(set(all_violations)):
+            print(v)
+    else:
+        print("  (none)")
+    print()
+
+    print("=" * 50)
+    print(f" All Tests ({len(all_passed)} passed, {len(all_failed)} failed)")
+    print("=" * 50)
+    print()
+    print("  Passing:")
+    if all_passed:
+        for p in all_passed:
+            print(p)
+    print()
+    print("  Failing:")
+    if all_failed:
+        for f in all_failed:
+            print(f)
+    else:
+        print("    (none)")
+    print()
+
+    print("=" * 50)
+    print(f" Summary: {len(all_passed)} passed, {len(all_failed)} failed, {n_features} feature slices")
+    print("=" * 50)
+
+    return CommandResult(success=not all_failed)
 
 
 def _cmd_feature(target: FeatureTarget, rest: str, prompt_content: str, no_controller: bool, prefix: str) -> CommandResult:
@@ -298,6 +394,7 @@ def _cmd_merge(branch: str, name: str, target: FeatureTarget | None, action: str
     else:
         print(f"[Orchestrator] No feature dir for '{name}' — merging branch as-is.")
     print(f"[Orchestrator] Pushing and merging {branch} to main...")
+
     ok_merge, merge_err = merge_branch(branch)
     if not ok_merge:
         print(f"[Orchestrator] {merge_err}")
@@ -348,10 +445,11 @@ def _cmd_move(old_target: FeatureTarget | None, new_target: FeatureTarget | None
     result = subprocess.run(
         ["uv", "run", "pytest", "tests/", "--ignore=tests/test_session_lifecycle.py", "--ignore=tests/test_links.py", "-q"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
-    check=False)
+        check=False,
+    )
     test_ok = result.returncode == 0
     if test_ok:
-        last = [l for l in result.stdout.strip().split("\n") if l][-3:]
+        last = [l for l in result.stdout.strip().splitlines() if l][-3:]
         print("\n".join(last))
         print("[Orchestrator] All tests pass.")
     else:
@@ -422,6 +520,12 @@ def dispatch(request: str, prompt_content: str = "", no_controller: bool = False
 
     if prefix == "scan":
         return _cmd_scan(project)
+
+    if prefix == "qa":
+        if action or rest:
+            print("[Orchestrator] qa takes no target — it audits the whole project.")
+            return CommandResult()
+        return _cmd_qa(project)
 
     if prefix == "feature":
         feature_target = project.target_for_new(action, domain, app)

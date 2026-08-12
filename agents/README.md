@@ -25,7 +25,7 @@ have been deleted.
 
 `<domain/Feature>` — split on the first `/`. Without a domain, it is inferred
 from `.features.json` `known_features`, else `nodomain`. Commands with no
-target (`do`, `delete`, `merge`, `undo`) infer the feature from the current
+target (`do`, `delete`, `merge`, `undo`, `qa`) infer the feature from the current
 git branch name.
 
 ## Commands
@@ -41,9 +41,10 @@ git branch name.
 | `undo` | On a feature branch: `fetch` + `checkout main` + `reset --hard` + `clean -fd`, delete local + remote branch. | `new` / `scan` |
 | `move <OldDomain/OldFeature> <NewDomain/NewFeature>` | Rename dir, re-register in `.features.json`, run `uv run pytest tests/`, rename branch if checked out, commit `move: ...`, push (**not merged**). | `merge` |
 | `scan` | Discover feature slices under `features_dir` by structure, list grouped by domain. | `new` / `modify` |
+| `qa` | Run every feature's Tests.py via pytest + rules-based code standards audit. **No LLM**. | `scan` / `new` |
 
 Flow per feature: `new` → `do` → `merge`. `modify` slots in before `do`.
-`delete` / `undo` discard work.
+`delete` / `undo` discard work. `qa` is a standalone audit — run anytime.
 
 ## Feature model
 
@@ -58,7 +59,21 @@ Flow per feature: `new` → `do` → `merge`. `modify` slots in before `do`.
   branches exist.
 - Owned by `_orchestrator/feature.py` (`ProjectFeatures`, `register_target`,
   `unregister_feature`, `load_project`). Single implementation — nothing else
-  reads/writes `.features.json` except the read-only `qa_test.py` audit.
+  reads/writes `.features.json`.
+
+## Rules engine
+
+`agents/rules/<lang>/core.json` holds declarative checks per language
+(currently `python/`). The engine in `_orchestrator/rules.py` classifies
+files by extension, loads the matching rule set, and executes checks
+(`line`, `text-required`, `balanced`, `py-ast` kinds). Both consumers use
+this single registry:
+
+- `orch.py qa` — audits every `.py` in the repo + feature slices.
+- `runner.py` — `validate_code_standards` (group `standards`) and `validate_code_structure` (group `structure`).
+
+To add a check, edit `agents/rules/python/core.json` (or create a new
+language dir). No code changes required.
 
 ## Code-generation pipeline (`do`)
 
@@ -108,13 +123,14 @@ max_attempts=4)`. One attempt per model — no repeats:
 | `_orchestrator/prompts.py` | Prompt resolution incl. current-file detection via `nvim --headless`. |
 | `_orchestrator/templates.py` | Code + spec templates, default overview. |
 | `_orchestrator/config.py` | Paths: `REPO_ROOT`, `AGENTS_DIR`, `PERSONAS_DIR`, `MODEL_CONFIG`; `load_persona(name)`. |
+| `_orchestrator/rules.py` | Rules engine — executes `agents/rules/<lang>/core.json` checks. |
 | `_orchestrator/runner.py` | Backend subprocess engine (never run by hand). |
-| `qa_test.py` | Standalone read-only audit of features + code standards. |
+| `agents/rules/python/core.json` | Declarative Python checks (line/text/ast/balanced kinds). |
 | `personas/*.md` | `backend_agent.md` (used by `do`), `spec_qa_agent.md` (loaded via `load_persona`). |
 
 ## Tests
 
 ```
 cd agents
-.venv/bin/python -m pytest _orchestrator/tests -q   # single suite: commands, feature, git, llm, templates, runner (152)
+.venv/bin/python -m pytest _orchestrator/tests -q   # single suite: commands, feature, git, llm, templates, runner, rules (182)
 ```
