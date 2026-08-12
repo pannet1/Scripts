@@ -26,7 +26,6 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path.cwd()
-FEW_SHOT_COUNT = 2
 VERBOSE = False
 FEATURE_CANONICAL = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
 
@@ -62,29 +61,42 @@ def collect_target_files(target: Path) -> dict:
 
 def build_prompt(persona: str, target: Path, target_files: dict, task: str, error: str) -> str:
     parts: list[str] = []
-    parts.append(f"## Target Directory\n{target}")
-
-    spec = target_files.get("spec.md", "")
-    if spec:
-        parts.append("## Specification (spec.md)\n" + spec)
-
-    examples = collect_examples(target)
-    if examples:
-        parts.append("## Reference Examples")
-        for ex in examples:
-            for fname in ("Schema.py", "Handler.py", "Controller.py"):
-                content = ex["files"].get(fname, "")
-                if content:
-                    parts.append(f"```python\n# {fname} ({ex['dir']})\n{content}\n```")
-
-    for fname in sorted(f for f in target_files if f.endswith(".py")):
-        content = target_files.get(fname, "")
-        if content:
-            parts.append(f"## Existing: {fname}\n{content}")
+    parts.append("## Target Directory")
+    parts.append(str(target))
+    parts.append("")
+    parts.append("## How to Work")
+    parts.append(
+        "Work like a normal interactive coding session, using your tools (read, write, bash). "
+        "Do NOT paste file contents into your response — read what you need yourself.\n"
+        "- Read spec.md in the target directory first; it is the contract.\n"
+        "- Read the existing files in the target directory before editing.\n"
+        "- Follow the repo rules in AGENTS.md (read it if needed).\n"
+        "- Write the required files (Schema.py, Handler.py, Controller.py, Tests.py) into the target "
+        "directory with the write tool.\n"
+        "- Never modify files outside the target directory. Never commit or push.\n"
+        "- Run `uv run pytest <target>/Tests.py` to verify before finishing; iterate on failures.\n"
+        "- Reply with a short summary of what you changed and the test result."
+    )
     if error:
-        parts.append("## Error / Test Failure\n```\n" + error + "\n```")
-    parts.append("## Task\n" + task)
+        parts.append("")
+        parts.append("## Previous Feedback")
+        parts.append(error)
+    parts.append("")
+    parts.append("## Task")
+    parts.append(task)
     return "\n".join(parts)
+
+
+def build_retry_prompt(target: Path, last_error: str) -> str:
+    return (
+        f"## Target Directory\n{target}\n\n"
+        "## Task\n"
+        "Fix the violations below using your tools, like a normal coding session: read spec.md and the "
+        "current files in the target directory, fix them, then re-run "
+        "`uv run pytest <target>/Tests.py` until it passes. "
+        "Never modify files outside the target directory; never commit or push.\n\n"
+        f"## Previous Feedback\n{last_error}"
+    )
 
 
 def call_llm(prompt: str, persona: str = "") -> str:
@@ -328,27 +340,6 @@ def truncated_files(written: list[Path]) -> list[str]:
     return truncated
 
 
-def collect_examples(target: Path, count: int = FEW_SHOT_COUNT) -> list[dict[str, Any]]:
-    """Grab working feature examples from the same domain for few-shot context."""
-    domain_dir = target.parent
-    if not domain_dir.is_dir():
-        return []
-    examples: list[dict[str, Any]] = []
-    for entry in sorted(domain_dir.iterdir()):
-        if entry == target or not entry.is_dir() or entry.name.startswith("_"):
-            continue
-        files: dict[str, str] = {}
-        for fname in ("Schema.py", "Handler.py", "Controller.py", "Tests.py"):
-            path = entry / fname
-            if path.exists():
-                files[fname] = path.read_text()
-        if len(files) >= 3:
-            examples.append({"name": entry.name, "dir": str(entry.relative_to(REPO_ROOT)), "files": files})
-            if len(examples) >= count:
-                break
-    return examples
-
-
 def validate_code_structure(code: str, fname: str) -> list[str]:
     """Structural gates (group 'structure') via the shared rules registry."""
     from _orchestrator import rules
@@ -409,28 +400,21 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False, persona: str 
         t_attempt = time.time()
         print(f"[Runner] LLM attempt {attempt}/3...")
         if last_error:
-            current = {p.name: p.read_text() for p in target.iterdir() if p.suffix == ".py"}
-            current_block = "\n".join(f"### {f}\n```python\n{c}\n```" for f, c in sorted(current.items()))
-            retry_parts = []
-            if spec:
-                retry_parts.append("## Specification (spec.md)\n" + spec)
-            retry_parts.append(
-                "Fix the violations below. Output valid JSON with ALL 4 files (Schema.py, Handler.py, Controller.py, Tests.py).\n"
-                "## Current Files\n" + current_block + "\n"
-                "## Previous Feedback\n" + last_error
-            )
-            retry_prompt = "\n".join(retry_parts)
-            response = call_llm(retry_prompt, persona=persona)
+            response = call_llm(build_retry_prompt(target, last_error), persona=persona)
         else:
             response = call_llm(prompt, persona=persona)
         files = extract_code_blocks(response)
-        if not files:
-            last_error = "No code blocks found in LLM response."
-            print(f"[Runner] {last_error} Retrying...", file=sys.stderr)
-            continue
-        written, _ = write_code_blocks(files, target, protect=protected_extra | {p.name for p in written})
+        if files:
+            written, _ = write_code_blocks(files, target, protect=protected_extra | {p.name for p in written})
+        else:
+            written = [p for p in target.iterdir() if p.suffix == ".py" and p.name in expected]
+            files = {p.name: p.read_text() for p in written}
+            if not written:
+                last_error = "No code blocks found in LLM response and no files written to the target directory."
+                print(f"[Runner] {last_error} Retrying...", file=sys.stderr)
+                continue
         for w in written:
-            print(f"[Runner] Wrote {w}")
+            print(f"[Runner] Inspecting {w}")
         bad = truncated_files(written)
         if bad:
             for p in written:

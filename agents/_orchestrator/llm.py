@@ -4,15 +4,11 @@ import json
 import shutil
 import subprocess
 import sys
-import tempfile
-import uuid
 from pathlib import Path
 
 from .config import MODEL_CONFIG, REPO_ROOT
 
-TOOL_CALL_MARKERS = ("<tool_calls>", "<invoke", "tool_call", '"name":"bash"', '"name":"read"')
-
-SCRATCH_DIR = Path(tempfile.gettempdir()) / "omp-completions"
+TOOL_CALL_MARKERS = ("<tool_calls>", "<invoke")
 
 
 def default_model() -> str:
@@ -37,12 +33,12 @@ FREE_MODEL_CHAIN: tuple[str, ...] = (
 
 
 def _model_chain(model: str, limit: int) -> list[str]:
-    """Attempt order: an explicitly requested non-chain `model` first (e.g. a
-    paid model via `--model`), then the free model chain (most capable first),
-    deduped and capped at `limit`. Free-tier values from model_config are
-    absorbed into the chain's capability order instead of leading it."""
+    """Attempt order: an explicitly requested `model` first, then the free
+    model chain (most capable first), deduped and capped at `limit`.
+    Free-tier values are NOT absorbed — the requested model always leads,
+    matching the interactive session's behavior."""
     chain: list[str] = []
-    if model and model not in FREE_MODEL_CHAIN:
+    if model:
         chain.append(model)
     for candidate in FREE_MODEL_CHAIN:
         if candidate not in chain:
@@ -75,44 +71,54 @@ def _extract_text(ndjson: str) -> str | None:
     return None
 
 
+def _stop_reason(ndjson: str) -> str:
+    reason = ""
+    for line in ndjson.splitlines():
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if ev.get("type") == "message_end":
+            r = ev.get("message", {}).get("stopReason")
+            if r:
+                reason = r
+    return f" (stopReason={reason})" if reason else ""
+
+
 def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 300, max_attempts: int = 4) -> str | None:
     """One-shot completion routed through the oh-my-pi harness (`omp -p --mode json`).
 
-    Returns the model's text output, or None when omp is unavailable or fails.
-    When `system` is given, the response must echo a per-call verification token
-    that was injected into the system prompt; attempts whose flags were not
-    applied (harness print-mode bug) are detected and retried.
+    Mirrors the interactive TUI session as closely as possible: runs in the
+    repo root, tools enabled (auto-approved, non-interactive), repo rules and
+    skills loaded. The model fetches its own context with the read tool
+    instead of receiving giant pasted prompts, and can write files / run
+    tests itself.
 
+    Returns the model's final text, or None when omp is unavailable or fails.
     The per-attempt model walks the free-model chain (FREE_MODEL_CHAIN, most
     capable first): each model gets exactly one attempt — attempt 1 uses the
-    first model, attempt 2 the second, and so on, never repeating a model.
-    `model`, when given, overrides the configured default — a non-free value
-    (e.g. `--model claude-sonnet-4-5`) leads the attempts, free-tier values
-    are absorbed into the chain.
+    requested model (or the configured default), then the chain, never
+    repeating a model.
     """
     omp = _omp_binary()
     if omp is None:
         print("[LLM] omp binary not found on PATH — no oh-my-pi model transport.", file=sys.stderr)
         return None
 
-    token = ""
-    if system:
-        token = f"[VERIFY_{uuid.uuid4().hex[:8]}]"
-        system = f"{system}\n\nBegin your response with the exact token {token} on the first line, followed by a newline. Then give ONLY the requested output — no greetings, no preamble, no tool calls."
     base_cmd = [
         omp, "-p", prompt, "--mode", "json",
-        "--no-tools", "--no-session", "--no-extensions", "--no-skills", "--no-rules", "--no-lsp",
+        "--auto-approve",
+        "--cwd", str(REPO_ROOT),
         "--max-time", str(timeout),
     ]
     if system:
         base_cmd += ["--system-prompt", system]
-    SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
 
     for i, m in enumerate(_model_chain(model or default_model(), max_attempts), 1):
         cmd = base_cmd[:] + ["--model", m]
         print(f"[LLM] omp -p attempt {i} (model={m})", file=sys.stderr)
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 60, cwd=str(SCRATCH_DIR), check=False)
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 60, cwd=str(REPO_ROOT), check=False)
         except subprocess.TimeoutExpired:
             print(f"[LLM] omp timed out after {timeout}s", file=sys.stderr)
             return None
@@ -122,17 +128,13 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
             continue
         result = _extract_text(proc.stdout)
         if not result:
-            print(f"[LLM] omp returned no text (model={m}); retrying", file=sys.stderr)
+            print(f"[LLM] omp returned no text (model={m}{_stop_reason(proc.stdout)}); retrying", file=sys.stderr)
             continue
-        if not token:
-            return result
-        stripped = result.lstrip()
-        if stripped.startswith(token):
-            rest = stripped[len(token):].lstrip("\n").strip() or None
-            if rest and not any(marker in rest for marker in TOOL_CALL_MARKERS):
-                return rest
-        print(f"[LLM] attempt {i}: verification failed (model={m}); trying next model", file=sys.stderr)
-    print("[LLM] verification never passed — giving up.", file=sys.stderr)
+        if any(marker in result for marker in TOOL_CALL_MARKERS):
+            print(f"[LLM] attempt {i}: response contains raw tool-call markers (model={m}); trying next model", file=sys.stderr)
+            continue
+        return result
+    print("[LLM] no model produced usable text — giving up.", file=sys.stderr)
     return None
 
 

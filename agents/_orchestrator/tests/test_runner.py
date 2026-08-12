@@ -105,7 +105,7 @@ class TestWriteCodeBlocksProtection:
 # ── build_prompt context ───────────────────────────────────────────
 
 class TestBuildPrompt:
-    def test_includes_extra_files_in_context(self, tmp_path: Path) -> None:
+    def test_includes_tool_driven_work_instructions(self, tmp_path: Path) -> None:
         target = tmp_path / "Feature"
         target.mkdir()
         (target / "Schema.py").write_text("from pydantic import BaseModel\n")
@@ -113,9 +113,14 @@ class TestBuildPrompt:
         (target / "spec.md").write_text("# spec\n")
         target_files = rr.collect_target_files(target)
         prompt = rr.build_prompt("persona", target, target_files, "task", "")
-        assert "## Existing: bios_cleaner.py" in prompt
-        assert "def classify()" in prompt
-        assert "## Existing: Schema.py" in prompt
+        assert "## Target Directory" in prompt
+        assert str(target) in prompt
+        assert "## How to Work" in prompt
+        assert "read, write, bash" in prompt
+        assert "spec.md in the target directory" in prompt
+        assert "## Task" in prompt
+        assert "task" in prompt
+        assert "## Existing:" not in prompt
 
 
 # ── validate_code_structure ───────────────────────────────────────
