@@ -7,7 +7,6 @@ from pathlib import Path
 from _orchestrator.commands import dispatch
 from _orchestrator.config import MODEL_CONFIG
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Orchestrator Agent -- decompose and dispatch feature work.",
@@ -25,6 +24,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model", "-m",
         help="Override Zen API model for this run (e.g. --model claude-sonnet-4-5)",
+    )
+    parser.add_argument(
+        "--max-attempts",
+        type=int,
+        default=1,
+        help="Maximum number of LLM attempts before giving up (default: 1, to avoid rate limits; models are rotated after exhausting attempts anyway)",
     )
     parser.add_argument(
         "--no-controller", action="store_true",
@@ -57,7 +62,7 @@ def parse_args() -> argparse.Namespace:
         print("  move     <OldDomain/OldFeature> <NewDomain/NewFeature>")
         print("  scan                                   discover existing features")
         print("  qa                                     run feature tests + code-standards audit (no LLM)")
-
+        print()
         print("  ./.agents/orch.py new Payments \"auction payment wallet flow\"")
         print("  ./.agents/orch.py modify shared/Payment \"share screenshot separately\"")
         print("  ./.agents/orch.py do Payment")
@@ -76,7 +81,7 @@ if __name__ == "__main__":
             prompt_content = path.read_text().strip()
         else:
             prompt_content = args.prompt.strip()
-    result = dispatch(request, prompt_content, no_controller=args.no_controller, app=args.app)
+    result = dispatch(request, prompt_content, no_controller=args.no_controller, app=args.app, max_attempts=args.max_attempts)
     if result.next_action:
         print()
         print(f"Next: {result.next_action}")

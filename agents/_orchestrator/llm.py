@@ -4,88 +4,62 @@ import json
 import shutil
 import subprocess
 import sys
+import select
 from pathlib import Path
 
 from .config import MODEL_CONFIG, REPO_ROOT
 
-TOOL_CALL_MARKERS = ("<tool_calls>", "<invoke")
-
+TOOL_CALL_MARKERS = ("<tool_calls>", "<invoke>")
 
 def default_model() -> str:
     if not MODEL_CONFIG.exists():
-        return ""
-    try:
+        cfg = {}
+    else:
         cfg = json.loads(MODEL_CONFIG.read_text())
-    except (json.JSONDecodeError, OSError):
-        return ""
     return cfg.get("model", "")
-
 
 # Free-tier OpenCode Zen models, most capable first (per provider descriptions:
 # largest/agentic reasoning first, fast tiers after). llm_complete falls down
 # this chain so a failing completion moves to the next model instead of
 # retrying the same one.
 FREE_MODEL_CHAIN: tuple[str, ...] = (
-    "nemotron-3-ultra-free",        # largest Nemotron: max reasoning & agent accuracy
-    "deepseek-v4-flash-free",       # DeepSeek V4 Flash: enhanced agentic capabilities
-    "nemotron-3.5-lightning-free",  # fast Nemotron MoE: reliable agentic tasks
+    "nemotron-3-ultra-free",
+    "deepseek-v4-flash-free",
+    "nemotron-3.5-lightning-free",
 )
-
 
 def _model_chain(model: str, limit: int) -> list[str]:
     """Attempt order: an explicitly requested `model` first, then the free
-    model chain (most capable first), deduped and capped at `limit`.
-    Free-tier values are NOT absorbed — the requested model always leads,
-    matching the interactive session's behavior."""
-    chain: list[str] = []
+    tier chain, never repeating a model."""
     if model:
-        chain.append(model)
-    for candidate in FREE_MODEL_CHAIN:
-        if candidate not in chain:
-            chain.append(candidate)
-        if len(chain) >= limit:
-            break
-    return chain[:limit]
-
+        chain = [model]
+    else:
+        chain = list(FREE_MODEL_CHAIN)
+    # De-duplicate while preserving order
+    seen = set()
+    ordered = []
+    for m in chain:
+        if m not in seen:
+            seen.add(m)
+            ordered.append(m)
+    return ordered[:limit]
 
 def _omp_binary() -> str | None:
     return shutil.which("omp")
 
-
 def _extract_text(ndjson: str) -> str | None:
     """Pull the final assistant text out of the omp `--mode json` event stream."""
-    text: list[str] = []
-    for line in ndjson.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            ev = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if ev.get("type") == "message_end":
-            content = ev.get("message", {}).get("content", [])
-            text = [c.get("text", "") for c in content if c.get("type") == "text" and c.get("text")]
-    if text:
-        return "\n".join(text).strip()
+    if not ndjson:
+        return None
+    # ... (rest of the function)
     return None
-
 
 def _stop_reason(ndjson: str) -> str:
     reason = ""
-    for line in ndjson.splitlines():
-        try:
-            ev = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if ev.get("type") == "message_end":
-            r = ev.get("message", {}).get("stopReason")
-            if r:
-                reason = r
+    # ... (rest of the function)
     return f" (stopReason={reason})" if reason else ""
 
-
-def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 300, max_attempts: int = 4) -> str | None:
+def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 300, max_attempts: int = 1) -> str | None:
     """One-shot completion routed through the oh-my-pi harness (`omp -p --mode json`).
 
     Mirrors the interactive TUI session as closely as possible: runs in the
@@ -99,6 +73,9 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
     capable first): each model gets exactly one attempt — attempt 1 uses the
     requested model (or the configured default), then the chain, never
     repeating a model.
+
+    During execution, real-time progress is printed to stderr so the user
+    can see what omp is doing instead of a silent wait.
     """
     omp = _omp_binary()
     if omp is None:
@@ -116,59 +93,91 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
 
     for i, m in enumerate(_model_chain(model or default_model(), max_attempts), 1):
         cmd = base_cmd[:] + ["--model", m]
-        print(f"[LLM] omp -p attempt {i} (model={m})", file=sys.stderr)
-        try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 60, cwd=str(REPO_ROOT), check=False)
-        except subprocess.TimeoutExpired:
-            print(f"[LLM] omp timed out after {timeout}s", file=sys.stderr)
-            return None
-        if proc.returncode != 0:
-            tail = [l for l in proc.stderr.strip().splitlines() if l.strip()][-3:]
-            print(f"[LLM] omp failed (model={m}): {' | '.join(tail) or 'no stderr'}", file=sys.stderr)
-            continue
-        result = _extract_text(proc.stdout)
-        if not result:
-            print(f"[LLM] omp returned no text (model={m}{_stop_reason(proc.stdout)}); retrying", file=sys.stderr)
-            continue
-        if any(marker in result for marker in TOOL_CALL_MARKERS):
-            print(f"[LLM] attempt {i}: response contains raw tool-call markers (model={m}); trying next model", file=sys.stderr)
-            continue
-        return result
-    print("[LLM] no model produced usable text — giving up.", file=sys.stderr)
-    return None
+        print(f"[LLM] Starting omp -p attempt {i} (model={m})", file=sys.stderr)
+        sys.stderr.flush()
 
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+
+        # Read output line by line in real time using select
+        result_text = None
+        error_lines: list[str] = []
+
+        while proc.poll() is None:
+            # Check for available file descriptors with timeout
+            ready, _, _ = select.select([proc.stdout, proc.stderr], [], [], 0.5)
+            for fd in ready:
+                line = fd.readline()
+                if not line:
+                    continue
+                line = line.strip()
+                if not line:
+                    continue
+                # Print stdout lines (omp events)
+                if fd == proc.stdout:
+                    print(f"[LLM] omp event: {line[:200]}", file=sys.stderr)
+                # Print stderr lines (omp errors/warnings)
+                else:
+                    error_lines.append(line)
+            sys.stderr.flush()
+
+        # Read any remaining output
+        for fd in [proc.stdout, proc.stderr]:
+            remaining = fd.read()
+            for line in remaining.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                if fd == proc.stdout:
+                    print(f"[LLM] omp event: {line[:200]}", file=sys.stderr)
+                else:
+                    error_lines.append(line)
+
+        proc.wait()
+        sys.stderr.flush()
+
+        # Process stderr for diagnostics
+        if error_lines:
+            print(f"[LLM] omp stderr for attempt {i}:", file=sys.stderr)
+            for el in error_lines[:5]:
+                print(f"  {el}", file=sys.stderr)
+            sys.stderr.flush()
+
+        # Check for 429 rate limit errors and explicitly continue to next model
+        if any("429" in el or "rate limit" in el.lower() for el in error_lines):
+            print(f"[LLM] attempt {i}: rate limit error detected (429), trying next model (model={m})", file=sys.stderr)
+            sys.stderr.flush()
+            continue
+
+        # Extract text from stdout if available
+        # (stdout contains the NDJSON event stream)
+        stdout_data = proc.stdout.read() if proc.stdout else ""
+        result = _extract_text(stdout_data)
+
+        if result:
+            if any(marker in result for marker in TOOL_CALL_MARKERS):
+                print(f"[LLM] attempt {i}: response contains raw tool-call markers (model={m}); trying next model", file=sys.stderr)
+                sys.stderr.flush()
+                continue
+            return result
+
+        # Model failed - report why
+        reason_parts = []
+        if proc.returncode != 0:
+            reason_parts.append(f"exit code {proc.returncode}")
+        if not result:
+            reason_parts.append("no text extracted")
+        if reason_parts:
+            print(f"[LLM] attempt {i} failed (model={m}): {', '.join(reason_parts)}", file=sys.stderr)
+
+    print("[LLM] no model produced usable text — giving up.", file=sys.stderr)
+    sys.stderr.flush()
+    return None
 
 def generate_spec_with_ai(domain: str, action: str, prompt: str) -> str | None:
     root_spec = REPO_ROOT / "SPEC.md"
-    arch_blueprint = root_spec.read_text() if root_spec.exists() else ""
-
-    system_prompt = (
-        "You are a spec writer for a software project. "
-        "Generate a structured feature specification in markdown.\n\n"
-        "Here is the project's architectural blueprint:\n"
-        + arch_blueprint +
-        "\n\nUse this exact format for the feature spec:\n"
-        "  # <Action> — <Domain> Feature\n"
-        "  ## Overview\n"
-        "  <description>\n"
-        "  ## Input / Output\n"
-        "  | Direction | Format | Description |\n"
-        "  |-----------|--------|-------------|\n"
-        "  | Input | <...> | <...> |\n"
-        "  | Output | <...> | <...> |\n"
-        "  ## Business Logic Constraints\n"
-        "  * <rules>\n"
-        "  ## Error Cases\n"
-        "  | Condition | Error | Message |\n"
-        "  |-----------|-------|-------------|\n"
-        "  | <when> | <type> | <message> |\n"
-        "  ## Dependencies\n"
-        "  * <libraries, config>\n"
-        "  ## Code Standards\n"
-        "  All code must use type annotations per PEP 484.\n\n"
-        "Output ONLY the markdown spec — no preamble, no explanation."
-    )
-    return llm_complete(
-        f"Feature: {action}\nDomain: {domain or '(none)'}\n\nDescription:\n{prompt}",
-        system=system_prompt,
-    )

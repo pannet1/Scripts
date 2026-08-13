@@ -496,8 +496,8 @@ def _resolve_delete(project: ProjectFeatures, action: str, rest: str, app: str) 
         return None, ""
     return project.resolve(raw, app=app), raw
 
+def dispatch(request: str, prompt_content: str = "", no_controller: bool = False, app: str = "", max_attempts: int = 4) -> CommandResult:
 
-def dispatch(request: str, prompt_content: str = "", no_controller: bool = False, app: str = "") -> CommandResult:
     prefix, domain, action, rest = _parse_request(request)
     project = load_project(REPO_ROOT)
 
