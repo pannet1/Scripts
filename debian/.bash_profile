@@ -8,3 +8,7 @@ fi
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
     exec startx > "$HOME/.xsession-log" 2>&1
 fi
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/pannet1/.local/bin:$PATH"

@@ -8,14 +8,16 @@ MAX_SPEC_QA_ATTEMPTS = 3
 SPEC_QA_PERSONA = load_persona("spec_qa")
 
 
-def _validate_spec(spec: str, original_prompt: str) -> tuple[bool, str]:
-    """Validate spec against the original prompt, returning (is_valid, corrected_spec)."""
+def _validate_spec(spec: str, original_prompt: str) -> tuple[bool | None, str]:
+    """Validate spec against the original prompt, returning (is_valid, corrected_spec).
+    is_valid is True if valid, False if issues found and corrected, None if LLM validation unavailable.
+    """
     result = llm_complete(
         f"## Original Prompt\n\n{original_prompt}\n\n## Generated Spec\n\n{spec}",
         system=SPEC_QA_PERSONA,
     )
     if result is None:
-        return True, spec
+        return None, spec
     result = result.strip()
     if result.startswith("VALID"):
         return True, spec
@@ -38,6 +40,9 @@ def _qa_spec(spec_path: Path, original_prompt: str, label: str) -> None:
     for attempt in range(1, MAX_SPEC_QA_ATTEMPTS + 1):
         spec = spec_path.read_text()
         is_valid, corrected = _validate_spec(spec, original_prompt)
+        if is_valid is None:
+            print(f"[Orchestrator] Spec QA skipped — LLM validation unavailable ({label})")
+            return
         if is_valid:
             print(f"[Orchestrator] Spec QA passed ({label})")
             return
