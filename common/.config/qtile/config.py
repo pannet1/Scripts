@@ -18,8 +18,18 @@ with open("{}/.config/qtile/config/settings.json".format(os.getenv("HOME"))) as 
 looks: dict = settings["looks"]
 display: dict = settings["display"]
 
+
 def random_wallpaper(wallpapers_dir: str, default_wallpaper: str) -> str:
-    image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg'}
+    image_extensions = {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".bmp",
+        ".webp",
+        ".tiff",
+        ".svg",
+    }
 
     image_files = []
     for root, dirs, files in os.walk(wallpapers_dir):
@@ -31,12 +41,17 @@ def random_wallpaper(wallpapers_dir: str, default_wallpaper: str) -> str:
         return random.choice(image_files)
     return default_wallpaper
 
+
 wallpaper = looks["wallpaper"]
 wallpaper_mode = looks.get("wallpaper_mode", "zoom")
-wallpapers_dir = os.path.expanduser(looks.get("wallpapers_dir", "{}/.config/qtile/wallpapers".format(home)))
+wallpapers_dir = os.path.expanduser(
+    looks.get("wallpapers_dir", "{}/.config/qtile/wallpapers".format(home))
+)
 is_random = looks.get("is_random", 0) == 1
 
-final_wallpaper = random_wallpaper(wallpapers_dir, wallpaper) if is_random else wallpaper
+final_wallpaper = (
+    random_wallpaper(wallpapers_dir, wallpaper) if is_random else wallpaper
+)
 
 # Regenerate the color scheme from the chosen wallpaper (writes a template to ~/.cache/wallust).
 if subprocess.run(["which", "wallust"], capture_output=True).returncode == 0:
@@ -44,7 +59,11 @@ if subprocess.run(["which", "wallust"], capture_output=True).returncode == 0:
 
 # Prefer the wallust-generated scheme, fall back to the committed default colors.json.
 cache_colors = "{}/.cache/wallust/qtile-colors.json".format(home)
-with open(cache_colors if os.path.isfile(cache_colors) else "{}/.config/qtile/config/colors.json".format(os.getenv("HOME"))) as file:
+with open(
+    cache_colors
+    if os.path.isfile(cache_colors)
+    else "{}/.config/qtile/config/colors.json".format(os.getenv("HOME"))
+) as file:
     colors_json = json.load(file)
 
 colors = colors_json
@@ -102,7 +121,12 @@ keys = [
     Key([mod], "Tab", lazy.next_layout(), desc="Toggle between layouts"),
     Key([mod], "q", lazy.window.kill(), desc="Kill focused window"),
     Key([mod, "control"], "r", lazy.restart(), desc="Restart Qtile"),
-    Key([mod, "control"], "q", lazy.spawn("systemctl poweroff"), desc="Power off machine"),
+    Key(
+        [mod, "control"],
+        "q",
+        lazy.spawn("systemctl poweroff"),
+        desc="Power off machine",
+    ),
     Key(
         [mod],
         "r",
@@ -117,7 +141,12 @@ keys = [
     ),
     Key([mod], "f", lazy.spawn("flameshot gui"), desc="Open flameshot gui"),
     Key([mod], "s", lazy.spawn("scrot"), desc="Take full screen ss using scrot"),
-    Key([mod], "d", lazy.spawn(f"notify-send '{datetime.now()}'"), desc="Show date and time"),
+    Key(
+        [mod],
+        "d",
+        lazy.spawn(f"notify-send '{datetime.now()}'"),
+        desc="Show date and time",
+    ),
 ]
 
 groups = [Group(i) for i in "1234567890"]
@@ -148,12 +177,12 @@ for i in groups:
 
 group_names = [
     ("code", {"layout": "bsp", "label": "\uf121"}),
-    ("wifi", {"layout": "max", "label": "\uf1eb"}),
     ("box", {"layout": "zoomy", "label": "\uf1b2"}),
-    ("book", {"layout": "max", "label": "\uf02d"}),
-    ("comment", {"layout": "max", "label": "\uf075"}),
-    ("gamepad", {"layout": "max", "label": "\uf11b"}),
+    ("wifi", {"layout": "max", "label": "\uf1eb"}),
     ("tv", {"layout": "max", "label": "\uf26c"}),
+    ("comment", {"layout": "max", "label": "\uf075"}),
+    ("book", {"layout": "max", "label": "\uf02d"}),
+    ("gamepad", {"layout": "zoomy", "label": "\uf11b"}),
     ("coffee", {"layout": "floating", "label": "\uf0f4"}),
     ("bone", {"layout": "monadtall", "label": "\uf1b0"}),
 ]
@@ -235,14 +264,13 @@ widgets_list: list = [
         foreground=colors["active"],
         background=colors["groups_bg"],
         font="JetBrains Mono",
-        prompt="Woof: "
+        prompt="Woof: ",
     ),
     widget.Sep(padding=6, linewidth=0, background=colors["seperator"]),
     widget.Spacer(),
     ### Systray ###
     widget.Systray(background=colors["systray"], padding=10),
     widget.Sep(linewidth=0, padding=6, background=colors["systray"]),
-
     ### Volume ###
     widget.Sep(padding=9, linewidth=0, background=colors["color3"]),
     widget.TextBox(
@@ -278,9 +306,7 @@ widgets_list: list = [
         fontsize=18,
     ),
     widget.Clock(
-            foreground=colors["color5fg"],
-            background=colors["color5"],
-            format="%A - %H:%M"
+        foreground=colors["color5fg"], background=colors["color5"], format="%A - %H:%M"
     ),
     widget.Sep(padding=6, linewidth=0, background=colors["color1"]),
 ]
@@ -289,15 +315,15 @@ widgets_list: list = [
 bar_margin = 0
 
 screen = Screen(
-#     wallpaper=final_wallpaper,
-#     wallpaper_mode=wallpaper_mode,
+    #     wallpaper=final_wallpaper,
+    #     wallpaper_mode=wallpaper_mode,
     top=bar.Bar(
-       widgets_list,
-       int(looks["panel-size"]),
-       background=colors["bg"],
-       opacity=float(looks["panel-opacity"]),
-       margin=bar_margin,
-   ),
+        widgets_list,
+        int(looks["panel-size"]),
+        background=colors["bg"],
+        opacity=float(looks["panel-opacity"]),
+        margin=bar_margin,
+    ),
 )
 
 screens = [screen]
@@ -354,7 +380,7 @@ floating_layout = layout.Floating(
         Match(wm_class="gnome-calculator"),
         Match(wm_class="blueberry"),
         Match(wm_class="protonvpn"),
-    ]
+    ],
 )
 
 
@@ -362,12 +388,17 @@ floating_layout = layout.Floating(
 def start_once():
     subprocess.call([home + "/.config/qtile/autostart.sh"])
 
+
 @hook.subscribe.startup
 def runner():
     subprocess.Popen(["xsetroot", "-cursor_name", "left_ptr"])
-    subprocess.Popen(["xwallpaper", "--" + wallpaper_mode, os.path.expanduser(final_wallpaper)])
+    subprocess.Popen(
+        ["xwallpaper", "--" + wallpaper_mode, os.path.expanduser(final_wallpaper)]
+    )
+
 
 floating_types = ["notification", "toolbar", "splash", "dialog", "dock"]
+
 
 @hook.subscribe.client_killed
 def _unswallow(window):
