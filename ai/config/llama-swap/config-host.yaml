@@ -1,4 +1,4 @@
-healthCheckTimeout: 120
+healthCheckTimeout: 30
 
 models:
   "qwen2.5-7b-instruct":
@@ -7,13 +7,10 @@ models:
     cmd: >
       /usr/local/bin/llama-server
       --host 127.0.0.1 --port 8081
-      --model ./models/Qwen2.5-7B-Instruct-Q4_K_M.gguf
+      --model /home/pannet1/programs/shell/github.com/pannet1/Scripts/ai/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf
       --n-gpu-layers 99
-      --ctx-size 32768
-      --cache-type-k q8_0
-      --cache-type-v q8_0
-      --flash-attn auto
-      --parallel 2
+      --ctx-size 8192
+      --flash-attn on
 
   "nomic-embed-text":
     proxy: "http://127.0.0.1:8082"
@@ -21,8 +18,8 @@ models:
     cmd: >
       /usr/local/bin/llama-server
       --host 127.0.0.1 --port 8082
-      --model ./models/nomic-embed-text-v1.5-Q8_0.gguf
-      --embedding --embd-normalize 2
+      --model /home/pannet1/programs/shell/github.com/pannet1/Scripts/ai/models/nomic-embed-text-v1.5-Q8_0.gguf
+      --embd --embd-normalize 2
       --ctx-size 8192
 
 default_model: qwen2.5-7b-instruct

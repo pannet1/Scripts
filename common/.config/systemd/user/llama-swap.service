@@ -1,0 +1,12 @@
+[Unit]
+Description=llama-swap AI inference router (GPU)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/llama-swap -listen localhost:8080 --config /home/pannet1/programs/shell/github.com/pannet1/Scripts/ai/config/llama-swap/config-host.yaml
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
