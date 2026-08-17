@@ -198,4 +198,7 @@ case ":$PATH:" in
 esac
 # pnpm end
 #
+# Go
+export PATH="$(go env GOPATH)/bin:$PATH"
+#
 find ~ -type f -size +500M
