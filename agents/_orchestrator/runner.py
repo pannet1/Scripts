@@ -30,10 +30,10 @@ VERBOSE = False
 FEATURE_CANONICAL = {"Schema.py", "Handler.py", "Controller.py", "Tests.py"}
 
 
-def _complete(prompt: str, persona: str = "") -> str | None:
+def _complete(prompt: str, persona: str = "", max_attempts: int = 4) -> str | None:
     from _orchestrator.llm import llm_complete
 
-    return llm_complete(prompt, system=persona)
+    return llm_complete(prompt, system=persona, max_attempts=max_attempts)
 
 
 def read_file(path: Path) -> str:
@@ -99,8 +99,8 @@ def build_retry_prompt(target: Path, last_error: str) -> str:
     )
 
 
-def call_llm(prompt: str, persona: str = "") -> str:
-    response = _complete(prompt, persona=persona)
+def call_llm(prompt: str, persona: str = "", max_attempts: int = 4) -> str:
+    response = _complete(prompt, persona=persona, max_attempts=max_attempts)
     if response is None:
         print("[Runner] LLM call failed.", file=sys.stderr)
         sys.exit(1)
@@ -388,7 +388,7 @@ def run_pytest(test_path: Path) -> tuple[bool, str]:
     return passed, output
 
 
-def auto_backend(target: Path, prompt: str, verbose: bool = False, persona: str = "", spec: str = "") -> bool:
+def auto_backend(target: Path, prompt: str, verbose: bool = False, persona: str = "", spec: str = "", max_attempts: int = 4) -> bool:
     expected = FEATURE_CANONICAL
     pre_existing = {p.name for p in target.iterdir() if p.is_file() and p.suffix == ".py"}
     protected_extra = pre_existing - expected
@@ -400,9 +400,9 @@ def auto_backend(target: Path, prompt: str, verbose: bool = False, persona: str 
         t_attempt = time.time()
         print(f"[Runner] LLM attempt {attempt}/3...")
         if last_error:
-            response = call_llm(build_retry_prompt(target, last_error), persona=persona)
+            response = call_llm(build_retry_prompt(target, last_error), persona=persona, max_attempts=max_attempts)
         else:
-            response = call_llm(prompt, persona=persona)
+            response = call_llm(prompt, persona=persona, max_attempts=max_attempts)
         files = extract_code_blocks(response)
         if files:
             written, _ = write_code_blocks(files, target, protect=protected_extra | {p.name for p in written})
@@ -483,6 +483,7 @@ def run() -> None:
     parser.add_argument("--error", type=Path, help="Path to error/traceback file (for fix loops)")
     parser.add_argument("--api", action="store_true", help="Auto mode: call opencode, write files, run tests")
     parser.add_argument("--prompt-only", action="store_true", help="Print prompt to stdout only (no API call)")
+    parser.add_argument("--max-attempts", type=int, default=4, help="Maximum LLM model-chain attempts (default: 4)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print full prompt and response to stderr")
     args = parser.parse_args()
     if args.verbose:
@@ -513,7 +514,7 @@ def run() -> None:
         return
 
     spec = target_files.get("spec.md", "")
-    ok = auto_backend(args.target, prompt, verbose=args.verbose, persona=persona, spec=spec)
+    ok = auto_backend(args.target, prompt, verbose=args.verbose, persona=persona, spec=spec, max_attempts=args.max_attempts)
     if not ok:
         sys.exit(1)
 

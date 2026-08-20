@@ -202,3 +202,11 @@ esac
 export PATH="$(go env GOPATH)/bin:$PATH"
 #
 find ~ -type f -size +500M
+
+# cargo
+export PATH="$HOME/.cargo/bin/:$PATH"
+
+# Source encrypted secrets (git-crypt unlocked)
+if [ -f ~/programs/shell/github.com/pannet1/secrets/github.com/pannet1/python/general/.env ]; then
+  set -a; . ~/programs/shell/github.com/pannet1/secrets/github.com/pannet1/python/general/.env; set +a
+fi

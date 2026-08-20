@@ -29,9 +29,17 @@ def default_model() -> str:
 # this chain so a failing completion moves to the next model instead of
 # retrying the same one.
 FREE_MODEL_CHAIN: tuple[str, ...] = (
+    # OpenRouter fallbacks LEAD the chain: once the 10-credit unlock is added
+    # on openrouter.ai, free-tier models serve ~1000 req/day. Verified live via
+    # `pi -p --model <slug>`. Used before the opencode-zen free chain.
+    "openrouter/poolside/laguna-s-2.1:free",
+    "openrouter/cohere/north-mini-code:free",
+    # OpenCode Zen free chain (existing, unchanged).
     "nemotron-3-ultra-free",        # largest Nemotron: max reasoning & agent accuracy
     "deepseek-v4-flash-free",       # DeepSeek V4 Flash: enhanced agentic capabilities
-    "nemotron-3.5-lightning-free",  # fast Nemotron MoE: reliable agentic tasks
+    "opencode-zen/hy3-free",          # OpenCode Zen Hy3 free: fast, agentic
+    # Local fallback: llama-swap serving Qwen2.5-Coder via OpenAI-compatible API.
+    "qwen2.5-coder-7b-instruct",      # local coding model (llama-swap provider)
 )
 
 
@@ -51,8 +59,8 @@ def _model_chain(model: str, limit: int) -> list[str]:
     return chain[:limit]
 
 
-def _omp_binary() -> str | None:
-    return shutil.which("omp")
+def _pi_binary() -> str | None:
+    return shutil.which("pi")
 
 
 def _extract_text(ndjson: str) -> str | None:
@@ -270,7 +278,7 @@ class OmpStreamFormatter:
         self._ensure_newline()
 
 
-def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 300, max_attempts: int = 4) -> str | None:
+def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 300, max_attempts: int = 6) -> str | None:
     """One-shot completion routed through the oh-my-pi harness (`omp -p --mode json`).
 
     Mirrors the interactive TUI session as closely as possible: runs in the
@@ -289,7 +297,7 @@ def llm_complete(prompt: str, system: str = "", model: str = "", timeout: int = 
     or auto-retry is encountered, execution breaks out of the attempt immediately
     and advances to the next model.
     """
-    omp = _omp_binary()
+    omp = _pi_binary()
     if omp is None:
         print("[LLM] omp binary not found on PATH — no oh-my-pi model transport.", file=sys.stderr)
         return None

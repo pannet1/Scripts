@@ -385,3 +385,30 @@ else
     ln -sf "$TG_DIR/Telegram" "$HOME/.local/bin/telegram"
     ok "telegram installed"
 fi
+# ── 15. OpenRouter Python SDK ──
+step "15/15: OpenRouter"
+if check_cmd python3; then
+    ensure_pkg python3-pip
+    if ! python3 -c "import openrouter" &>/dev/null; then
+        fail "openrouter sdk"
+        fix "installing openrouter python sdk"
+        pip3 install --user openrouter
+        ok "openrouter sdk installed"
+    else
+        ok "openrouter sdk present"
+    fi
+else
+    fail "python3"
+    fix "installing python3 first"
+    ensure_pkg python3
+    step "15/15: OpenRouter"
+    ensure_pkg python3-pip
+    if ! python3 -c "import openrouter" &>/dev/null; then
+        fail "openrouter sdk"
+        fix "installing openrouter python sdk"
+        pip3 install --user openrouter
+        ok "openrouter sdk installed"
+    else
+        ok "openrouter sdk present"
+    fi
+fi
