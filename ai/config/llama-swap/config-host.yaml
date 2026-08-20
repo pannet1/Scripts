@@ -1,13 +1,13 @@
 healthCheckTimeout: 30
 
 models:
-  "qwen2.5-7b-instruct":
+  "qwen2.5-coder-7b-instruct":
     proxy: "http://127.0.0.1:8081"
     ttl: 0
     cmd: >
       /usr/local/bin/llama-server
       --host 127.0.0.1 --port 8081
-      --model /home/pannet1/programs/shell/github.com/pannet1/Scripts/ai/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf
+      --model /mnt/data/models/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf
       --n-gpu-layers 99
       --ctx-size 8192
       --flash-attn on
@@ -19,7 +19,7 @@ models:
       /usr/local/bin/llama-server
       --host 127.0.0.1 --port 8082
       --model /home/pannet1/programs/shell/github.com/pannet1/Scripts/ai/models/nomic-embed-text-v1.5-Q8_0.gguf
-      --embd --embd-normalize 2
+      --embedding --embd-normalize 2
       --ctx-size 8192
 
-default_model: qwen2.5-7b-instruct
+default_model: qwen2.5-coder-7b-instruct

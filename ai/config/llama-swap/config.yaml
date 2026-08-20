@@ -8,7 +8,7 @@
 healthCheckTimeout: 30
 
 models:
-  "qwen2.5-7b-instruct":
+  "qwen2.5-coder-7b-instruct":
     proxy: "http://127.0.0.1:8081"
     ttl: 0
     cmd: >
@@ -30,4 +30,4 @@ models:
       --ctx-size 8192
 
 # Fallback model for /v1/models listing
-default_model: qwen2.5-7b-instruct
+default_model: qwen2.5-coder-7b-instruct
