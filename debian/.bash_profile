@@ -12,3 +12,4 @@ fi
 
 # Added by Antigravity CLI installer
 export PATH="/home/pannet1/.local/bin:$PATH"
+. "$HOME/.cargo/env"

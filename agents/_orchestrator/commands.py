@@ -243,7 +243,7 @@ def _cmd_feature(target: FeatureTarget, rest: str, prompt_content: str, no_contr
     return CommandResult(success=False)
 
 
-def _cmd_do(target: FeatureTarget | None, raw: str) -> CommandResult:
+def _cmd_do(target: FeatureTarget | None, raw: str, max_attempts: int = 4) -> CommandResult:
     if not raw:
         print("[Orchestrator] No feature name given and cannot infer from current branch.")
         return CommandResult(next_action='checkout or create a feature branch first — new <domain/Feature> "prompt"')
@@ -272,7 +272,7 @@ def _cmd_do(target: FeatureTarget | None, raw: str) -> CommandResult:
     commit_type = "feat"
 
     print(f"[Orchestrator] Generating code for {display}...")
-    ok = run_runner("backend", feature_dir, task)
+    ok = run_runner("backend", feature_dir, task, max_attempts=max_attempts)
     if ok:
         register_target(target)
         print(f"\n{'='*60}\nALL TESTS PASSED.\n")
@@ -496,7 +496,7 @@ def _resolve_delete(project: ProjectFeatures, action: str, rest: str, app: str) 
         return None, ""
     return project.resolve(raw, app=app), raw
 
-def dispatch(request: str, prompt_content: str = "", no_controller: bool = False, app: str = "", max_attempts: int = 4) -> CommandResult:
+def dispatch(request: str, prompt_content: str = "", no_controller: bool = False, app: str = "", max_attempts: int = 6) -> CommandResult:
 
     prefix, domain, action, rest = _parse_request(request)
     project = load_project(REPO_ROOT)
@@ -533,7 +533,7 @@ def dispatch(request: str, prompt_content: str = "", no_controller: bool = False
 
     if prefix == "do":
         target, raw = _resolve_do(project, action, rest, app)
-        return _cmd_do(target, raw)
+        return _cmd_do(target, raw, max_attempts=max_attempts)
 
     if prefix == "modify":
         implicit = not action

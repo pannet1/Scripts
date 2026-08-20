@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import io
 import json
+import os
+
+import pytest
 from unittest.mock import patch
 
-from _orchestrator.llm import _model_chain, llm_complete
+from _orchestrator.llm import FREE_MODEL_CHAIN, _model_chain, default_model, llm_complete
 
 
 def _ndjson(text: str) -> str:
@@ -73,39 +76,46 @@ class TestModelChain:
 
     def test_chain_capped_at_limit(self) -> None:
         assert len(_model_chain("", 2)) == 2
-        assert len(_model_chain("", 5)) == 3
+        assert len(_model_chain("", 5)) == 5
+        assert len(_model_chain("", 10)) == 6  # 2 openrouter + 3 opencode-zen + 1 llama-swap
+
+    def test_llama_swap_is_last_in_chain(self) -> None:
+        """Qwen2.5-Coder must be the last model tried — local fallback."""
+        chain = _model_chain("", 10)
+        assert chain[-1] == "qwen2.5-coder-7b-instruct"
+        assert len(chain) == 6
 
 
 class TestLlmCompleteModelFallback:
 
     def test_failure_advances_to_next_model(self) -> None:
-        fake_popen, calls = _fake_popen({"deepseek-v4-flash-free": "actual content"})
-        with patch("_orchestrator.llm._omp_binary", return_value="omp"), \
+        fake_popen, calls = _fake_popen({"openrouter/poolside/laguna-s-2.1:free": "actual content"})
+        with patch("_orchestrator.llm._pi_binary", return_value="pi"), \
                 patch("_orchestrator.llm.subprocess.Popen", fake_popen):
             result = llm_complete("prompt", system="sys", model="nemotron-3-ultra-free", max_attempts=3)
         assert result == "actual content"
         assert calls[0] == "nemotron-3-ultra-free"
-        assert calls[1] == "deepseek-v4-flash-free"
+        assert calls[1] == "openrouter/poolside/laguna-s-2.1:free"
 
     def test_empty_model_not_retried(self) -> None:
         fake_popen, calls = _fake_popen({})
-        with patch("_orchestrator.llm._omp_binary", return_value="omp"), \
+        with patch("_orchestrator.llm._pi_binary", return_value="pi"), \
                 patch("_orchestrator.llm.subprocess.Popen", fake_popen):
             result = llm_complete("prompt", system="sys", model="nemotron-3-ultra-free", max_attempts=3)
         assert result is None
-        assert calls == ["nemotron-3-ultra-free", "deepseek-v4-flash-free", "nemotron-3.5-lightning-free"]
+        assert calls == ["nemotron-3-ultra-free", "openrouter/poolside/laguna-s-2.1:free", "openrouter/cohere/north-mini-code:free"]
 
     def test_auto_retry_breaks_inner_loop_and_advances(self) -> None:
         fake_popen, calls = _fake_popen(
-            {"deepseek-v4-flash-free": "recovered output"},
+            {"openrouter/poolside/laguna-s-2.1:free": "recovered output"},
             error_models={"nemotron-3-ultra-free"},
         )
-        with patch("_orchestrator.llm._omp_binary", return_value="omp"), \
+        with patch("_orchestrator.llm._pi_binary", return_value="pi"), \
                 patch("_orchestrator.llm.subprocess.Popen", fake_popen):
             result = llm_complete("prompt", system="sys", model="nemotron-3-ultra-free", max_attempts=3)
         assert result == "recovered output"
         assert calls[0] == "nemotron-3-ultra-free"
-        assert calls[1] == "deepseek-v4-flash-free"
+        assert calls[1] == "openrouter/poolside/laguna-s-2.1:free"
 
     def test_rate_limit_error_advances_to_next_model(self) -> None:
         def fake_popen_rl(cmd: list[str], **kwargs: object) -> FakePopen:
@@ -114,7 +124,42 @@ class TestLlmCompleteModelFallback:
                 return FakePopen(stderr_text="429 Rate limit exceeded\n", returncode=1)
             return FakePopen(stdout_text=_ndjson("success after rate limit"), returncode=0)
 
-        with patch("_orchestrator.llm._omp_binary", return_value="omp"), \
+        with patch("_orchestrator.llm._pi_binary", return_value="pi"), \
                 patch("_orchestrator.llm.subprocess.Popen", fake_popen_rl):
             result = llm_complete("prompt", system="sys", model="nemotron-3-ultra-free", max_attempts=3)
         assert result == "success after rate limit"
+
+    def test_all_models_retried_once(self) -> None:
+        """Every model in the chain gets exactly one attempt, never repeated."""
+        fake_popen, calls = _fake_popen({"qwen2.5-coder-7b-instruct": "local fallback wins"})
+        with patch("_orchestrator.llm._pi_binary", return_value="pi"), \
+                patch("_orchestrator.llm.subprocess.Popen", fake_popen):
+            result = llm_complete("prompt", system="sys", max_attempts=6)
+        assert result == "local fallback wins"
+        # No duplicates — each model tried exactly once
+        assert len(calls) == len(set(calls)), f"Duplicate models in call sequence: {calls}"
+        # Full chain order (includes default_model if set)
+        assert calls == _model_chain(default_model(), 6)
+        # llama-swap is always the last resort
+        assert calls[-1] == "qwen2.5-coder-7b-instruct"
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("RUN_LIVE_MODEL_TESTS"),
+    reason="set RUN_LIVE_MODEL_TESTS=1 to probe a model via the live omp transport",
+)
+class TestModelWorks:
+    """Live smoke test: confirm a single model actually returns text through
+    `pi`. Default target is the lead OpenRouter model; override with
+    MODEL_UNDER_TEST. Needs `pi` on PATH + network/credits."""
+
+    def test_model_returns_text(self) -> None:
+        model = os.environ.get("MODEL_UNDER_TEST", FREE_MODEL_CHAIN[0])
+        out = llm_complete(
+            "Reply with the single word: OK",
+            model=model,
+            timeout=90,
+            max_attempts=1,
+        )
+        assert out and "OK" in out, f"model not working: {model} -> {out!r}"
