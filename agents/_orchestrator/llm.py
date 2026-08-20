@@ -23,10 +23,10 @@ MODEL_CHAIN_FILE = AGENTS_DIR / "model_chain.json"
 DEFAULT_MODEL_CHAIN: tuple[str, ...] = (
     "openrouter/poolside/laguna-s-2.1:free",
     "openrouter/cohere/north-mini-code:free",
-    "nemotron-3-ultra-free",
-    "deepseek-v4-flash-free",
-    "opencode-zen/hy3-free",
-    "qwen2.5-coder-7b-instruct",
+    "opencode/nemotron-3-ultra-free",
+    "opencode/deepseek-v4-flash-free",
+    "opencode/laguna-s-2.1-free",
+    "llama-swap/qwen2.5-coder-7b-instruct",
 )
 
 
