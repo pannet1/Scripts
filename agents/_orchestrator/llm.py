@@ -9,9 +9,51 @@ import sys
 import time
 from pathlib import Path
 
-from .config import MODEL_CONFIG, REPO_ROOT
+from .config import AGENTS_DIR, MODEL_CONFIG, REPO_ROOT
 
 TOOL_CALL_MARKERS = ("<tool_calls>", "<invoke")
+
+
+# Path to the external model chain config file (editable by the user).
+MODEL_CHAIN_FILE = AGENTS_DIR / "model_chain.json"
+
+
+# Default chain used when model_chain.json is missing or invalid.
+# Edit agents/model_chain.json to reorder models without touching code.
+DEFAULT_MODEL_CHAIN: tuple[str, ...] = (
+    "openrouter/poolside/laguna-s-2.1:free",
+    "openrouter/cohere/north-mini-code:free",
+    "nemotron-3-ultra-free",
+    "deepseek-v4-flash-free",
+    "opencode-zen/hy3-free",
+    "qwen2.5-coder-7b-instruct",
+)
+
+
+def _load_model_chain() -> list[str]:
+    """Load the model chain from agents/model_chain.json.
+
+    Falls back to DEFAULT_MODEL_CHAIN if the file is missing or invalid.
+    The chain order is fully editable — each entry is a pi model ID
+    (e.g. "openrouter/slug:model", "nemotron-3-ultra-free", or
+    "qwen2.5-coder-7b-instruct" for the local llama-swap provider).
+    """
+    if not MODEL_CHAIN_FILE.exists():
+        return list(DEFAULT_MODEL_CHAIN)
+    try:
+        data = json.loads(MODEL_CHAIN_FILE.read_text())
+    except (json.JSONDecodeError, OSError):
+        return list(DEFAULT_MODEL_CHAIN)
+    if isinstance(data, list) and all(isinstance(x, str) for x in data):
+        return data
+    return list(DEFAULT_MODEL_CHAIN)
+
+
+# Free-tier OpenCode Zen models, most capable first (per provider descriptions:
+# largest/agentic reasoning first, fast tiers after). llm_complete falls down
+# this chain so a failing completion moves to the next model instead of
+# retrying the same one.
+FREE_MODEL_CHAIN: list[str] = _load_model_chain()
 
 
 def default_model() -> str:
@@ -24,23 +66,28 @@ def default_model() -> str:
     return cfg.get("model", "")
 
 
-# Free-tier OpenCode Zen models, most capable first (per provider descriptions:
-# largest/agentic reasoning first, fast tiers after). llm_complete falls down
-# this chain so a failing completion moves to the next model instead of
-# retrying the same one.
-FREE_MODEL_CHAIN: tuple[str, ...] = (
-    # OpenRouter fallbacks LEAD the chain: once the 10-credit unlock is added
-    # on openrouter.ai, free-tier models serve ~1000 req/day. Verified live via
-    # `pi -p --model <slug>`. Used before the opencode-zen free chain.
-    "openrouter/poolside/laguna-s-2.1:free",
-    "openrouter/cohere/north-mini-code:free",
-    # OpenCode Zen free chain (existing, unchanged).
-    "nemotron-3-ultra-free",        # largest Nemotron: max reasoning & agent accuracy
-    "deepseek-v4-flash-free",       # DeepSeek V4 Flash: enhanced agentic capabilities
-    "opencode-zen/hy3-free",          # OpenCode Zen Hy3 free: fast, agentic
-    # Local fallback: llama-swap serving Qwen2.5-Coder via OpenAI-compatible API.
-    "qwen2.5-coder-7b-instruct",      # local coding model (llama-swap provider)
-)
+def _model_chain(model: str, limit: int) -> list[str]:
+    """Attempt order: an explicitly requested `model` first, then the free
+    model chain (most capable first), deduped and capped at `limit`.
+    Free-tier values are NOT absorbed — the requested model always leads,
+    matching the interactive session's behavior."""
+    chain: list[str] = []
+    if model:
+        chain.append(model)
+    for candidate in FREE_MODEL_CHAIN:
+        if candidate not in chain:
+            chain.append(candidate)
+        if len(chain) >= limit:
+            break
+    return chain[:limit]
+
+
+def reload_model_chain() -> list[str]:
+    """Reload the model chain from disk. Call this after editing
+    agents/model_chain.json without restarting the process."""
+    global FREE_MODEL_CHAIN
+    FREE_MODEL_CHAIN = _load_model_chain()
+    return FREE_MODEL_CHAIN
 
 
 def _model_chain(model: str, limit: int) -> list[str]:
