@@ -50,22 +50,90 @@ else
     exec bash "$REPO_DIR/install-debian.sh"
 fi
 
-# ── 1. apt sources (match installed release) ──
+# ── 1. apt sources (fastest mirror for the installed release) ──
 step "1/13: apt sources"
 RELEASE_CODENAME="$(. /etc/os-release && echo "$VERSION_CODENAME")"
+
+# curl is needed to probe mirror latency (and used later); ensure it exists
+# before we touch sources.
+ensure_pkg curl
+
+# Pick the fastest mirror.
+# Primary : netselect-apt ranks ALL Debian mirrors by latency (needs root -> sudo).
+#           We only borrow the discovered host, then emit our own 3-line
+#           sources.list because netselect-apt does not produce the updates/
+#           security/non-free-firmware layout this script requires.
+# Fallback: a curl latency probe across major mirrors if netselect-apt is
+#           missing or fails to yield a host.
+MIRROR_HOST=""
+if ! command -v netselect-apt >/dev/null 2>&1; then
+    sudo apt install -y netselect-apt >/dev/null 2>&1 || true
+fi
+if command -v netselect-apt >/dev/null 2>&1; then
+    if sudo netselect-apt -n -o /tmp/netselect-debian.list "$RELEASE_CODENAME" >/dev/null 2>&1; then
+        MIRROR_HOST="$(grep -rhoE 'https?://[^ /]+/debian' /tmp/netselect-debian.list 2>/dev/null \
+            | head -n1 | sed -E 's#https?://([^/]+)/debian#\1#')"
+    fi
+fi
+if [ -z "$MIRROR_HOST" ]; then
+    fix "netselect-apt yielded no mirror — falling back to curl latency probe"
+    MIRROR_HOST="$(for m in deb.debian.org ftp.de.debian.org ftp.uk.debian.org \
+                        ftp.fr.debian.org ftp.us.debian.org mirror.csclub.uwaterloo.ca; do
+        t="$(curl -s -o /dev/null -m 4 -w '%{time_total}' "http://$m/debian/dists/$RELEASE_CODENAME/InRelease" 2>/dev/null)"
+        [ -n "$t" ] && echo "$t $m"
+    done | sort -n | head -n1 | awk '{print $2}')"
+fi
+[ -n "$MIRROR_HOST" ] || MIRROR_HOST="deb.debian.org"
+echo "  fastest mirror: $MIRROR_HOST"
+
 ACTIVE_DEB="$(grep -rhE '^deb ' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null || true)"
-if echo "$ACTIVE_DEB" | grep -qs "$RELEASE_CODENAME" && echo "$ACTIVE_DEB" | grep -qs non-free-firmware; then
-    ok "sources = $RELEASE_CODENAME + non-free-firmware"
+if echo "$ACTIVE_DEB" | grep -qs "$RELEASE_CODENAME" && echo "$ACTIVE_DEB" | grep -qs non-free-firmware && echo "$ACTIVE_DEB" | grep -qs "$MIRROR_HOST"; then
+    ok "sources = $RELEASE_CODENAME + non-free-firmware @ $MIRROR_HOST"
 else
     fail "sources"
-    fix "writing $RELEASE_CODENAME sources (main contrib non-free non-free-firmware)"
+    fix "writing $RELEASE_CODENAME sources (main contrib non-free non-free-firmware) @ $MIRROR_HOST"
     sudo rm -rf /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list
     sudo tee /etc/apt/sources.list > /dev/null << EOF
-deb http://deb.debian.org/debian/ $RELEASE_CODENAME main contrib non-free non-free-firmware
-deb http://deb.debian.org/debian/ ${RELEASE_CODENAME}-updates main contrib non-free non-free-firmware
+deb http://$MIRROR_HOST/debian/ $RELEASE_CODENAME main contrib non-free non-free-firmware
+deb http://$MIRROR_HOST/debian/ ${RELEASE_CODENAME}-updates main contrib non-free non-free-firmware
 deb http://security.debian.org/debian-security ${RELEASE_CODENAME}-security main contrib non-free non-free-firmware
 EOF
     ok "sources rewritten"
+fi
+
+# ── Mozilla Firefox apt repo (official rapid-release Firefox) ──
+# Use Mozilla's own 'firefox' package instead of Debian's 'firefox-esr'.
+# Added here (after the debian sources rewrite above) so a sources rewrite
+# that clears *.list still leaves this repo intact.
+MOZ_KEY="/etc/apt/keyrings/packages.mozilla.org.asc"
+sudo install -d -m 0755 /etc/apt/keyrings
+if [ -f "$MOZ_KEY" ]; then
+    ok "mozilla keyring present"
+else
+    fail "mozilla keyring"
+    fix "downloading Mozilla signing key"
+    sudo curl -fsSL https://packages.mozilla.org/apt/repo-signing-key.gpg -o "$MOZ_KEY"
+    ok "mozilla keyring installed"
+fi
+if [ -f /etc/apt/sources.list.d/mozilla.list ]; then
+    ok "mozilla source list present"
+else
+    fail "mozilla source list"
+    fix "adding Mozilla apt source"
+    echo "deb [signed-by=$MOZ_KEY] https://packages.mozilla.org/apt mozilla main" | sudo tee /etc/apt/sources.list.d/mozilla.list > /dev/null
+    ok "mozilla source added"
+fi
+if [ -f /etc/apt/preferences.d/mozilla ]; then
+    ok "mozilla pin present"
+else
+    fail "mozilla pin"
+    fix "pinning Mozilla repo (priority 1000) so firefox wins over Debian"
+    cat <<'EOF' | sudo tee /etc/apt/preferences.d/mozilla > /dev/null
+Package: *
+Pin: origin packages.mozilla.org
+Pin-Priority: 1000
+EOF
+    ok "mozilla pin applied"
 fi
 
 # ── 2. System update ──
@@ -91,15 +159,23 @@ fi
 
 # ── 4. Core packages ──
 step "4/13: Core packages"
+# Resolve the release-specific libavcodec-extra version. It was previously
+# hardcoded as libavcodec-extra61 (trixie/ffmpeg 7). Pick the latest
+# libavcodec-extra<N> offered by the active release so this survives the next
+# Debian release without manual edits.
+LIBAVCODEC_EXTRA="$(apt-cache search --names-only '^libavcodec-extra[0-9]+$' 2>/dev/null | awk '{print $1}' | sort -V | tail -n1)"
+[ -n "$LIBAVCODEC_EXTRA" ] || LIBAVCODEC_EXTRA="libavcodec-extra61"
+echo "  libavcodec-extra → $LIBAVCODEC_EXTRA"
 ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserver-utils xfonts-base xfonts-75dpi xfonts-100dpi \
     libpangocairo-1.0-0 build-essential pkg-config ripgrep fd-find tmux picom alacritty \
     tree xxd \
-    rofi flameshot scrot xwallpaper pcmanfm udisks2 network-manager-gnome ibus xfce4-power-manager \
+    rofi flameshot scrot xwallpaper pcmanfm udisks2 network-manager-gnome ibus xfce4-power-manager xdg-desktop-portal-lxqt \
     alsa-utils fonts-font-awesome fonts-jetbrains-mono libnotify-bin \
+    pipewire pipewire-pulse wireplumber pavucontrol \
     fonts-noto-core fonts-samyak-taml fonts-lohit-taml fonts-taml \
     p7zip-full p7zip-rar rar xdg-utils bind9-dnsutils smartmontools \
-    libavcodec-extra61 \
-    firefox-esr smplayer
+    "$LIBAVCODEC_EXTRA" \
+    firefox smplayer
 
 # ── 5. Networking ──
 step "5/13: Networking"
@@ -338,6 +414,8 @@ done
 # ── 12. User systemd services ──
 step "12/13: User systemd services"
 systemctl --user daemon-reload
+# PipeWire is the audio server (Firefox/Chromium route sound through it).
+# No audio server was installed before → no sound at all.
 for svc in picom; do
     if systemctl --user enable "$svc.service" 2>/dev/null; then
         ok "$svc.service enabled"
@@ -346,6 +424,28 @@ for svc in picom; do
         fix "check unit exists after stow"
     fi
 done
+# PipeWire is the audio server (Firefox/Chromium route sound through it).
+# Start it now (not just enable for next boot) so audio works in this session.
+for svc in pipewire pipewire-pulse wireplumber; do
+    if systemctl --user enable --now "$svc.service" 2>/dev/null; then
+        ok "$svc.service enabled + started"
+    else
+        fail "$svc.service enable/start"
+        fix "check unit exists after stow"
+    fi
+done
+
+# Fix xdg-desktop-portal: we're using Qtile (not GNOME), so mask the GTK backend
+# and ensure the LXQt/Qt backend is installed instead.
+step "Fix: xdg-desktop-portal-gtk (non-GNOME)"
+# xdg-desktop-portal-lxqt is also installed in core packages (step 4)
+if systemctl --user is-masked xdg-desktop-portal-gtk.service 2>/dev/null; then
+    ok "xdg-desktop-portal-gtk service masked"
+else
+    fix "masking xdg-desktop-portal-gtk.service (non-GNOME setup)"
+    systemctl --user mask xdg-desktop-portal-gtk.service
+    ok "xdg-desktop-portal-gtk service masked"
+fi
 
 # ── 13. LazyVim (nvim config) ──
 step "13/13: LazyVim"
@@ -374,6 +474,12 @@ step "14/14: Telegram"
 TG_DIR="$HOME/.local/share/TelegramDesktop"
 if [ -x "$TG_DIR/Telegram" ]; then
     ok "telegram binary"
+elif [ -x "$HOME/Downloads/Telegram/Telegram" ]; then
+    ok "telegram binary (~/Downloads/Telegram)"
+    # Reuse the existing install instead of re-downloading: symlink it into PATH.
+    # Telegram's Updater keeps it current in place, so the symlink stays valid.
+    ln -sf "$HOME/Downloads/Telegram/Telegram" "$HOME/.local/bin/telegram"
+    ok "telegram linked -> ~/.local/bin/telegram"
 else
     fail "telegram"
     fix "downloading official Telegram tarball"
