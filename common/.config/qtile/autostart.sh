@@ -7,3 +7,8 @@ xsetroot -cursor_name left_ptr &
 nm-applet &
 # /usr/bin/ibus-daemon -dr &
 xfce4-power-manager &
+
+# Fix intermittent audio muting: NVIDIA GA107 HDMI audio probes at boot and
+# can cause WirePlumber to re-evaluate sinks, muting the analog output.
+# Wait for PipeWire/WirePlumber to settle, then force unmute + restore volume.
+(sleep 3 && wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 && wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0) &

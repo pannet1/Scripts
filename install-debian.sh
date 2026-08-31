@@ -222,6 +222,28 @@ else
     ok "no NVIDIA GPU"
 fi
 
+# ── 6b. LTS kernel + NVIDIA DKMS sync ──
+# A kernel upgrade (e.g. from dist-upgrade) without a matching nvidia DKMS
+# build breaks the display, so qtile never loads. Pin the amd64 LTS kernel
+# line + headers and rebuild nvidia for BOTH the running and the newest
+# installed kernel, then refresh grub so the new LTS kernel is bootable.
+if lspci 2>/dev/null | grep -qi "VGA.*NVIDIA"; then
+    step "6b/15: LTS kernel + nvidia DKMS"
+    ensure_pkg linux-image-amd64 linux-headers-amd64 dkms nvidia-kernel-dkms
+    NEW_KERNEL="$(ls -t /lib/modules | head -1)"
+    echo "  target kernel modules dir: $NEW_KERNEL"
+    sudo /usr/sbin/dkms autoinstall -k "$NEW_KERNEL"
+    CUR_KERNEL="$(uname -r)"
+    if [ "$CUR_KERNEL" != "$NEW_KERNEL" ]; then
+        sudo /usr/sbin/dkms autoinstall -k "$CUR_KERNEL" || true
+    fi
+    sudo modprobe nvidia 2>/dev/null || echo "  nvidia not loadable on current kernel; reboot into $NEW_KERNEL"
+    sudo update-grub
+    ok "LTS kernel + nvidia DKMS synced"
+else
+    ok "no NVIDIA GPU — kernel step skipped"
+fi
+
 # ── 7. Neovim ──
 step "7/13: Neovim"
 # luarocks (lua-language-server workspace check) + lazygit (LazyVim git UI)
