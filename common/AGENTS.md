@@ -41,6 +41,7 @@ with open("data/cron.txt", "a") as f:
 - Test any script execution manually before relying on cron
 - Check `data/cron.txt` for cron output/logging
 - **The user runs all `sudo` commands and long-running commands themselves.** Give the command and let the user execute it; do not attempt to run sudo/long-running commands directly (curl network probes, `docker pull`, etc. that need sudo or take a long time should be delegated to the user).
+- **Keep responses small and concise. Do NOT show your reasoning/thinking process — just give the final outcome / action / answer.**
 
 ## SSH Connection Multiplexing
 
