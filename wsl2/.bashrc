@@ -167,7 +167,7 @@ export LESS=-RFX
 # Local secrets (machine-specific, not tracked in git)
 SECRETS_REPO="$HOME/programs/shell/github.com/pannet1/secrets"
 [ -f "$HOME/secrets.key" ] && (cd "$SECRETS_REPO" && git-crypt unlock "$HOME/secrets.key") 2>/dev/null || true
-# [ -f "$HOME/.secrets/env" ] && source "$HOME/.secrets/env"
+if [ -f "$HOME/.secrets/env" ]; then set -a; source "$HOME/.secrets/env"; set +a; fi
 
 export LLAMACPP="$HOME/llama.cpp"
 export PATH="$LLAMACPP/build/bin:$PATH"
@@ -200,13 +200,6 @@ esac
 #
 # Go
 export PATH="$(go env GOPATH)/bin:$PATH"
-#
-find ~ -type f -size +500M
 
 # cargo
 export PATH="$HOME/.cargo/bin/:$PATH"
-
-# Source encrypted secrets (git-crypt unlocked)
-if [ -f ~/programs/shell/github.com/pannet1/secrets/github.com/pannet1/python/general/.env ]; then
-  set -a; . ~/programs/shell/github.com/pannet1/secrets/github.com/pannet1/python/general/.env; set +a
-fi
