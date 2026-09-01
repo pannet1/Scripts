@@ -514,7 +514,7 @@ else
     ok "telegram installed"
 fi
 # ── 15. OpenRouter Python SDK ──
-step "15/15: OpenRouter"
+step "15/16: OpenRouter"
 if check_cmd python3; then
     ensure_pkg python3-pip
     if ! python3 -c "import openrouter" &>/dev/null; then
@@ -529,7 +529,7 @@ else
     fail "python3"
     fix "installing python3 first"
     ensure_pkg python3
-    step "15/15: OpenRouter"
+    step "15/16: OpenRouter"
     ensure_pkg python3-pip
     if ! python3 -c "import openrouter" &>/dev/null; then
         fail "openrouter sdk"
@@ -539,4 +539,60 @@ else
     else
         ok "openrouter sdk present"
     fi
+fi
+
+# ── 16. FreeToken (hybrid inference, findings 2026-09-02) ──
+step "16/16: FreeToken"
+# Findings: ft serve --model *.gguf only supports gemma4 — Qwen gguf will NOT run.
+# Use safetensors via HF_TOKEN, keep llama-swap for Qwen gguf coding.
+# RTX 3050 6GB hybrid bench 5.6GB/s OK after killing llama-server (was 4.8G VRAM hog).
+FT_BIN="$HOME/.freetoken/venv/bin/ft"
+if [ -x "$FT_BIN" ]; then
+    ok "freetoken $($FT_BIN --version 2>/dev/null | head -1)"
+else
+    fail "freetoken"
+    fix "installing freetoken to ~/.freetoken/venv"
+    ensure_pkg python3-venv
+    mkdir -p "$HOME/.freetoken"
+    python3 -m venv "$HOME/.freetoken/venv"
+    "$HOME/.freetoken/venv/bin/pip" install -U pip
+    "$HOME/.freetoken/venv/bin/pip" install freetoken
+    ln -sf "$FT_BIN" "$HOME/.local/bin/ft" 2>/dev/null || true
+    ok "freetoken installed"
+fi
+# HF_TOKEN required for safetensors (Qwen/Qwen2.5-Coder-7B, Qwen3-30B-A3B)
+if [ -f "$HOME/.secrets/env" ]; then set -a; source "$HOME/.secrets/env"; set +a; fi
+if [ -n "${HF_TOKEN:-}" ]; then
+    ok "HF_TOKEN present (${#HF_TOKEN} chars)"
+else
+    fail "HF_TOKEN empty"
+    fix "set HF_TOKEN in ~/.secrets/env (https://huggingface.co/settings/tokens) then: ~/.freetoken/venv/bin/ft serve --model Qwen/Qwen2.5-Coder-7B-Instruct --port 1919"
+fi
+# environment.d for freetoken-desktop
+if [ -f "$HOME/.config/environment.d/50-freetoken.conf" ] && grep -q "FREETOKEN_FT_BIN" "$HOME/.config/environment.d/50-freetoken.conf"; then
+    ok "freetoken env.d"
+else
+    fix "writing ~/.config/environment.d/50-freetoken.conf"
+    mkdir -p "$HOME/.config/environment.d"
+    echo "FREETOKEN_FT_BIN=$FT_BIN" > "$HOME/.config/environment.d/50-freetoken.conf"
+    ok "freetoken env.d written (re-login to apply)"
+fi
+# Verify hybrid bench (kill llama-server first to free VRAM)
+if pgrep -f "llama-server" >/dev/null 2>&1; then
+    fail "llama-server running (holds ~4.8G VRAM, freetoken bench will OOM)"
+    fix "pkill llama-server before: $FT_BIN bench bw (expect hybrid 5.6GB/s)"
+else
+    if "$FT_BIN" bench bw 2>&1 | grep -qi "hybrid"; then
+        ok "freetoken hybrid bench OK"
+    else
+        fix "run: $FT_BIN bench bw — expect hybrid, not OOM; nvidia-smi should be ~300-400M not 5G"
+    fi
+fi
+# Decision note (from findings)
+if systemctl --user is-active llama-swap >/dev/null 2>&1; then
+    ok "llama-swap active (keep for Qwen gguf 4.4G coding - fastest)"
+    fix "freetoken alternative (safetensors, not gguf): $FT_BIN serve --model Qwen/Qwen2.5-Coder-7B-Instruct --port 1919 --host 127.0.0.1"
+    fix "endpoint for pi/opencode: http://127.0.0.1:1919/v1 (vs llama-swap 8080)"
+else
+    fix "choose: llama-swap (Qwen gguf) OR freetoken safetensors (Qwen/Qwen2.5-Coder-7B --port 1919)"
 fi
