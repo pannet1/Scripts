@@ -2,6 +2,9 @@
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
+# Load central secrets early (survives non-interactive shells + reboot)
+if [ -f "$HOME/.secrets/env" ]; then set -a; source "$HOME/.secrets/env"; set +a; fi
+
 # If not running interactively, don't do anything
 case $- in
 *i*) ;;
@@ -164,10 +167,9 @@ export VISUAL=nvim
 export PAGER=less
 export LESS=-RFX
 
-# Local secrets (machine-specific, not tracked in git)
+# Local secrets (machine-specific, not tracked in git) - unlock for decrypt
 SECRETS_REPO="$HOME/programs/shell/github.com/pannet1/secrets"
 [ -f "$HOME/secrets.key" ] && (cd "$SECRETS_REPO" && git-crypt unlock "$HOME/secrets.key") 2>/dev/null || true
-if [ -f "$HOME/.secrets/env" ]; then set -a; source "$HOME/.secrets/env"; set +a; fi
 
 export LLAMACPP="$HOME/llama.cpp"
 export PATH="$LLAMACPP/build/bin:$PATH"
