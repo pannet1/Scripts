@@ -72,8 +72,11 @@
         "apiKey": "sk-local-dummy-key-change-me"
       },
       "models": {
+        "qwen2.5-coder-7b-instruct": {
+          "name": "Qwen2.5 Coder 7B Instruct"
+        },
         "qwen2.5-7b-instruct": {
-          "name": "Qwen2.5 7B Instruct"
+          "name": "Qwen2.5 7B Instruct (router:8085)"
         },
         "nomic-embed-text": {
           "name": "Nomic Embed Text v1.5"
