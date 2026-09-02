@@ -28,8 +28,27 @@
 - `model 'qwen2.5-coder-7b-instruct' not found` — was `llama-server --models-dir` on `:8080` exposing `Qwen2.5-Coder-7B-Instruct-Q4_K_M` (capitalized), while `opencode` asked lowercase and `llama-swap` was dead on same port. Fixed by enabling swap on `:8080`, moving router to `:8085`.
 - `http://127.0.0.1:8080/ server unavailable` — root is 302 redirect, UI is `/ui`. Use `/ui`.
 
-## FreeToken
-- `ft 0.1.2` at `~/.freetoken/venv/bin/ft`, models via safetensors on `:1919` (`Qwen/Qwen2.5-Coder-7B-Instruct` etc via `03-download-freetoken.sh`). Not yet needed — GGUF `7b-instruct` suffices for simple agent tasks. For proper coder tool-calling, serve freetoken safetensors instead of GGUF coder.
+## FreeToken (2026-09-02 20:05 update)
+- `ft 0.1.2` at `~/.freetoken/venv/bin/ft` (`~/.local/bin/ft`), `ft daemon :1900` running
+- **WRONG model removed 2026-09-02 20:00:** `Qwen/Qwen2.5-Coder-7B-Instruct` safetensors 15G at `/mnt/data/models/hf/Qwen2.5-Coder-7B-Instruct` — dense bf16 OOMs on 6GB even `--memory-ratio 0.5` (`4.33G+1.02G → 955M free, needs 5.66G`) — acid test failed. Deleted: `rm -rf /mnt/data/models/hf/Qwen2.5-Coder-7B-Instruct` (now 0, `df /mnt/data 37G used`). Temp scripts/logs cleaned: `/tmp/*hf* /tmp/*poll* ai/data/freetoken*.log`.
+- **CORRECT for 6GB:** `Qwen/Qwen3-30B-A3B` MoE 30G (only ~3B active, `hybrid` offload fits 6GB) — not yet downloaded. New script: `ai/04-get-freetoken-30b.sh` (resumable, `HF_TOKEN`, `max-workers 2`). Run: `bash ai/04-get-freetoken-30b.sh` or `nohup bash ai/04-get-freetoken-30b.sh > ai/data/freetoken-30b.log 2>&1 &` → serve: `~/.freetoken/venv/bin/ft serve --model Qwen/Qwen3-30B-A3B --port 1919 --host 127.0.0.1 --tool-call-parser qwen25 --memory-ratio 0.9`
+- **Keep for llama-swap:** GGUF `Qwen2.5-7B-Instruct/Coder Q4_K_M 4.4G` still correct for `:8080` (quantized, `-ngl24` fits). `ft` gguf only supports `gemma4`, so GGUF stays on llama-swap.
+- Desktop: `pkill -f freetoken-desktop; DISPLAY=:0 FREETOKEN_FT_BIN=~/.freetoken/venv/bin/ft WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 freetoken-desktop &` (needs re-login for `50-freetoken.conf`; 7B will OOM, wait for 30B).
+
+## Resume Tomorrow
+```bash
+# 1. check llama-swap still active (acid test passed)
+systemctl --user status llama-swap; curl http://127.0.0.1:8080/v1/models
+pi --provider llama-swap --model qwen2.5-7b-instruct -p "create /tmp/acidtest.txt with hello, then list it"
+# 2. download correct freetoken model (30G, resumable)
+bash ai/04-get-freetoken-30b.sh
+# or nohup: nohup bash ai/04-get-freetoken-30b.sh > ai/data/freetoken-30b.log 2>&1 &; tail -f ai/data/freetoken-30b.log
+# progress: bash /tmp/show_progress.sh (or while true; do bash /tmp/show_progress.sh; sleep 5; done)
+# 3. serve when done (stop llama-swap first to free VRAM)
+systemctl --user stop llama-swap
+~/.freetoken/venv/bin/ft serve --model Qwen/Qwen3-30B-A3B --port 1919 --host 127.0.0.1 --tool-call-parser qwen25
+curl http://127.0.0.1:1919/v1/models
+```
 
 ## Commands
 ```bash
@@ -38,4 +57,6 @@ systemctl --user start|stop llama-router       # :8085 (disabled)
 curl http://127.0.0.1:8080/v1/models
 curl http://127.0.0.1:8080/v1/chat/completions -d '{"model":"qwen2.5-7b-instruct","messages":[{"role":"user","content":"hi"}],"tools":[...]}'
 pi --provider llama-swap --model qwen2.5-7b-instruct -p "list files"
+# freetoken correct:
+bash ai/04-get-freetoken-30b.sh
 ```
