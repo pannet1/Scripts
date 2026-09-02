@@ -1,0 +1,12 @@
+[Unit]
+Description=llama.cpp router (pi docs, tool calling)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/llama-server --models-dir /mnt/data/models --jinja --host 127.0.0.1 --port 8085 -ngl 24 -c 8192 --flash-attn on
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1,6 +1,17 @@
 healthCheckTimeout: 30
 
 models:
+  "qwen2.5-7b-instruct":
+    proxy: "http://127.0.0.1:8083"
+    ttl: 0
+    cmd: >
+      /usr/local/bin/llama-server
+      --host 127.0.0.1 --port 8083
+      --model /mnt/data/models/Qwen2.5-7B-Instruct-Q4_K_M.gguf
+      --n-gpu-layers 24
+      --ctx-size 8192
+      --jinja --flash-attn on
+
   "qwen2.5-coder-7b-instruct":
     proxy: "http://127.0.0.1:8081"
     ttl: 0
@@ -8,9 +19,9 @@ models:
       /usr/local/bin/llama-server
       --host 127.0.0.1 --port 8081
       --model /mnt/data/models/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf
-      --n-gpu-layers 99
+      --n-gpu-layers 24
       --ctx-size 8192
-      --flash-attn on
+      --jinja --flash-attn on
 
   "nomic-embed-text":
     proxy: "http://127.0.0.1:8082"
