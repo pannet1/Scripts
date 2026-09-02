@@ -50,6 +50,14 @@ systemctl --user stop llama-swap
 curl http://127.0.0.1:1919/v1/models
 ```
 
+## Project Local AI Usage (2026-09-02 20:15)
+- **make-videos** (`typescript/.../make-videos`) — **NOT using local now** (rendiv + edge-tts). Could use `local-ai :8080` (`qwen2.5-7b-instruct`) to generate `videos/<id>/spec.md` + `vo/*.txt` offline. No `localhost` calls yet; add `generate-spec` opencode skill if wanted.
+- **rustjiin-japan** (`rust/.../rustjiin-japan`) — **CORRECT, keep as-is:**
+  - `src/features/llm/controller.rs` → `http://localhost:8080/v1/chat/completions` `model: qwen2.5-7b-instruct` (Itachi Japanese teaching)
+  - `src/features/llm/memory.rs` → `http://localhost:8080/v1/embeddings` `nomic-embed-text` (rusqlite vector memory)
+  - Designed for README's `LM Studio Q4_K_M 5GB` on 16GB CPU, matches our `llama-swap :8080` Q4 setup.
+- **pi coding agent** — **7B Q4 useless for agent:** `7b-instruct` *does* `tool_calls` for simple `ls` (verified) but weak on multi-step code, loops `bash:ls -l`; `coder` only `XML <function_call>` (no proper `tool_calls`) → unreliable for agent. That's why "only chat works". Fix: keep `7B` for rustjiin chat, use **30B-A3B MoE via `ft :1919`** for pi (only ~3B active, hybrid fits 6GB, proper `qwen25` parser). Until 30G done, use `opencode` cloud for pi code.
+
 ## Commands
 ```bash
 systemctl --user start|stop|status llama-swap  # :8080
@@ -59,4 +67,6 @@ curl http://127.0.0.1:8080/v1/chat/completions -d '{"model":"qwen2.5-7b-instruct
 pi --provider llama-swap --model qwen2.5-7b-instruct -p "list files"
 # freetoken correct:
 bash ai/04-get-freetoken-30b.sh
+# project checks:
+grep -r "localhost:8080" ~/programs/rust/.../rustjiin-japan/src --include="*.rs"; cat ~/programs/typescript/.../make-videos/src/index.tsx | head
 ```
