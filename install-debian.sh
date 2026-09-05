@@ -513,12 +513,8 @@ else
     ln -sf "$TG_DIR/Telegram" "$HOME/.local/bin/telegram"
     ok "telegram installed"
 fi
-# ── 15. OpenRouter Python SDK (disabled 2026-09-05) ──
-# step "15/16: OpenRouter" removed — openrouter disabled per user, local models disabled in pi/opencode (see ai/MEMORY.md)
-# if needed: pip3 install --user openrouter
-
-# ── 16. FreeToken (hybrid inference, findings 2026-09-02, updated 2026-09-05) ──
-step "15/16: FreeToken"
+# ── 15. FreeToken (hybrid inference, findings 2026-09-02, updated 2026-09-05) ──
+step "15/15: FreeToken"
 # Findings: ft serve --model *.gguf only supports gemma4 — Qwen gguf will NOT run.
 # 2026-09-05: local-ai disabled in pi/opencode (qwen 7B weak for pi), llama-swap kept only for rustjiin direct :8080
 # Use safetensors via HF_TOKEN, keep llama-swap for Qwen gguf coding.
