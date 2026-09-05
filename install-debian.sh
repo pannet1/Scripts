@@ -513,37 +513,14 @@ else
     ln -sf "$TG_DIR/Telegram" "$HOME/.local/bin/telegram"
     ok "telegram installed"
 fi
-# ── 15. OpenRouter Python SDK ──
-step "15/16: OpenRouter"
-if check_cmd python3; then
-    ensure_pkg python3-pip
-    if ! python3 -c "import openrouter" &>/dev/null; then
-        fail "openrouter sdk"
-        fix "installing openrouter python sdk"
-        pip3 install --user openrouter
-        ok "openrouter sdk installed"
-    else
-        ok "openrouter sdk present"
-    fi
-else
-    fail "python3"
-    fix "installing python3 first"
-    ensure_pkg python3
-    step "15/16: OpenRouter"
-    ensure_pkg python3-pip
-    if ! python3 -c "import openrouter" &>/dev/null; then
-        fail "openrouter sdk"
-        fix "installing openrouter python sdk"
-        pip3 install --user openrouter
-        ok "openrouter sdk installed"
-    else
-        ok "openrouter sdk present"
-    fi
-fi
+# ── 15. OpenRouter Python SDK (disabled 2026-09-05) ──
+# step "15/16: OpenRouter" removed — openrouter disabled per user, local models disabled in pi/opencode (see ai/MEMORY.md)
+# if needed: pip3 install --user openrouter
 
-# ── 16. FreeToken (hybrid inference, findings 2026-09-02) ──
-step "16/16: FreeToken"
+# ── 16. FreeToken (hybrid inference, findings 2026-09-02, updated 2026-09-05) ──
+step "15/16: FreeToken"
 # Findings: ft serve --model *.gguf only supports gemma4 — Qwen gguf will NOT run.
+# 2026-09-05: local-ai disabled in pi/opencode (qwen 7B weak for pi), llama-swap kept only for rustjiin direct :8080
 # Use safetensors via HF_TOKEN, keep llama-swap for Qwen gguf coding.
 # RTX 3050 6GB hybrid bench 5.6GB/s OK after killing llama-server (was 4.8G VRAM hog).
 FT_BIN="$HOME/.freetoken/venv/bin/ft"
@@ -566,7 +543,7 @@ if [ -n "${HF_TOKEN:-}" ]; then
     ok "HF_TOKEN present (${#HF_TOKEN} chars)"
 else
     fail "HF_TOKEN empty"
-    fix "set HF_TOKEN in ~/.secrets/env (https://huggingface.co/settings/tokens) then: ~/.freetoken/venv/bin/ft serve --model Qwen/Qwen2.5-Coder-7B-Instruct --port 1919"
+    fix "set HF_TOKEN in ~/.secrets/env (https://huggingface.co/settings/tokens) then: bash ai/04-get-freetoken-30b.sh # -> ft serve --model Qwen/Qwen3-30B-A3B --port 1919"
 fi
 # environment.d for freetoken-desktop
 if [ -f "$HOME/.config/environment.d/50-freetoken.conf" ] && grep -q "FREETOKEN_FT_BIN" "$HOME/.config/environment.d/50-freetoken.conf"; then
@@ -588,11 +565,11 @@ else
         fix "run: $FT_BIN bench bw — expect hybrid, not OOM; nvidia-smi should be ~300-400M not 5G"
     fi
 fi
-# Decision note (from findings)
+# Decision note (from findings, 2026-09-05: local-ai disabled in pi/opencode, kept for rustjiin direct)
 if systemctl --user is-active llama-swap >/dev/null 2>&1; then
-    ok "llama-swap active (keep for Qwen gguf 4.4G coding - fastest)"
-    fix "freetoken alternative (safetensors, not gguf): $FT_BIN serve --model Qwen/Qwen2.5-Coder-7B-Instruct --port 1919 --host 127.0.0.1"
-    fix "endpoint for pi/opencode: http://127.0.0.1:1919/v1 (vs llama-swap 8080)"
+    ok "llama-swap active (kept for rustjiin-japan direct :8080, Qwen Q4 4.4G)"
+    fix "freetoken correct for 6GB: $FT_BIN serve --model Qwen/Qwen3-30B-A3B --port 1919 --host 127.0.0.1 (MoE hybrid, not 7B dense)"
+    fix "pi/opencode: local-ai disabled (was :8080), now opencode/muse-spark; use ft :1919 only if needed"
 else
-    fix "choose: llama-swap (Qwen gguf) OR freetoken safetensors (Qwen/Qwen2.5-Coder-7B --port 1919)"
+    fix "llama-swap stopped (rustjiin needs :8080) — start: systemctl --user start llama-swap OR ft: Qwen/Qwen3-30B-A3B --port 1919"
 fi
