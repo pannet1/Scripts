@@ -3,7 +3,11 @@
 # for examples
 
 # Load central secrets early (survives non-interactive shells + reboot)
-if [ -f "$HOME/.secrets/env" ]; then set -a; source "$HOME/.secrets/env"; set +a; fi
+if [ -f "$HOME/.secrets/env" ]; then
+  set -a
+  source "$HOME/.secrets/env"
+  set +a
+fi
 
 # If not running interactively, don't do anything
 case $- in
@@ -205,3 +209,6 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 
 # cargo
 export PATH="$HOME/.cargo/bin/:$PATH"
+
+# Kitty SSH alias (added by Antigravity)
+alias ssh="kitty +kitten ssh"
