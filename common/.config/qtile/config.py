@@ -53,9 +53,18 @@ final_wallpaper = (
     random_wallpaper(wallpapers_dir, wallpaper) if is_random else wallpaper
 )
 
-# Regenerate the color scheme from the chosen wallpaper (writes a template to ~/.cache/wallust).
+# Regenerate the color scheme from the chosen wallpaper (writes templates to
+# ~/.cache/wallust and ~/.config/kitty/colors.conf).
 if subprocess.run(["which", "wallust"], capture_output=True).returncode == 0:
     subprocess.call(["wallust", "run", "-q", final_wallpaper])
+    # Live-reload already-open kitty windows with the new colors. No-op when
+    # kitty isn't running (kitty.conf sets listen_on unix:/tmp/kitty).
+    if subprocess.run(["which", "kitty"], capture_output=True).returncode == 0:
+        subprocess.call(
+            ["kitty", "@", "--to", "unix:/tmp/kitty", "set-colors", "-a",
+             "{}/.config/kitty/colors.conf".format(home)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
 
 # Prefer the wallust-generated scheme, fall back to the committed default colors.json.
 cache_colors = "{}/.cache/wallust/qtile-colors.json".format(home)
@@ -69,7 +78,7 @@ with open(
 colors = colors_json
 
 mod = "mod4"
-terminal = "alacritty"
+terminal = "kitty"
 browser = "firefox"
 file_manager = "pcmanfm"
 
@@ -139,7 +148,7 @@ keys = [
     Key(
         [mod], "v", lazy.spawn("rofi -show window"), desc="Show active windows in rofi"
     ),
-    Key([mod], "f", lazy.spawn("flameshot gui"), desc="Open flameshot gui"),
+    Key([mod, "control"], "s", lazy.spawn("flameshot gui"), desc="Open flameshot gui"),
     Key([mod], "s", lazy.spawn("scrot"), desc="Take full screen ss using scrot"),
     Key(
         [mod],

@@ -5,3 +5,6 @@ palette = "saliencedark"
 
 [templates]
 qtile_colors = { template = 'qtile-colors.json', target = '~/.cache/wallust/qtile-colors.json' }
+# Kitty reads colors.conf via `include` in kitty.conf; wallust rewrites it on
+# every wallpaper change so new terminals pick up the scheme automatically.
+kitty_colors = { template = 'kitty-colors.conf', target = '~/.config/kitty/colors.conf' }
