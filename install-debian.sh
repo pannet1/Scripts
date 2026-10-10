@@ -170,7 +170,7 @@ ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserve
     libpangocairo-1.0-0 build-essential pkg-config ripgrep fd-find tmux picom kitty \
     tree xxd \
     rofi flameshot scrot xwallpaper pcmanfm udisks2 network-manager-gnome ibus xfce4-power-manager xdg-desktop-portal-lxqt \
-    alsa-utils fonts-font-awesome fonts-jetbrains-mono libnotify-bin \
+    alsa-utils brightnessctl fonts-font-awesome fonts-jetbrains-mono libnotify-bin \
     pipewire pipewire-pulse wireplumber pavucontrol \
     fonts-noto-core fonts-samyak-taml fonts-lohit-taml fonts-taml \
     p7zip-full p7zip-rar rar xdg-utils bind9-dnsutils smartmontools \
