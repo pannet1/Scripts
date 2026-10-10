@@ -27,7 +27,7 @@ echo "  Debian Setup"
 echo "=============================================="
 
 # ── 0. Self-bootstrap: ensure we run from a full repo checkout ──
-step "0/13: Repo checkout"
+step "0/16: Repo checkout"
 REPO_DIR="$HOME/programs/shell/github.com/pannet1/Scripts"
 if [ -d "$SCRIPT_DIR/common" ] && [ -d "$SCRIPT_DIR/debian" ]; then
     ok "running from checkout: $SCRIPT_DIR"
@@ -51,7 +51,7 @@ else
 fi
 
 # ── 1. apt sources (fastest mirror for the installed release) ──
-step "1/13: apt sources"
+step "1/16: apt sources"
 RELEASE_CODENAME="$(. /etc/os-release && echo "$VERSION_CODENAME")"
 
 # curl is needed to probe mirror latency (and used later); ensure it exists
@@ -137,14 +137,14 @@ EOF
 fi
 
 # ── 2. System update ──
-step "2/13: System update"
+step "2/16: System update"
 sudo apt update -y
 sudo apt --fix-broken install -y
 sudo apt dist-upgrade -y
 ok "system up to date"
 
 # ── 3. OpenCode (early, so we can fix issues during install) ──
-step "3/13: OpenCode"
+step "3/16: OpenCode"
 ensure_pkg curl
 if check_cmd opencode; then
     ok "opencode binary"
@@ -158,7 +158,7 @@ else
 fi
 
 # ── 4. Core packages ──
-step "4/13: Core packages"
+step "4/16: Core packages"
 # Resolve the release-specific libavcodec-extra version. It was previously
 # hardcoded as libavcodec-extra61 (trixie/ffmpeg 7). Pick the latest
 # libavcodec-extra<N> offered by the active release so this survives the next
@@ -178,7 +178,7 @@ ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserve
     firefox smplayer
 
 # ── 5. Networking ──
-step "5/13: Networking"
+step "5/16: Networking"
 if check_cmd nmcli; then
     ok "NetworkManager"
 else
@@ -189,7 +189,7 @@ else
 fi
 
 # ── 6. NVIDIA ──
-step "6/13: NVIDIA"
+step "6/16: NVIDIA"
 if lspci 2>/dev/null | grep -qi "VGA.*NVIDIA"; then
     if lsmod | grep -q "^nvidia "; then
         ok "nvidia module loaded"
@@ -222,13 +222,13 @@ else
     ok "no NVIDIA GPU"
 fi
 
-# ── 6b. LTS kernel + NVIDIA DKMS sync ──
+# ── 7. LTS kernel + NVIDIA DKMS sync ──
 # A kernel upgrade (e.g. from dist-upgrade) without a matching nvidia DKMS
 # build breaks the display, so qtile never loads. Pin the amd64 LTS kernel
 # line + headers and rebuild nvidia for BOTH the running and the newest
 # installed kernel, then refresh grub so the new LTS kernel is bootable.
 if lspci 2>/dev/null | grep -qi "VGA.*NVIDIA"; then
-    step "6b/15: LTS kernel + nvidia DKMS"
+    step "7/16: LTS kernel + nvidia DKMS"
     ensure_pkg linux-image-amd64 linux-headers-amd64 dkms nvidia-kernel-dkms
     NEW_KERNEL="$(ls -t /lib/modules | head -1)"
     echo "  target kernel modules dir: $NEW_KERNEL"
@@ -244,8 +244,8 @@ else
     ok "no NVIDIA GPU — kernel step skipped"
 fi
 
-# ── 7. Neovim ──
-step "7/13: Neovim"
+# ── 8. Neovim ──
+step "8/16: Neovim"
 # luarocks (lua-language-server workspace check) + lazygit (LazyVim git UI)
 # must be present before nvim: missing them makes nvim saves block for seconds.
 # xclip provides the X11 clipboard for nvim's "+ register.
@@ -269,8 +269,8 @@ else
     ok "nvim installed"
 fi
 
-# ── 8. Node.js / npm (to ~/.local) ──
-step "8/13: Node.js / npm"
+# ── 9. Node.js / npm (to ~/.local) ──
+step "9/16: Node.js / npm"
 if check_cmd node && check_cmd npm; then
     ok "node $(node --version) / npm $(npm --version)"
 else
@@ -284,8 +284,8 @@ else
     ok "node $NODE_VERSION installed"
 fi
 
-# ── 9. Qtile (via uv) ──
-step "9/13: Qtile"
+# ── 10. Qtile (via uv) ──
+step "10/16: Qtile"
 if check_cmd uv; then
     ok "uv binary"
 else
@@ -313,8 +313,8 @@ EOF
     ok ".xinitrc written"
 fi
 
-# ── 10. Shell tools ──
-step "10/13: Shell tools"
+# ── 11. Shell tools ──
+step "11/16: Shell tools"
 ensure_pkg git-crypt adb sd
 if check_cmd starship; then
     ok "starship binary"
@@ -395,8 +395,8 @@ else
     fi
 fi
 
-# ── 11. Dotfiles (stow) ──
-step "11/13: Dotfiles (stow)"
+# ── 12. Dotfiles (stow) ──
+step "12/16: Dotfiles (stow)"
 cd "$SCRIPT_DIR"
 backup_dir="$HOME/.dotfiles-backup/$(date +%Y%m%d_%H%M%S)"
 backed_up=false
@@ -433,8 +433,8 @@ done
 
 [ "$backed_up" = true ] && echo "    → Backed up to $backup_dir"
 
-# ── 12. User systemd services ──
-step "12/13: User systemd services"
+# ── 13. User systemd services ──
+step "13/16: User systemd services"
 systemctl --user daemon-reload
 # PipeWire is the audio server (Firefox/Chromium route sound through it).
 # No audio server was installed before → no sound at all.
@@ -469,8 +469,8 @@ else
     ok "xdg-desktop-portal-gtk service masked"
 fi
 
-# ── 13. LazyVim (nvim config) ──
-step "13/13: LazyVim"
+# ── 14. LazyVim (nvim config) ──
+step "14/16: LazyVim"
 if [ -d "$HOME/.config/nvim" ] && [ -n "$(ls -A "$HOME/.config/nvim" 2>/dev/null)" ]; then
     ok "nvim config present"
 else
@@ -491,8 +491,8 @@ echo "  Reboot (NVIDIA), then: startx"
 echo "  tmux            (then prefix + I for plugins)"
 echo "  nvim            (plugins auto-install on first launch)"
 
-# ── 14. Telegram (official tar.xz) ──
-step "14/14: Telegram"
+# ── 15. Telegram (official tar.xz) ──
+step "15/16: Telegram"
 TG_DIR="$HOME/.local/share/TelegramDesktop"
 if [ -x "$TG_DIR/Telegram" ]; then
     ok "telegram binary"
@@ -513,8 +513,8 @@ else
     ln -sf "$TG_DIR/Telegram" "$HOME/.local/bin/telegram"
     ok "telegram installed"
 fi
-# ── 15. FreeToken (hybrid inference, findings 2026-09-02, updated 2026-09-05) ──
-step "15/15: FreeToken"
+# ── 16. FreeToken (hybrid inference, findings 2026-09-02, updated 2026-09-05) ──
+step "16/16: FreeToken"
 # Findings: ft serve --model *.gguf only supports gemma4 — Qwen gguf will NOT run.
 # 2026-09-05: local-ai disabled in pi/opencode (qwen 7B weak for pi), llama-swap kept only for rustjiin direct :8080
 # Use safetensors via HF_TOKEN, keep llama-swap for Qwen gguf coding.
