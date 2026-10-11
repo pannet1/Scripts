@@ -61,7 +61,7 @@ curl http://127.0.0.1:1919/v1/models
 ## Commands
 ```bash
 systemctl --user start|stop|status llama-swap  # :8080
-systemctl --user start|stop llama-router       # :8085 (disabled)
+systemctl --user start|stop llama-router       # was :8085 (disabled) — port now used by realistic-vision sd-server, do NOT re-enable router on :8085
 curl http://127.0.0.1:8080/v1/models
 curl http://127.0.0.1:8080/v1/chat/completions -d '{"model":"qwen2.5-7b-instruct","messages":[{"role":"user","content":"hi"}],"tools":[...]}'
 pi --provider llama-swap --model qwen2.5-7b-instruct -p "list files"
@@ -69,4 +69,9 @@ pi --provider llama-swap --model qwen2.5-7b-instruct -p "list files"
 bash ai/04-get-freetoken-30b.sh
 # project checks:
 grep -r "localhost:8080" ~/programs/rust/.../rustjiin-japan/src --include="*.rs"; cat ~/programs/typescript/.../make-videos/src/index.tsx | head
+
+## Image generation (2026-10-11/12, RTX 3050 6GB)
+- **Installer:** `ai/06-install-image-gen.sh` (idempotent) + step `17/17` in `install-debian.sh`. Builds `~/stable-diffusion.cpp` sd-server (`-DSD_CUDA=ON -DSD_SERVER_BUILD_FRONTEND=ON`), downloads 3 files to `/mnt/data/models`, merges config.
+- **Models:** `sdxl-lightning` (:8084, `sdxl_lightning_4step.q8_0.gguf` 3.9G, `--backend vae=cpu` — weights live in RAM, slow) | `realistic-vision` (:8085, RV6 fp16 2G + mse VAE 320M, `--steps 25 --cfg-scale 5 --sampling-method dpm++2m --scheduler karras`, fits VRAM — the daily driver).
+- **Gotchas (do not regress):** sd-server has NO `/health` → every image entry needs `checkEndpoint: /v1/models`; cold HDD load >30s → `healthCheckTimeout: 180`; OpenAI route takes ONLY `prompt/n/size` (`routes_openai.cpp`) → sampler/CFG/steps/negative are sd-server CLI defaults in `cmd`; Qwen ttls `0→300` (nothing is pinned on 6GB); full UI at `:8085`/`:8084` only while model loaded (embedded frontend needs Node+pnpm at build).
 ```
