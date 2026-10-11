@@ -1,9 +1,9 @@
-healthCheckTimeout: 30
+healthCheckTimeout: 180
 
 models:
   "qwen2.5-7b-instruct":
     proxy: "http://127.0.0.1:8083"
-    ttl: 0
+    ttl: 300
     cmd: >
       /usr/local/bin/llama-server
       --host 127.0.0.1 --port 8083
@@ -14,7 +14,7 @@ models:
 
   "qwen2.5-coder-7b-instruct":
     proxy: "http://127.0.0.1:8081"
-    ttl: 0
+    ttl: 300
     cmd: >
       /usr/local/bin/llama-server
       --host 127.0.0.1 --port 8081
@@ -32,5 +32,26 @@ models:
       --model /home/pannet1/programs/shell/github.com/pannet1/Scripts/ai/models/nomic-embed-text-v1.5-Q8_0.gguf
       --embedding --embd-normalize 2
       --ctx-size 8192
+
+  "sdxl-lightning":
+    proxy: "http://127.0.0.1:8084"
+    ttl: 300
+    checkEndpoint: /v1/models
+    cmd: >
+      /home/pannet1/stable-diffusion.cpp/build/bin/sd-server
+      -m /mnt/data/models/sdxl_lightning_4step.q8_0.gguf
+      --backend vae=cpu --fa -l 127.0.0.1 --listen-port 8084
+
+  "realistic-vision":
+    proxy: "http://127.0.0.1:8085"
+    ttl: 300
+    checkEndpoint: /v1/models
+    cmd: >
+      /home/pannet1/stable-diffusion.cpp/build/bin/sd-server
+      -m /mnt/data/models/Realistic_Vision_V6.0_NV_B1_fp16.safetensors
+      --vae /mnt/data/models/vae-ft-mse-840000-ema-pruned.safetensors
+      --steps 25 --cfg-scale 5.0 --sampling-method dpm++2m --scheduler karras
+      -n "(deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime:1.4), text, close up, cropped, out of frame, worst quality, low quality, jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, disgusting, amputation"
+      --fa -l 127.0.0.1 --listen-port 8085
 
 default_model: qwen2.5-coder-7b-instruct
