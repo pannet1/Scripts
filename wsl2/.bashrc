@@ -175,8 +175,11 @@ export LESS=-RFX
 SECRETS_REPO="$HOME/programs/shell/github.com/pannet1/secrets"
 [ -f "$HOME/secrets.key" ] && (cd "$SECRETS_REPO" && git-crypt unlock "$HOME/secrets.key") 2>/dev/null || true
 
-export LLAMACPP="$HOME/llama.cpp"
-export PATH="$LLAMACPP/build/bin:$PATH"
+# NOTE: LLAMACPP / $LLAMACPP/build/bin were removed here. ~/llama.cpp does not
+# exist on this machine, so both lines pointed at nothing. Local inference is
+# served by llama-swap on 127.0.0.1:8080 (systemd user unit llama-swap.service,
+# config: ~/programs/shell/github.com/pannet1/Scripts/ai/config/llama-swap/config-host.yaml).
+# Override that endpoint with LLAMA_BASE_URL if needed.
 
 # Android SDK
 export ANDROID_HOME="$HOME/android-sdk"
