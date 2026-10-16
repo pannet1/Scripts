@@ -12,3 +12,10 @@ xfce4-power-manager &
 # can cause WirePlumber to re-evaluate sinks, muting the analog output.
 # Wait for PipeWire/WirePlumber to settle, then force unmute + restore volume.
 (sleep 3 && wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 && wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0) &
+
+# ALC3220 analog path. alsa-restore.service replays /var/lib/alsa/asound.state
+# at boot, which sets Capture to +12dB with nothing plugged in, and the card
+# can present with the speaker amp shut. Single source of truth is the script;
+# the systemd user service (alc3220-audio-fix.service) runs the same thing
+# earlier, this is a re-assert after X/PipeWire have settled.
+(sleep 3 && ~/.local/bin/alc3220-audio-fix) &

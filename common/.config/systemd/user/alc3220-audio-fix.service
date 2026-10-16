@@ -1,0 +1,18 @@
+[Unit]
+Description=Restore ALC3220 analog output path that alsa-restore reverts
+Documentation=man:alsactl(1)
+# Must run after PipeWire claims the card, and retry until the ALC3220
+# controls actually exist. alsa-restore.service runs early in boot and
+# rewrites these controls from /var/lib/alsa/asound.state, which stores
+# Speaker+LO=87 (max) and Capture Volume=39 (+12dB).
+After=pipewire.service wireplumber.service
+Requires=pipewire.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/pannet1/.local/bin/alc3220-audio-fix
+TimeoutStartSec=30
+
+[Install]
+WantedBy=default.target
