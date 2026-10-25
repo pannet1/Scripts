@@ -2,23 +2,49 @@
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
-# Load central secrets early (survives non-interactive shells + reboot)
-if [ -f "$HOME/.secrets/env" ]; then
-  set -a
-  source "$HOME/.secrets/env"
-  set +a
-fi
-
 # If not running interactively, don't do anything
 case $- in
 *i*) ;;
 *) return ;;
 esac
 
+# --- secrets -------------------------------------------------------------
+# git-crypt protected store, loaded for interactive shells only. Non-interactive
+# commands (scripts, cron, `bash -c`) do NOT inherit the keys - they must call
+# `secrets_load` themselves.
+SECRETS_REPO="$HOME/programs/github.com/pannet1/secrets"
+SECRETS_ENV="$SECRETS_REPO/github.com/pannet1/python/general/.env"
+SECRETS_KEY="$HOME/secrets.key"
+
+secrets_unlock() {
+  [ -f "$SECRETS_KEY" ] || { echo "secrets: no key at $SECRETS_KEY" >&2; return 1; }
+  (cd "$SECRETS_REPO" && git-crypt unlock "$SECRETS_KEY") || return 1
+  # git-crypt rewrites the working tree with the default umask - keep it owner-only
+  chmod -R go-rwx "$SECRETS_REPO"
+}
+
+secrets_load() {
+  if [ ! -f "$SECRETS_ENV" ]; then
+    echo "secrets: $SECRETS_ENV not found" >&2
+    return 1
+  fi
+  if head -c 16 "$SECRETS_ENV" | LC_ALL=C grep -qa GITCRYPT; then
+    echo "secrets: store is locked - run 'secrets_unlock'" >&2
+    return 1
+  fi
+  set -a
+  . "$SECRETS_ENV"
+  set +a
+}
+
+secrets_load
+
 HISTSIZE=100000
 HISTFILESIZE=200000
 HISTCONTROL=ignoreboth:erasedups
 HISTTIMEFORMAT="%F %T "
+# never write credential-looking command lines to disk
+HISTIGNORE='*API_KEY*=*:*_TOKEN*=*:*SECRET*=*:*PASSWORD*=*'
 
 # check the window size after each command and, if necessary,
 # update the values of LINES and COLUMNS.
@@ -112,7 +138,7 @@ if ! shopt -oq posix; then
   fi
 fi
 
-export PATH=$PATH:~/programs/shell/github.com/pannet1/Scripts/client:/home/pannet1/programs/shell/github.com/pannet1/Scripts/git_hooks:~/.local/bin
+export PATH=$PATH:~/programs/github.com/pannet1/Scripts/client:/home/pannet1/programs/github.com/pannet1/Scripts/git_hooks:~/.local/bin
 eval "$(starship init bash)"
 eval "$(zoxide init bash)"
 export GPG_TTY=$(tty)
@@ -171,14 +197,13 @@ export VISUAL=nvim
 export PAGER=less
 export LESS=-RFX
 
-# Local secrets (machine-specific, not tracked in git) - unlock for decrypt
-SECRETS_REPO="$HOME/programs/shell/github.com/pannet1/secrets"
-[ -f "$HOME/secrets.key" ] && (cd "$SECRETS_REPO" && git-crypt unlock "$HOME/secrets.key") 2>/dev/null || true
+# Secrets are unlocked on demand with `secrets_unlock` (defined near the top of
+# this file), not silently on every shell start. Errors are visible by design.
 
 # NOTE: LLAMACPP / $LLAMACPP/build/bin were removed here. ~/llama.cpp does not
 # exist on this machine, so both lines pointed at nothing. Local inference is
 # served by llama-swap on 127.0.0.1:8080 (systemd user unit llama-swap.service,
-# config: ~/programs/shell/github.com/pannet1/Scripts/ai/config/llama-swap/config-host.yaml).
+# config: ~/programs/github.com/pannet1/Scripts/ai/config/llama-swap/config-host.yaml).
 # Override that endpoint with LLAMA_BASE_URL if needed.
 
 # Android SDK
@@ -219,3 +244,8 @@ export PATH="$HOME/.cargo/bin/:$PATH"
 
 # Kitty SSH alias (added by Antigravity)
 alias ssh="kitty +kitten ssh"
+
+# Pi
+export PATH="/home/pannet1/.pi/agent/bin:$PATH"
+
+
