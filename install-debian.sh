@@ -52,6 +52,27 @@ else
     exec bash "$REPO_DIR/install-debian.sh"
 fi
 
+# ── Purge stored git credentials / API tokens ──
+# Remove cached GitHub OAuth tokens and git credential helpers so they
+# are not carried over to a fresh machine. Re-authorize with
+# `gh auth login` after this step if needed.
+if [ -f "$HOME/.config/gh/hosts.yml" ]; then
+    fail "gh hosts.yml contains stored git tokens"
+    fix "removing ~/.config/gh/hosts.yml"
+    rm -f "$HOME/.config/gh/hosts.yml"
+    ok "gh hosts.yml removed"
+fi
+if [ -f "$HOME/.gitconfig" ] && grep -q "credential" "$HOME/.gitconfig"; then
+    fix "clearing git credential helpers in ~/.gitconfig"
+    git config --global --unset-all credential.helper 2>/dev/null || true
+    ok "git credential helpers cleared"
+fi
+if [ -d "$HOME/.cache/git" ]; then
+    fix "removing git credential cache"
+    rm -rf "$HOME/.cache/git"
+    ok "git credential cache removed"
+fi
+
 # ── 1. apt sources (fastest mirror for the installed release) ──
 step "1/17: apt sources"
 RELEASE_CODENAME="$(. /etc/os-release && echo "$VERSION_CODENAME")"
