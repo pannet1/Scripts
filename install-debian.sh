@@ -88,6 +88,16 @@ for f in "$HOME/.config/opencode/opencode.jsonc" \
     fi
 done
 
+# ── Install git-filter-repo (for purging secrets from git history) ──
+if ! command -v git-filter-repo >/dev/null 2>&1; then
+    fix "installing git-filter-repo via pip"
+    ensure_pkg python3-pip
+    pip3 install --break-system-packages git-filter-repo 2>/dev/null || pip3 install --user git-filter-repo
+    ok "git-filter-repo installed"
+else
+    ok "git-filter-repo present"
+fi
+
 # ── 1. apt sources (fastest mirror for the installed release) ──
 step "1/17: apt sources"
 RELEASE_CODENAME="$(. /etc/os-release && echo "$VERSION_CODENAME")"
