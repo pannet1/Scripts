@@ -177,14 +177,25 @@ ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserve
     "$LIBAVCODEC_EXTRA" \
     firefox smplayer
 
-# scrcpy — best effort (not in all Debian repos / mirrors)
+# scrcpy — install from official static release (not in Debian trixie repos)
 if ! check_cmd scrcpy; then
-    fix "installing scrcpy (apt)"
-    if sudo apt install -y scrcpy 2>/dev/null; then
-        ok "scrcpy installed"
+    fix "installing scrcpy from official static release"
+    # runtime dependencies (adb already installed in step 11)
+    ensure_pkg ffmpeg libsdl3-0 libusb-1.0-0 va-driver-all
+    SCRCPY_VERSION="v5.0.1"
+    SCRCPY_TARBALL="scrcpy-linux-x86_64-${SCRCPY_VERSION#v}.tar.gz"
+    SCRCPY_URL="https://github.com/Genymobile/scrcpy/releases/download/${SCRCPY_VERSION}/${SCRCPY_TARBALL}"
+    tmpdir="$(mktemp -d)"
+    curl -fsSL "$SCRCPY_URL" -o "$tmpdir/scrcpy.tar.gz"
+    tar -xzf "$tmpdir/scrcpy.tar.gz" -C "$tmpdir"
+    SCRCPY_BIN="$(find "$tmpdir" -name scrcpy -type f -executable | head -1)"
+    if [ -n "$SCRCPY_BIN" ]; then
+        install -m 0755 "$SCRCPY_BIN" "$HOME/.local/bin/scrcpy"
+        ok "scrcpy installed to ~/.local/bin/scrcpy"
     else
-        fix "scrcpy not available in apt — skipping (install manually later)"
+        fail "scrcpy binary not found in release tarball"
     fi
+    rm -rf "$tmpdir"
 fi
 
 # ── 5. Networking ──
