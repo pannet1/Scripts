@@ -169,13 +169,23 @@ echo "  libavcodec-extra → $LIBAVCODEC_EXTRA"
 ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserver-utils xfonts-base xfonts-75dpi xfonts-100dpi \
     libpangocairo-1.0-0 build-essential pkg-config ripgrep fd-find tmux picom kitty \
     tree xxd \
-    rofi flameshot scrot scrcpy xwallpaper pcmanfm udisks2 network-manager-gnome ibus xfce4-power-manager xdg-desktop-portal-lxqt \
+    rofi flameshot scrot xwallpaper pcmanfm udisks2 network-manager-gnome ibus xfce4-power-manager xdg-desktop-portal-lxqt \
     alsa-utils brightnessctl fonts-font-awesome fonts-jetbrains-mono libnotify-bin \
     pipewire pipewire-pulse wireplumber pavucontrol \
     fonts-noto-core fonts-samyak-taml fonts-lohit-taml fonts-taml \
     p7zip-full p7zip-rar rar xdg-utils bind9-dnsutils smartmontools \
     "$LIBAVCODEC_EXTRA" \
     firefox smplayer
+
+# scrcpy — best effort (not in all Debian repos / mirrors)
+if ! check_cmd scrcpy; then
+    fix "installing scrcpy (apt)"
+    if sudo apt install -y scrcpy 2>/dev/null; then
+        ok "scrcpy installed"
+    else
+        fix "scrcpy not available in apt — skipping (install manually later)"
+    fi
+fi
 
 # ── 5. Networking ──
 step "5/17: Networking"
