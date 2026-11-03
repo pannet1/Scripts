@@ -569,17 +569,3 @@ else
     ln -sf "$TG_DIR/Telegram" "$HOME/.local/bin/telegram"
     ok "telegram installed"
 fi
-# ── Image generation (stable-diffusion.cpp + llama-swap, 2026-10-12) ──
-# Verified on RTX 3050 6GB: sd-server (CUDA + embedded web UI), SDXL-Lightning
-# Q8 + Realistic Vision V6 fp16 + VAE, two llama-swap entries (:8084/:8085).
-# Needs ai/05 (CUDA + llama-swap) and model downloads first; ai/06 is
-# idempotent and does downloads + build + config merge itself.
-step "Image generation"
-if command -v nvcc &>/dev/null && [ -x /usr/local/bin/llama-swap ]; then
-    ok "CUDA + llama-swap present"
-    bash "$SCRIPT_DIR/ai/06-install-image-gen.sh"
-    ok "image generation installed (restart if models changed: systemctl --user restart llama-swap)"
-else
-    fail "CUDA or llama-swap missing"
-    fix "run first: bash ai/05-install-llama-gpu.sh && bash ai/02-download-models.sh, then re-run $0"
-fi
