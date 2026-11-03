@@ -73,21 +73,6 @@ if [ -d "$HOME/.cache/git" ]; then
     ok "git credential cache removed"
 fi
 
-# ── Purge stored OpenCode API tokens ──
-# Remove opencode config files that may contain hardcoded API keys so they
-# are not carried over to a fresh machine. The repo's sanitized versions
-# (via stow) use {env:...} placeholders instead.
-for f in "$HOME/.config/opencode/opencode.jsonc" \
-         "$HOME/.config/opencode/opencode.json" \
-         "$HOME/.config/opencode.json"; do
-    if [ -f "$f" ] && grep -q '"apiKey"' "$f" 2>/dev/null; then
-        fail "opencode config contains stored API key: $f"
-        fix "removing $f"
-        rm -f "$f"
-        ok "$f removed"
-    fi
-done
-
 # ── Install git-filter-repo (for purging secrets from git history) ──
 if ! command -v git-filter-repo >/dev/null 2>&1; then
     fix "installing git-filter-repo via pip"
