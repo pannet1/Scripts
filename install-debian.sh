@@ -19,6 +19,7 @@ ensure_pkg() {
     fail "missing:$missing"
     fix "apt install$missing"
     sudo apt install -y $missing
+    sudo apt autoremove -y
     ok "packages installed"
 }
 
@@ -37,6 +38,7 @@ else
         fix "installing git"
         sudo apt update -y
         sudo apt install -y git
+        sudo apt autoremove -y
     fi
     if [ -d "$REPO_DIR/.git" ]; then
         fix "updating existing checkout at $REPO_DIR"
@@ -68,6 +70,7 @@ ensure_pkg curl
 MIRROR_HOST=""
 if ! command -v netselect-apt >/dev/null 2>&1; then
     sudo apt install -y netselect-apt >/dev/null 2>&1 || true
+    sudo apt autoremove -y >/dev/null 2>&1 || true
 fi
 if command -v netselect-apt >/dev/null 2>&1; then
     if sudo netselect-apt -n -o /tmp/netselect-debian.list "$RELEASE_CODENAME" >/dev/null 2>&1; then
@@ -141,6 +144,7 @@ step "2/17: System update"
 sudo apt update -y
 sudo apt --fix-broken install -y
 sudo apt dist-upgrade -y
+sudo apt autoremove -y
 ok "system up to date"
 
 # ── 3. OpenCode (early, so we can fix issues during install) ──
