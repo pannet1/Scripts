@@ -183,7 +183,7 @@ if ! check_cmd scrcpy; then
     # runtime dependencies (adb already installed in step 11)
     ensure_pkg ffmpeg libsdl3-0 libusb-1.0-0 va-driver-all
     SCRCPY_VERSION="v5.0.1"
-    SCRCPY_TARBALL="scrcpy-linux-x86_64-${SCRCPY_VERSION#v}.tar.gz"
+    SCRCPY_TARBALL="scrcpy-linux-x86_64-${SCRCPY_VERSION}.tar.gz"
     SCRCPY_URL="https://github.com/Genymobile/scrcpy/releases/download/${SCRCPY_VERSION}/${SCRCPY_TARBALL}"
     tmpdir="$(mktemp -d)"
     curl -fsSL "$SCRCPY_URL" -o "$tmpdir/scrcpy.tar.gz"
