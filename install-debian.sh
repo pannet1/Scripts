@@ -569,62 +569,6 @@ else
     ln -sf "$TG_DIR/Telegram" "$HOME/.local/bin/telegram"
     ok "telegram installed"
 fi
-# ── FreeToken (hybrid inference, findings 2026-09-02, updated 2026-09-05) ──
-step "FreeToken"
-# Findings: ft serve --model *.gguf only supports gemma4 — Qwen gguf will NOT run.
-# 2026-09-05: local-ai disabled in pi/opencode (qwen 7B weak for pi), llama-swap kept only for rustjiin direct :8080
-# Use safetensors via HF_TOKEN, keep llama-swap for Qwen gguf coding.
-# RTX 3050 6GB hybrid bench 5.6GB/s OK after killing llama-server (was 4.8G VRAM hog).
-FT_BIN="$HOME/.freetoken/venv/bin/ft"
-if [ -x "$FT_BIN" ]; then
-    ok "freetoken $($FT_BIN --version 2>/dev/null | head -1)"
-else
-    fail "freetoken"
-    fix "installing freetoken to ~/.freetoken/venv"
-    ensure_pkg python3-venv
-    mkdir -p "$HOME/.freetoken"
-    python3 -m venv "$HOME/.freetoken/venv"
-    "$HOME/.freetoken/venv/bin/pip" install -U pip
-    "$HOME/.freetoken/venv/bin/pip" install freetoken
-    ln -sf "$FT_BIN" "$HOME/.local/bin/ft" 2>/dev/null || true
-    ok "freetoken installed"
-fi
-# HF_TOKEN required for safetensors (Qwen/Qwen2.5-Coder-7B, Qwen3-30B-A3B)
-if [ -f "$HOME/.secrets/env" ]; then set -a; source "$HOME/.secrets/env"; set +a; fi
-if [ -n "${HF_TOKEN:-}" ]; then
-    ok "HF_TOKEN present (${#HF_TOKEN} chars)"
-else
-    fail "HF_TOKEN empty"
-    fix "set HF_TOKEN in ~/.secrets/env (https://huggingface.co/settings/tokens) then: bash ai/04-get-freetoken-30b.sh # -> ft serve --model Qwen/Qwen3-30B-A3B --port 1919"
-fi
-# environment.d for freetoken-desktop
-if [ -f "$HOME/.config/environment.d/50-freetoken.conf" ] && grep -q "FREETOKEN_FT_BIN" "$HOME/.config/environment.d/50-freetoken.conf"; then
-    ok "freetoken env.d"
-else
-    fix "writing ~/.config/environment.d/50-freetoken.conf"
-    mkdir -p "$HOME/.config/environment.d"
-    echo "FREETOKEN_FT_BIN=$FT_BIN" > "$HOME/.config/environment.d/50-freetoken.conf"
-    ok "freetoken env.d written (re-login to apply)"
-fi
-# Verify hybrid bench (kill llama-server first to free VRAM)
-if pgrep -f "llama-server" >/dev/null 2>&1; then
-    fail "llama-server running (holds ~4.8G VRAM, freetoken bench will OOM)"
-    fix "pkill llama-server before: $FT_BIN bench bw (expect hybrid 5.6GB/s)"
-else
-    if "$FT_BIN" bench bw 2>&1 | grep -qi "hybrid"; then
-        ok "freetoken hybrid bench OK"
-    else
-        fix "run: $FT_BIN bench bw — expect hybrid, not OOM; nvidia-smi should be ~300-400M not 5G"
-    fi
-fi
-# Decision note (from findings, 2026-09-05: local-ai disabled in pi/opencode, kept for rustjiin direct)
-if systemctl --user is-active llama-swap >/dev/null 2>&1; then
-    ok "llama-swap active (kept for rustjiin-japan direct :8080, Qwen Q4 4.4G)"
-    fix "freetoken correct for 6GB: $FT_BIN serve --model Qwen/Qwen3-30B-A3B --port 1919 --host 127.0.0.1 (MoE hybrid, not 7B dense)"
-    fix "pi/opencode: local-ai disabled (was :8080), now opencode/muse-spark; use ft :1919 only if needed"
-else
-    fix "llama-swap stopped (rustjiin needs :8080) — start: systemctl --user start llama-swap OR ft: Qwen/Qwen3-30B-A3B --port 1919"
-fi
 # ── Image generation (stable-diffusion.cpp + llama-swap, 2026-10-12) ──
 # Verified on RTX 3050 6GB: sd-server (CUDA + embedded web UI), SDXL-Lightning
 # Q8 + Realistic Vision V6 fp16 + VAE, two llama-swap entries (:8084/:8085).
