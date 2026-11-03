@@ -575,11 +575,11 @@ fi
 # Needs ai/05 (CUDA + llama-swap) and model downloads first; ai/06 is
 # idempotent and does downloads + build + config merge itself.
 step "Image generation"
-if [ -x /usr/local/bin/llama-swap ]; then
-    ok "llama-swap present"
+if [ -x /usr/local/bin/llama-swap ] && { [ -x "$HOME/stable-diffusion.cpp/build/bin/sd-server" ] || command -v nvcc &>/dev/null; }; then
+    ok "llama-swap + sd-server present"
     bash "$SCRIPT_DIR/ai/06-install-image-gen.sh"
     ok "image generation installed (restart if models changed: systemctl --user restart llama-swap)"
 else
-    fail "llama-swap missing"
+    fail "llama-swap or sd-server missing"
     fix "run first: bash ai/05-install-llama-gpu.sh && bash ai/02-download-models.sh, then re-run $0"
 fi
