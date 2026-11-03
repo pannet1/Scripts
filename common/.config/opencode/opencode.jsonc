@@ -25,7 +25,7 @@
       "name": "OmniRoute",
       "options": {
         "baseURL": "http://localhost:20128/v1",
-        "apiKey": "REMOVED_SECRET"
+        "apiKey": "{env:OMNIROUTE_API_KEY=<REMOVED>}"
       },
       "models": {
         "opencode-zen/deepseek-v4-flash-free": {
