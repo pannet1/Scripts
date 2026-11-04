@@ -14,12 +14,13 @@ check_cmd() { command -v "$1" &>/dev/null || [ -x "$HOME/.local/bin/$1" ] || [ -
 
 ensure_pkg() {
     local missing=""
-    for p in "$@"; do dpkg -s "$p" &>/dev/null || missing="$missing $p"; done
+    for p in "$@"; do
+        [ "$(dpkg-query -W -f='${db:Status-Status}' "$p" 2>/dev/null)" = "installed" ] || missing="$missing $p"
+    done
     [ -n "$missing" ] || { ok "packages present"; return; }
     fail "missing:$missing"
     fix "apt install$missing"
     sudo apt install -y $missing
-    sudo apt autoremove -y
     ok "packages installed"
 }
 
@@ -29,7 +30,7 @@ echo "=============================================="
 
 # ── Self-bootstrap: ensure we run from a full repo checkout ──
 step "Repo checkout"
-REPO_DIR="$HOME/programs/shell/github.com/pannet1/Scripts"
+REPO_DIR="$HOME/programs/github.com/pannet1/Scripts"
 if [ -d "$SCRIPT_DIR/common" ] && [ -d "$SCRIPT_DIR/debian" ]; then
     ok "running from checkout: $SCRIPT_DIR"
 else
@@ -75,9 +76,8 @@ fi
 
 # ── Install git-filter-repo (for purging secrets from git history) ──
 if ! command -v git-filter-repo >/dev/null 2>&1; then
-    fix "installing git-filter-repo via pip"
-    ensure_pkg python3-pip
-    pip3 install --break-system-packages git-filter-repo 2>/dev/null || pip3 install --user git-filter-repo
+    fix "installing git-filter-repo"
+    ensure_pkg git-filter-repo
     ok "git-filter-repo installed"
 else
     ok "git-filter-repo present"
@@ -113,7 +113,7 @@ if [ -z "$MIRROR_HOST" ]; then
     fix "netselect-apt yielded no mirror — falling back to curl latency probe"
     MIRROR_HOST="$(for m in deb.debian.org ftp.de.debian.org ftp.uk.debian.org \
                         ftp.fr.debian.org ftp.us.debian.org mirror.csclub.uwaterloo.ca; do
-        t="$(curl -s -o /dev/null -m 4 -w '%{time_total}' "http://$m/debian/dists/$RELEASE_CODENAME/InRelease" 2>/dev/null)"
+        t="$(curl -fsSL -o /dev/null -m 4 -w '%{time_total}' "http://$m/debian/dists/$RELEASE_CODENAME/InRelease" 2>/dev/null)" || continue
         [ -n "$t" ] && echo "$t $m"
     done | sort -n | head -n1 | awk '{print $2}')"
 fi
@@ -121,12 +121,12 @@ fi
 echo "  fastest mirror: $MIRROR_HOST"
 
 ACTIVE_DEB="$(grep -rhE '^deb ' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null || true)"
-if echo "$ACTIVE_DEB" | grep -qs "$RELEASE_CODENAME" && echo "$ACTIVE_DEB" | grep -qs non-free-firmware && echo "$ACTIVE_DEB" | grep -qs "$MIRROR_HOST"; then
-    ok "sources = $RELEASE_CODENAME + non-free-firmware @ $MIRROR_HOST"
+if echo "$ACTIVE_DEB" | grep -qs "$RELEASE_CODENAME" && echo "$ACTIVE_DEB" | grep -qs non-free-firmware; then
+    ok "sources = $RELEASE_CODENAME + non-free-firmware"
 else
     fail "sources"
     fix "writing $RELEASE_CODENAME sources (main contrib non-free non-free-firmware) @ $MIRROR_HOST"
-    sudo rm -rf /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list
+    sudo rm -f /etc/apt/sources.list.d/debian.sources
     sudo tee /etc/apt/sources.list > /dev/null << EOF
 deb http://$MIRROR_HOST/debian/ $RELEASE_CODENAME main contrib non-free non-free-firmware
 deb http://$MIRROR_HOST/debian/ ${RELEASE_CODENAME}-updates main contrib non-free non-free-firmware
@@ -215,8 +215,7 @@ ensure_pkg git curl stow unzip fontconfig xinit xserver-xorg x11-apps x11-xserve
 # scrcpy — install from official static release (not in Debian trixie repos)
 if ! check_cmd scrcpy; then
     fix "installing scrcpy from official static release"
-    # runtime dependencies (adb already installed in shell tools)
-    ensure_pkg ffmpeg libsdl3-0 libusb-1.0-0 va-driver-all
+    ensure_pkg ffmpeg libsdl3-0 libusb-1.0-0 va-driver-all adb
     SCRCPY_VERSION="v5.0.1"
     SCRCPY_TARBALL="scrcpy-linux-x86_64-${SCRCPY_VERSION}.tar.gz"
     SCRCPY_URL="https://github.com/Genymobile/scrcpy/releases/download/${SCRCPY_VERSION}/${SCRCPY_TARBALL}"
@@ -224,11 +223,15 @@ if ! check_cmd scrcpy; then
     curl -fsSL "$SCRCPY_URL" -o "$tmpdir/scrcpy.tar.gz"
     tar -xzf "$tmpdir/scrcpy.tar.gz" -C "$tmpdir"
     SCRCPY_BIN="$(find "$tmpdir" -name scrcpy -type f -executable | head -1)"
-    if [ -n "$SCRCPY_BIN" ]; then
+    SCRCPY_SERVER="$(find "$tmpdir" -name scrcpy-server -type f | head -1)"
+    if [ -n "$SCRCPY_BIN" ] && [ -n "$SCRCPY_SERVER" ]; then
+        mkdir -p "$HOME/.local/bin" "$HOME/.local/share/scrcpy"
         install -m 0755 "$SCRCPY_BIN" "$HOME/.local/bin/scrcpy"
-        ok "scrcpy installed to ~/.local/bin/scrcpy"
+        install -m 0644 "$SCRCPY_SERVER" "$HOME/.local/bin/scrcpy-server"
+        install -m 0644 "$SCRCPY_SERVER" "$HOME/.local/share/scrcpy/scrcpy-server"
+        ok "scrcpy + scrcpy-server installed to ~/.local/bin"
     else
-        fail "scrcpy binary not found in release tarball"
+        fail "scrcpy binaries not found in release tarball"
     fi
     rm -rf "$tmpdir"
 fi
@@ -246,7 +249,7 @@ fi
 
 # ── NVIDIA ──
 step "NVIDIA"
-if lspci 2>/dev/null | grep -qi "VGA.*NVIDIA"; then
+if lspci 2>/dev/null | grep -qiE '(VGA|3D).*NVIDIA'; then
     if lsmod | grep -q "^nvidia "; then
         ok "nvidia module loaded"
     else
@@ -264,13 +267,7 @@ EndSection
 EOF
         ensure_pkg linux-headers-$(uname -r) dkms firmware-misc-nonfree
         ensure_pkg nvidia-driver nvidia-kernel-dkms
-        sudo modprobe nvidia 2>/dev/null || {
-            fix "dkms build failed — purging and reinstalling"
-            sudo apt purge "nvidia*" -y
-            sudo apt autoremove --purge -y
-            ensure_pkg nvidia-driver nvidia-kernel-dkms
-            sudo modprobe nvidia
-        }
+        sudo modprobe nvidia 2>/dev/null || fix "nvidia module will load on reboot after nouveau is blacklisted"
         sudo update-initramfs -u
         fix "REBOOT to finish loading NVIDIA"
     fi
@@ -283,10 +280,10 @@ fi
 # build breaks the display, so qtile never loads. Pin the amd64 LTS kernel
 # line + headers and rebuild nvidia for BOTH the running and the newest
 # installed kernel, then refresh grub so the new LTS kernel is bootable.
-if lspci 2>/dev/null | grep -qi "VGA.*NVIDIA"; then
+if lspci 2>/dev/null | grep -qiE '(VGA|3D).*NVIDIA'; then
     step "LTS kernel + nvidia DKMS"
     ensure_pkg linux-image-amd64 linux-headers-amd64 dkms nvidia-kernel-dkms
-    NEW_KERNEL="$(ls -t /lib/modules | head -1)"
+    NEW_KERNEL="$(ls /lib/modules | sort -V | tail -1)"
     echo "  target kernel modules dir: $NEW_KERNEL"
     sudo /usr/sbin/dkms autoinstall -k "$NEW_KERNEL"
     CUR_KERNEL="$(uname -r)"
@@ -294,7 +291,7 @@ if lspci 2>/dev/null | grep -qi "VGA.*NVIDIA"; then
         sudo /usr/sbin/dkms autoinstall -k "$CUR_KERNEL" || true
     fi
     sudo modprobe nvidia 2>/dev/null || echo "  nvidia not loadable on current kernel; reboot into $NEW_KERNEL"
-    sudo update-grub
+    command -v update-grub >/dev/null 2>&1 && sudo update-grub || true
     ok "LTS kernel + nvidia DKMS synced"
 else
     ok "no NVIDIA GPU — kernel step skipped"
@@ -310,13 +307,14 @@ if check_cmd nvim; then
     ok "nvim binary"
 else
     fail "nvim"
-    if apt-cache policy nvim 2>/dev/null | grep -q "Candidate:"; then
-        ensure_pkg nvim
+    NVIM_VER="$(apt-cache policy neovim 2>/dev/null | awk '/Candidate:/ {print $2}' | cut -d'-' -f1)"
+    if [ -n "$NVIM_VER" ] && [ "$(printf '%s\n0.10\n' "$NVIM_VER" | sort -V | head -n1)" = "0.10" ]; then
+        ensure_pkg neovim
     else
         fix "installing latest nvim from GitHub"
         cd /tmp
         curl -fsSL -o nvim.tar.gz "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz"
-        sudo rm -rf /opt/nvim
+        sudo rm -rf /opt/nvim /opt/nvim-linux-x86_64
         sudo tar -xzf nvim.tar.gz -C /opt
         sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
         rm -f nvim.tar.gz
@@ -377,7 +375,8 @@ if check_cmd starship; then
 else
     fail "starship"
     fix "installing starship"
-    curl -sS https://starship.rs/install.sh | sh -s -- -y
+    mkdir -p "$HOME/.local/bin"
+    curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin"
     ok "starship installed"
 fi
 if check_cmd zoxide; then
@@ -459,13 +458,22 @@ backed_up=false
 
 for pkg in common debian; do
     [ -d "$pkg" ] || continue
+
+    # Unlink any existing directory symlinks that point to a different package or path
+    # (otherwise Stow aborts with "existing target is not owned by stow")
+    while read -r d; do
+        rel="${d#"$pkg/"}"
+        target="$HOME/$rel"
+        if [ -L "$target" ] && [ "$(readlink -f "$target")" != "$(readlink -f "$d")" ]; then
+            rm "$target"
+        fi
+    done < <(find "$pkg" -mindepth 1 -type d -not -path "*/node_modules*" -not -path "*/.git*" -not -path "*/*wants*")
+
     while read -r f; do
         rel="${f#"$pkg/"}"
         target="$HOME/$rel"
         # Skip if target already resolves to this package's own file
-        # (stow-managed dir, e.g. ~/.config/qtile/config -> package dir).
-        # Otherwise readlink resolves through the symlinked dir and we'd
-        # back up + delete the package's source file itself.
+        # (stow-managed symlink).
         if [ -e "$target" ] && [ "$(readlink -f "$target")" = "$(readlink -f "$f")" ]; then
             continue
         fi
@@ -478,8 +486,8 @@ for pkg in common debian; do
         elif [ -L "$target" ]; then
             rm "$target"
         fi
-    done < <(find "$pkg" -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/kilo/*" -not -path "*/ZCode/*")
-    if stow -R --target="$HOME" "$pkg"; then
+    done < <(find "$pkg" \( -type f -o -type l \) -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/kilo/*" -not -path "*/ZCode/*" -not -path "*/*wants/*")
+    if stow -R --ignore='.*\.wants' --target="$HOME" "$pkg"; then
         ok "$pkg symlinked"
     else
         fail "$pkg stow"
@@ -521,7 +529,7 @@ if systemctl --user is-masked xdg-desktop-portal-gtk.service 2>/dev/null; then
     ok "xdg-desktop-portal-gtk service masked"
 else
     fix "masking xdg-desktop-portal-gtk.service (non-GNOME setup)"
-    systemctl --user mask xdg-desktop-portal-gtk.service
+    systemctl --user mask xdg-desktop-portal-gtk.service 2>/dev/null || true
     ok "xdg-desktop-portal-gtk service masked"
 fi
 
@@ -538,19 +546,12 @@ else
     ok "LazyVim starter cloned (plugins auto-install on first launch)"
 fi
 
-echo ""
-echo "=============================================="
-echo "  Done!"
-echo "=============================================="
-echo ""
-echo "  Reboot (NVIDIA), then: startx"
-echo "  tmux            (then prefix + I for plugins)"
-echo "  nvim            (plugins auto-install on first launch)"
-
 # ── Telegram (official tar.xz) ──
 step "Telegram"
 TG_DIR="$HOME/.local/share/TelegramDesktop"
+mkdir -p "$HOME/.local/bin"
 if [ -x "$TG_DIR/Telegram" ]; then
+    [ -L "$HOME/.local/bin/telegram" ] || ln -sf "$TG_DIR/Telegram" "$HOME/.local/bin/telegram"
     ok "telegram binary"
 elif [ -x "$HOME/Downloads/Telegram/Telegram" ]; then
     ok "telegram binary (~/Downloads/Telegram)"
@@ -569,13 +570,16 @@ else
     ln -sf "$TG_DIR/Telegram" "$HOME/.local/bin/telegram"
     ok "telegram installed"
 fi
+
 # ── Image generation (stable-diffusion.cpp + llama-swap, 2026-10-12) ──
 # Verified on RTX 3050 6GB: sd-server (CUDA + embedded web UI), SDXL-Lightning
 # Q8 + Realistic Vision V6 fp16 + VAE, two llama-swap entries (:8084/:8085).
 # Needs ai/05 (CUDA + llama-swap) and model downloads first; ai/06 is
 # idempotent and does downloads + build + config merge itself.
 step "Image generation"
-if [ -x /usr/local/bin/llama-swap ] && { [ -x "$HOME/stable-diffusion.cpp/build/bin/sd-server" ] || command -v nvcc &>/dev/null; }; then
+if ! lspci 2>/dev/null | grep -qiE '(VGA|3D).*NVIDIA'; then
+    ok "no NVIDIA GPU — skipping image generation"
+elif [ -x /usr/local/bin/llama-swap ] && { [ -x "$HOME/stable-diffusion.cpp/build/bin/sd-server" ] || command -v nvcc &>/dev/null; }; then
     ok "llama-swap + sd-server present"
     bash "$SCRIPT_DIR/ai/06-install-image-gen.sh"
     ok "image generation installed (restart if models changed: systemctl --user restart llama-swap)"
@@ -583,3 +587,12 @@ else
     fail "llama-swap or sd-server missing"
     fix "run first: bash ai/05-install-llama-gpu.sh && bash ai/02-download-models.sh, then re-run $0"
 fi
+
+echo ""
+echo "=============================================="
+echo "  Done!"
+echo "=============================================="
+echo ""
+echo "  Reboot (NVIDIA), then: startx"
+echo "  tmux            (then prefix + I for plugins)"
+echo "  nvim            (plugins auto-install on first launch)"
