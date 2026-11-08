@@ -35,6 +35,16 @@ secrets_load() {
   set -a
   . "$SECRETS_ENV"
   set +a
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      '#'*|'') ;;
+      *=*)
+        key="${line%%=*}"
+        key="$(echo "$key" | tr -d '[:space:]')"
+        [ -n "$key" ] && export "$key"
+        ;;
+    esac
+  done < "$SECRETS_ENV"
 }
 
 secrets_load
