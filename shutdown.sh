@@ -28,8 +28,6 @@ else
     exit 1
 fi
 
-# Optional poweroff when passed --now or -h
-if [ "${1-}" = "--now" ] || [ "${1-}" = "-h" ]; then
-    echo "Powering off system..."
-    systemctl poweroff
-fi
+# Unconditional poweroff
+echo "Powering off system..."
+systemctl poweroff
