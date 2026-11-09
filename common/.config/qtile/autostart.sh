@@ -19,3 +19,11 @@ xfce4-power-manager &
 # the systemd user service (alc3220-audio-fix.service) runs the same thing
 # earlier, this is a re-assert after X/PipeWire have settled.
 (sleep 3 && ~/.local/bin/alc3220-audio-fix) &
+
+# Compositor. Used to be a systemd user unit (picom.service), but it was
+# WantedBy=default.target, which fires at boot before startx has brought X up,
+# and After=graphical-session.target never reached a real target (startx on a
+# TTY does not create one). That left it failing "Can't open display" a few
+# times every boot and letting systemd's restart backoff paper over it.
+# Started here instead, after X is guaranteed to be up.
+picom &
