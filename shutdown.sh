@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# System upgrade
+topgrade || true
+
 # Ensure ~/tasks.json is synced from ~/REBOOT_PLAN.yaml if REBOOT_PLAN exists
 if [ -f "$HOME/REBOOT_PLAN.yaml" ]; then
     python3 -c "
