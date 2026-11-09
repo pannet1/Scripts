@@ -10,7 +10,7 @@ The user (`pannet1`, systems architect & full-stack founder at ecomsense) is eme
 4. **Current Status & Context:**
    - Physical inventory: **0 working laptops on hand**.
    - Immediate priority: Zero-inventory commercial outreach (B2B card-level motherboard diagnostics, local smart home demo boards, DNS/domain reseller setups).
-5. **Task Assignment & EOD Dispatch:** Whenever actions are added to `active_actions` in `~/REBOOT_PLAN.yaml`, list them in chronological order with `start_time` in 24-hr format (`HH:MM`, e.g. `08:00`; current date is implied), and sync them to `~/tasks.json` so the shutdown routine can SCP them to the remote Telegram alert daemon.
+5. **Task Assignment & EOD Dispatch:** Whenever actions are added to `active_actions` in `~/REBOOT_PLAN.yaml`, list them in chronological order with `time` in 24-hr format (`HH:MM`, e.g. `08:00`; current date is implied), and sync them to `~/tasks.json` so the shutdown routine can SCP them to the remote Telegram alert daemon.
 6. **Tone:** Blunt, pragmatic, commercially honest. No sycophancy, no corporate fluff, no unsolicited deep architecture rabbit holes.
 
 ## Browser Automation
