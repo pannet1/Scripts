@@ -1,0 +1,20 @@
+[Unit]
+Description=FastAPI Apps Marketplace & Financial Agent Hub (Port 11173)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pannet1/programs/github.com/pannet1/fastapi-apps
+ExecStart=/home/pannet1/.local/bin/uv run python main.py --port 11173 --host 0.0.0.0
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=always
+RestartSec=3
+KillMode=mixed
+TimeoutStopSec=15
+StandardOutput=journal
+StandardError=journal
+Environment=PATH=/home/pannet1/.local/bin:/home/pannet1/programs/github.com/pannet1/fastapi-apps/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=PYTHONPATH=/home/pannet1/programs/github.com/pannet1/fastapi-apps
+
+[Install]
+WantedBy=default.target
