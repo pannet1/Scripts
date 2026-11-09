@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# System upgrade
-topgrade || true
+# System upgrade (unattended)
+topgrade -y --no-ask-retry --no-tmux || true
 
 # Ensure ~/tasks.json is synced from ~/REBOOT_PLAN.yaml if REBOOT_PLAN exists
 if [ -f "$HOME/REBOOT_PLAN.yaml" ]; then
