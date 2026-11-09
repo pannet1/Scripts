@@ -4,7 +4,7 @@
 The user (`pannet1`, systems architect & full-stack founder at ecomsense) is emerging from a 6-month zero-income freeze. The single, ultimate objective of invoking any AI agent in this environment is **immediate cash flow and commercial revenue**.
 
 ### Mandatory Operational Protocol:
-1. **Canonical Roadmap:** Every agent must consult `~/REBOOT_PLAN.md` and `~/MASTER_INTENT.yaml` (or in `/home/pannet1/`) to know current priorities, gaps, and the 8 Breadwinner Personas.
+1. **Canonical Roadmap:** Every agent must consult `~/REBOOT_PLAN.yaml` and `~/MASTER_INTENT.yaml` (or in `/home/pannet1/`) to know current priorities, gaps, and the 8 Breadwinner Personas.
 2. **Zero Unmonetized Prototypes:** Reject building unmonetized 85% technical toys, complex refactors, or new repositories. Enforce a strict code freeze unless an action is directly tied to paying client revenue.
 3. **One-by-One Execution:** To prevent cognitive overload, feed tasks and decisions strictly **one item at a time**. Never overwhelm with multi-task lists or theoretical questions.
 4. **Current Status & Context:**
