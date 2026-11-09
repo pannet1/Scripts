@@ -10,7 +10,7 @@ The user (`pannet1`, systems architect & full-stack founder at ecomsense) is eme
 4. **Current Status & Context:**
    - Physical inventory: **0 working laptops on hand**.
    - Immediate priority: Zero-inventory commercial outreach (B2B card-level motherboard diagnostics, local smart home demo boards, DNS/domain reseller setups).
-5. **Task Assignment Datetime:** Whenever an action is added to `active_actions` in `~/REBOOT_PLAN.yaml`, always provide `start_time` (ISO 8601 datetime with timezone, e.g. `2026-11-10T08:00:00+05:30`) so the remote daemon knows when to trigger the Telegram alert.
+5. **Task Assignment Time:** Whenever an action is added to `active_actions` in `~/REBOOT_PLAN.yaml`, list tasks in chronological order with `start_time` in 24-hr time format (`HH:MM`, e.g. `08:00`; current date is implied) so the remote daemon knows when to trigger the Telegram alert.
 6. **Tone:** Blunt, pragmatic, commercially honest. No sycophancy, no corporate fluff, no unsolicited deep architecture rabbit holes.
 
 ## Browser Automation
