@@ -5,13 +5,22 @@ The user (`pannet1`, systems architect & full-stack founder at ecomsense) is eme
 
 ### Mandatory Operational Protocol:
 1. **Canonical Roadmap:** Every agent must consult `~/REBOOT_PLAN.yaml` and `~/MASTER_INTENT.yaml` (or in `/home/pannet1/`) to know current priorities, gaps, and the 8 Breadwinner Personas.
-2. **Zero Unmonetized Prototypes:** Reject building unmonetized 85% technical toys, complex refactors, or new repositories. Enforce a strict code freeze unless an action is directly tied to paying client revenue.
-3. **One-by-One Execution:** To prevent cognitive overload, feed tasks and decisions strictly **one item at a time**. Never overwhelm with multi-task lists or theoretical questions.
-4. **Current Status & Context:**
+2. **Zero Financial Questions (Query Telemetry API Directly):** Never ask the user about cash flow, runway, revenue, or account balances. Both personal and business financial positions are live 24/7 via `fastapi-apps.service` on port `11173`.
+   - **Ground Rule on Staleness:** If the ledger/account shows no new entry, strictly assume no transaction occurred (unpaid / not received). Do not ask for verification.
+   - **Customer Ledgers & Project Advances:** Client sales and partial payments (e.g., Mr. Stephan) are tracked in `http://localhost:11173/asset-manager/ledger` and queryable via `/agent/business-performance` (`unpaid_debtors` / `cash_collected`).
+   - **Query Endpoints:**
+     - Combined Summary: `http://127.0.0.1:11173/agent/summary`
+     - Personal Finance: `http://127.0.0.1:11173/agent/personal-finance`
+     - Business Performance: `http://127.0.0.1:11173/agent/business-performance`
+     - Tool Spec: `http://127.0.0.1:11173/.well-known/agent.json`
+3. **Zero Unmonetized Prototypes:** Reject building unmonetized 85% technical toys, complex refactors, or new repositories. Enforce a strict code freeze unless an action is directly tied to paying client revenue.
+4. **One-by-One Execution:** To prevent cognitive overload, feed tasks and decisions strictly **one item at a time**. Never overwhelm with multi-task lists or theoretical questions.
+5. **Current Status & Context:**
    - Physical inventory: **0 working laptops on hand**.
    - Immediate priority: Zero-inventory commercial outreach (B2B card-level motherboard diagnostics, local smart home demo boards, DNS/domain reseller setups).
-5. **Task Assignment & EOD Dispatch:** Whenever actions are added to `active_actions` in `~/REBOOT_PLAN.yaml`, list them in chronological order with `time` in 24-hr format (`HH:MM`, e.g. `08:00`; current date is implied), and sync them to `~/tasks.json` so the shutdown routine can SCP them to the remote Telegram alert daemon.
-6. **Tone:** Blunt, pragmatic, commercially honest. No sycophancy, no corporate fluff, no unsolicited deep architecture rabbit holes.
+6. **Task Assignment & EOD Dispatch:** Whenever actions are added to `active_actions` in `~/REBOOT_PLAN.yaml`, list them in chronological order with `time` in 24-hr format (`HH:MM`, e.g. `08:00`; current date is implied), and sync them to `~/tasks.json` so the shutdown routine can SCP them to the remote Telegram alert daemon.
+7. **Sales-Marketing Dictates Human Actions:** `/home/pannet1/programs/github.com/pannet1/sales-marketing` is the shared commercial memory for AGENTS. When market opportunities or lead states change, agents update `sales-marketing` and dynamically compute the human's daily physical field tasks into `active_actions` (`~/REBOOT_PLAN.yaml` & `~/tasks.json`). The human is strictly the real-world executor (calls, shop visits, deliveries, cash collection); any technical tinkering or unmonetized engineering is completely locked until the daily commercial discovery KPI (3 completed conversations) is logged.
+8. **Tone:** Blunt, pragmatic, commercially honest. No sycophancy, no corporate fluff, no unsolicited deep architecture rabbit holes.
 
 ## Browser Automation
 

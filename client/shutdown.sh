@@ -4,13 +4,13 @@ set -euo pipefail
 # System upgrade (unattended)
 topgrade -y --no-ask-retry --no-tmux || true
 
-# Artifacts moved from ~/ to the firstmate home: REBOOT_PLAN.yaml at ~/firstmate/,
-# tasks.json at ~/firstmate/data/. Sync tasks.json from REBOOT_PLAN if the plan exists
-if [ -f "$HOME/firstmate/REBOOT_PLAN.yaml" ]; then
+# Artifacts moved from ~/ to the firstmate home: REBOOT_PLAN.yaml and tasks.json at ~/firstmate/data/.
+# Sync tasks.json from REBOOT_PLAN if the plan exists
+if [ -f "$HOME/firstmate/data/REBOOT_PLAN.yaml" ]; then
     python3 -c "
 import yaml, json, sys, os
 try:
-    plan_path = os.path.expanduser('~/firstmate/REBOOT_PLAN.yaml')
+    plan_path = os.path.expanduser('~/firstmate/data/REBOOT_PLAN.yaml')
     tasks_path = os.path.expanduser('~/firstmate/data/tasks.json')
     with open(plan_path) as f:
         data = yaml.safe_load(f)
