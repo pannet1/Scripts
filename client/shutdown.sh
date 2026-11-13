@@ -4,13 +4,14 @@ set -euo pipefail
 # System upgrade (unattended)
 topgrade -y --no-ask-retry --no-tmux || true
 
-# Ensure ~/tasks.json is synced from ~/REBOOT_PLAN.yaml if REBOOT_PLAN exists
-if [ -f "$HOME/REBOOT_PLAN.yaml" ]; then
+# Artifacts moved from ~/ to the firstmate home: REBOOT_PLAN.yaml at ~/firstmate/,
+# tasks.json at ~/firstmate/data/. Sync tasks.json from REBOOT_PLAN if the plan exists
+if [ -f "$HOME/firstmate/REBOOT_PLAN.yaml" ]; then
     python3 -c "
 import yaml, json, sys, os
 try:
-    plan_path = os.path.expanduser('~/REBOOT_PLAN.yaml')
-    tasks_path = os.path.expanduser('~/tasks.json')
+    plan_path = os.path.expanduser('~/firstmate/REBOOT_PLAN.yaml')
+    tasks_path = os.path.expanduser('~/firstmate/data/tasks.json')
     with open(plan_path) as f:
         data = yaml.safe_load(f)
     actions = data.get('active_actions', [])
@@ -22,12 +23,12 @@ except Exception as e:
 fi
 
 # Push tasks to remote server
-if [ -f "$HOME/tasks.json" ]; then
+if [ -f "$HOME/firstmate/data/tasks.json" ]; then
     echo "Pushing tasks to remote server (srv1)..."
-    scp "$HOME/tasks.json" carrierc@srv1:./ecomsense.in/data/.
+    scp "$HOME/firstmate/data/tasks.json" carrierc@srv1:./ecomsense.in/data/.
     echo "Tasks successfully pushed to srv1:./ecomsense.in/data/."
 else
-    echo "Error: ~/tasks.json not found." >&2
+    echo "Error: ~/firstmate/data/tasks.json not found." >&2
     exit 1
 fi
 
