@@ -403,13 +403,14 @@ else
     curl -fsSL https://get.pnpm.io/install.sh | env PNPM_HOME="$HOME/.local/share/pnpm" sh
     ok "pnpm installed"
 fi
-if check_cmd mare-browser-mcp; then
-    ok "mare-browser-mcp (pnpm)"
+if check_cmd chrome-devtools-axi; then
+    ok "chrome-devtools-axi (npm)"
 else
-    fail "mare-browser-mcp"
-    fix "pnpm add -g mare-browser-mcp"
-    pnpm add -g mare-browser-mcp
-    ok "mare-browser-mcp installed"
+    fail "chrome-devtools-axi"
+    fix "npm install -g chrome-devtools-axi && chrome-devtools-axi setup hooks"
+    npm install -g chrome-devtools-axi
+    chrome-devtools-axi setup hooks
+    ok "chrome-devtools-axi installed"
 fi
 if ls "$HOME/.cache/ms-playwright"/*/chromium* >/dev/null 2>&1; then
     ok "playwright chromium"

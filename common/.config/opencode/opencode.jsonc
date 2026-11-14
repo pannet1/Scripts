@@ -1,15 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "mare_browser_mcp": {
-      "type": "local",
-      "command": [
-        "mare-browser-mcp"
-      ],
-      "environment": {
-        "HEADLESS": "true"
-      },
-    },
     "chrome-devtools": {
       "type": "local",
       "command": [

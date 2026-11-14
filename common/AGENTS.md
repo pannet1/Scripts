@@ -70,9 +70,7 @@ All projects are located under `/home/pannet1/programs/github.com/pannet1/`:
 
 ## Browser Automation
 
-When you need to browse a web page, interact with a website, fill a form, scrape content, or debug a web app — **use the `mare_browser_mcp` tool**. It gives you a real Chromium browser you can control.
-
-Never run `curl`, `wget`, `playwright`, `puppeteer`, or raw HTTP commands for browsing — use the MCP browser tools instead.
+When you need to browse a web page, interact with a website, fill a form, scrape content, or debug a web app — **use the `chrome-devtools-axi` CLI** (`chrome-devtools-axi --help` for commands). It drives a real Chrome/Chromium session: navigate, snapshot, click, fill forms, run JavaScript, inspect console and network, take screenshots.
 
 ---
 

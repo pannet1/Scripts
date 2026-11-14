@@ -215,17 +215,13 @@ else
     ok "opencode installed"
 fi
 
-if check_cmd bun; then
-    if bun pm ls -g 2>/dev/null | grep -q mare-browser-mcp; then
-        ok "mare-browser-mcp"
-    else
-        fail "mare-browser-mcp"
-        fix "installing mare-browser-mcp globally"
-        bun install -g mare-browser-mcp
-        ok "mare-browser-mcp installed"
-    fi
+if check_cmd chrome-devtools-axi; then
+    ok "chrome-devtools-axi"
 else
-    fail "bun not available — skipping mare-browser-mcp"
+    fail "chrome-devtools-axi"
+    fix "installing chrome-devtools-axi globally"
+    bun install -g chrome-devtools-axi && chrome-devtools-axi setup hooks
+    ok "chrome-devtools-axi installed"
 fi
 
 # ── 9. Dotfiles (stow) ──
