@@ -11,14 +11,13 @@ if [ "$NO_POWEROFF" -eq 0 ]; then
     topgrade -y --no-ask-retry --no-tmux || true
 fi
 
-# Sync tasks.json from sales.db (deprecated REBOOT_PLAN.yaml retired into sales.db)
+# Sync tasks.json from sales.db (generated strictly within fastapi-apps/ dir)
 python3 -c "
 import sqlite3, json, sys, os
 
 db_candidates = [
     os.path.expanduser('~/programs/github.com/pannet1/fastapi-apps/apps/sales-marketing/data/sales.db'),
-    os.path.expanduser('~/programs/github.com/pannet1/sales-marketing/data/sales.db'),
-    os.path.expanduser('~/firstmate/data/sales.db')
+    os.path.expanduser('~/programs/github.com/pannet1/sales-marketing/data/sales.db')
 ]
 db_path = next((p for p in db_candidates if os.path.isfile(p)), None)
 
@@ -43,41 +42,36 @@ if db_path:
                     'time': str(r['time'] or '').strip()
                 })
     except Exception as e:
-        sys.stderr.write(f'Notice: db query failed ({e}), falling back\n')
+        sys.stderr.write(f'Notice: db query failed ({e})\n')
 
-# Fallback to legacy REBOOT_PLAN.yaml if db produced nothing
-if not actions:
-    for plan_p in [os.path.expanduser('~/firstmate/data/REBOOT_PLAN.yaml'), os.path.expanduser('~/REBOOT_PLAN.yaml')]:
-        if os.path.isfile(plan_p):
-            try:
-                import yaml
-                with open(plan_p) as f:
-                    data = yaml.safe_load(f) or {}
-                actions = data.get('active_actions', [])
-                if actions:
-                    break
-            except Exception:
-                pass
+# Export tasks.json strictly within fastapi-apps/
+fastapi_apps_dir = os.path.expanduser('~/programs/github.com/pannet1/fastapi-apps')
+target_paths = [
+    os.path.join(fastapi_apps_dir, 'data', 'tasks.json'),
+    os.path.join(fastapi_apps_dir, 'tasks.json')
+]
 
-# Export tasks.json to both ~/firstmate/data/ and ~/
-out_dirs = [os.path.expanduser('~/firstmate/data'), os.path.expanduser('~')]
-for d in out_dirs:
-    os.makedirs(d, exist_ok=True)
-    json_path = os.path.join(d, 'tasks.json')
-    with open(json_path, 'w', encoding='utf-8') as f:
+for p in target_paths:
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p, 'w', encoding='utf-8') as f:
         json.dump(actions, f, indent=2, ensure_ascii=False)
         f.write('\n')
 
-print(f'Successfully synced {len(actions)} tasks to tasks.json')
+print(f'Successfully synced {len(actions)} tasks to {target_paths[0]}')
 "
 
+TASKS_FILE="$HOME/programs/github.com/pannet1/fastapi-apps/data/tasks.json"
+if [ ! -f "$TASKS_FILE" ]; then
+    TASKS_FILE="$HOME/programs/github.com/pannet1/fastapi-apps/tasks.json"
+fi
+
 # Push tasks to remote server
-if [ -f "$HOME/firstmate/data/tasks.json" ]; then
+if [ -f "$TASKS_FILE" ]; then
     echo "Pushing tasks to remote server (srv1)..."
-    scp "$HOME/firstmate/data/tasks.json" carrierc@srv1:./ecomsense.in/data/.
-    echo "Tasks successfully pushed to srv1:./ecomsense.in/data/."
+    scp "$TASKS_FILE" carrierc@srv1:./ecomsense.in/data/tasks.json
+    echo "Tasks successfully pushed to srv1:./ecomsense.in/data/tasks.json."
 else
-    echo "Error: ~/firstmate/data/tasks.json not found." >&2
+    echo "Error: $TASKS_FILE not found." >&2
     exit 1
 fi
 
