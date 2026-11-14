@@ -16,7 +16,9 @@ python3 -c "
 import sqlite3, json, sys, os
 
 db_candidates = [
+    os.path.expanduser('~/programs/github.com/pannet1/fastapi-apps/apps/breadwinner/data/sales.db'),
     os.path.expanduser('~/programs/github.com/pannet1/fastapi-apps/apps/sales-marketing/data/sales.db'),
+    os.path.expanduser('~/programs/github.com/pannet1/breadwinner/data/sales.db'),
     os.path.expanduser('~/programs/github.com/pannet1/sales-marketing/data/sales.db')
 ]
 db_path = next((p for p in db_candidates if os.path.isfile(p)), None)
