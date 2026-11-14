@@ -110,7 +110,8 @@ with open("data/cron.txt", "a") as f:
 - Always make code changes locally, commit, and push to Git before pulling on servers.
 - Use full paths for commands.
 - Test script execution manually before relying on cron or background daemons.
-- **The user runs all `sudo` commands and long-running operations themselves.** Give the command and let the user execute it; do not attempt to run sudo directly.
+- **The user runs all `sudo` commands themselves.** Give the command and let the user execute it; do not attempt to run sudo directly.
+- **Delegate long-running tasks to the human, never absorb them as agent work.** Any operation expected to take more than ~10 minutes of wall time (video renders, large builds, test suites, scrapes, batch conversions, gnhf/agent loop runs) must be handed to the user with the exact command and expected output path — do NOT run it in a background shell or busy-wait on it. Long agent loops also burn tokens and drift into scope creep (see the gnhf 94-iteration incident); the human supervisor owns execution and keeps agents cheap, synchronous, and short.
 - **Keep responses small and concise. Do NOT show your reasoning/thinking process — just give the final outcome / action / answer.**
 
 ---
